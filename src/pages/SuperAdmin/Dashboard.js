@@ -54,11 +54,12 @@ function Dashboard() {
 
     catch (error) {
 
-        alert(
-            error.response.data.message
-        );
+    alert(
+        error.response?.data?.message ||
+        "Failed to create admin. Please try again."
+    );
 
-    }
+}
 
 };
 const handleDelete = async (id) => {
@@ -141,25 +142,27 @@ const handleDelete = async (id) => {
 
                     <div className="stat-card">
 
-                        <h3>02</h3>
+                        <h3>{admins.length}</h3>
 
-                        <p>Total Admins</p>
-
+<p>Total Admins</p>
                     </div>
 
                     <div className="stat-card">
 
-                        <h3>02</h3>
+                        <h3>
+    {admins.filter((admin) => admin.status === "Active").length}
+</h3>
 
-                        <p>Active Admins</p>
-
+<p>Active Admins</p>
                     </div>
 
                     <div className="stat-card">
 
-                        <h3>00</h3>
+                       <h3>
+    {admins.filter((admin) => admin.status === "Inactive").length}
+</h3>
 
-                        <p>Inactive Admins</p>
+<p>Inactive Admins</p>
 
                     </div>
 
@@ -238,7 +241,7 @@ const handleDelete = async (id) => {
 
                                         <td>{admin.id}</td>
 
-                                        <td>{admin.fullName}</td>
+                                        <td>{admin.full_name}</td>
 
                                         <td>{admin.username}</td>
 
