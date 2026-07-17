@@ -1,0 +1,60 @@
+const db = require("../config/db");
+
+const Menu = {
+
+    // Get all categories
+    getCategories(callback) {
+
+        const sql = `
+            SELECT *
+            FROM menu_categories
+            WHERE status = 'Active'
+            ORDER BY category_name ASC
+        `;
+
+        db.query(sql, callback);
+    },
+
+    // Get all menu items
+    getAllItems(callback) {
+
+        const sql = `
+            SELECT
+                m.id,
+                m.item_name,
+                m.price,
+                m.gst,
+                m.available_quantity,
+                m.status,
+                c.category_name
+            FROM menu_items m
+            INNER JOIN menu_categories c
+                ON m.category_id = c.id
+            ORDER BY m.item_name ASC
+        `;
+
+        db.query(sql, callback);
+    },
+
+    // Get items by category
+    getItemsByCategory(categoryId, callback) {
+
+        const sql = `
+            SELECT
+                id,
+                item_name,
+                price,
+                gst,
+                available_quantity,
+                status
+            FROM menu_items
+            WHERE category_id = ?
+            ORDER BY item_name ASC
+        `;
+
+        db.query(sql, [categoryId], callback);
+    }
+
+};
+
+module.exports = Menu;

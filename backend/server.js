@@ -37,6 +37,8 @@ app.use(express.json());
 
 const authRoutes = require("./routes/authRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
+const menuRoutes = require("./routes/menuRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 
 /*
 |--------------------------------------------------------------------------
@@ -47,6 +49,10 @@ const superAdminRoutes = require("./routes/superAdminRoutes");
 app.use("/api/auth", authRoutes);
 
 app.use("/api/super-admin", superAdminRoutes);
+
+app.use("/api/menu", menuRoutes);
+
+app.use("/api/orders", orderRoutes);
 
 /*
 |--------------------------------------------------------------------------
