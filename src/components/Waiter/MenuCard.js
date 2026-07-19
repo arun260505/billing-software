@@ -20,17 +20,11 @@ function MenuCard({ item, addToCart }) {
                         ₹{Number(item.price).toFixed(2)}
                     </span>
 
-                    <span
-                        className={
-                            item.available_quantity > 0
-                                ? "stock-badge in-stock"
-                                : "stock-badge out-stock"
-                        }
-                    >
-                        {item.available_quantity > 0
-                            ? `Stock : ${item.available_quantity}`
-                            : "Out of Stock"}
-                    </span>
+                    {item.available_quantity === 0 && (
+                        <span className="stock-badge out-stock">
+                            Out of Stock
+                        </span>
+                    )}
                 </div>
 
                 {item.available_quantity > 10 && (

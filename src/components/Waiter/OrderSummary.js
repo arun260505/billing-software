@@ -8,6 +8,8 @@ function OrderSummary({
     grandTotal,
     clearCart,
     placeOrder,
+    handleCancelOrder,
+    editingOrder,
     increaseQuantity,
     decreaseQuantity,
     removeItem,
@@ -82,21 +84,30 @@ function OrderSummary({
 
             <div className="summary-buttons">
 
-                <button
-                    className="clear-btn"
-                    onClick={clearCart}
-                >
-                    🗑 Clear Cart
-                </button>
+    <button
+        className="clear-btn"
+        onClick={clearCart}
+    >
+        🗑 Clear Cart
+    </button>
 
-                <button
-                    className="place-btn"
-                    onClick={placeOrder}
-                >
-                    ✅ Place Order
-                </button>
+    <button
+        className="place-btn"
+        onClick={placeOrder}
+    >
+        {editingOrder ? "✏️ Update Order" : "✅ Place Order"}
+    </button>
 
-            </div>
+    {editingOrder && (
+        <button
+            className="cancel-btn"
+            onClick={handleCancelOrder}
+        >
+            ❌ Cancel Order
+        </button>
+    )}
+
+</div>
 
         </div>
     );

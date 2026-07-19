@@ -9,13 +9,14 @@ const Order = {
             (
                 order_number,
                 waiter_id,
+                table_id,
                 total_items,
                 subtotal,
                 gst_amount,
                 grand_total,
                 status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         db.query(
@@ -23,6 +24,7 @@ const Order = {
             [
                 orderData.order_number,
                 orderData.waiter_id,
+                orderData.table_id,
                 orderData.total_items,
                 orderData.subtotal,
                 orderData.gst_amount,
@@ -93,6 +95,7 @@ const Order = {
                 id,
                 order_number,
                 waiter_id,
+                table_id,
                 total_items,
                 grand_total,
                 status,
@@ -111,6 +114,7 @@ const Order = {
         const sql = `
             SELECT
                 oi.id,
+                oi.menu_item_id,
                 mi.item_name,
                 oi.quantity,
                 oi.price,
@@ -192,15 +196,15 @@ const Order = {
 
     cancelOrder(orderId, callback) {
 
-    const sql = `
-        UPDATE orders
-        SET status = 'Cancelled'
-        WHERE id = ?
-    `;
+        const sql = `
+            UPDATE orders
+            SET status = 'Cancelled'
+            WHERE id = ?
+        `;
 
-    db.query(sql, [orderId], callback);
+        db.query(sql, [orderId], callback);
 
-},
+    },
 
 };
 

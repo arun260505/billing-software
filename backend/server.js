@@ -39,6 +39,7 @@ const authRoutes = require("./routes/authRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
 const menuRoutes = require("./routes/menuRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const tableRoutes = require("./routes/tableRoutes");
 
 /*
 |--------------------------------------------------------------------------
@@ -53,6 +54,8 @@ app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/menu", menuRoutes);
 
 app.use("/api/orders", orderRoutes);
+
+app.use("/api/tables", tableRoutes);
 
 /*
 |--------------------------------------------------------------------------

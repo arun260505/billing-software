@@ -1,10 +1,12 @@
 function RunningOrders({
     runningOrders,
     closeOrders,
+    openOrder,
 }) {
     return (
         <div className="running-orders-overlay">
             <div className="running-orders">
+
                 <div className="running-header">
                     <h2>Running Orders</h2>
 
@@ -18,22 +20,31 @@ function RunningOrders({
                 ) : (
                     runningOrders.map((order) => (
                         <div
-                            className="running-card"
-                            key={order.orderNumber}
-                        >
-                            <h3>{order.orderNumber}</h3>
+    className="running-card"
+    key={order.id}
+    onClick={() => openOrder(order)}
+    style={{ cursor: "pointer" }}
+>
+                            <h3>{order.order_number}</h3>
+
                             <p>
-                                Status:{" "}
-                                <strong>{order.status}</strong>
+                                Status:
+                                <strong> {order.status}</strong>
                             </p>
-                            <p>Items: {order.totalItems}</p>
+
+                            <p>
+                                Items: {order.total_items}
+                            </p>
+
                             <p>
                                 Total: Rs.
-                                {order.grandTotal.toFixed(2)}
+                                {Number(order.grand_total).toFixed(2)}
                             </p>
+
                         </div>
                     ))
                 )}
+
             </div>
         </div>
     );

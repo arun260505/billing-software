@@ -9,7 +9,7 @@ function CartItem({
 
             <div className="cart-top">
 
-                <h4>{item.name}</h4>
+                <h4>{item.item_name || item.name}</h4>
 
                 <button
                     className="delete-item"

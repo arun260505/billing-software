@@ -2,7 +2,12 @@ const Order = require("../models/Order");
 
 exports.createOrder = (req, res) => {
 
-    const { order_number, waiter_id, items } = req.body;
+    const {
+    order_number,
+    waiter_id,
+    table_id,
+    items,
+} = req.body;
 
     if (!items || items.length === 0) {
         return res.status(400).json({
@@ -24,13 +29,14 @@ exports.createOrder = (req, res) => {
     const grandTotal = subtotal + gstAmount;
 
     const orderData = {
-        order_number,
-        waiter_id,
-        total_items: totalItems,
-        subtotal,
-        gst_amount: gstAmount,
-        grand_total: grandTotal
-    };
+    order_number,
+    waiter_id,
+    table_id,
+    total_items: totalItems,
+    subtotal,
+    gst_amount: gstAmount,
+    grand_total: grandTotal
+};
 
     Order.createOrder(orderData, (err, result) => {
 
@@ -190,7 +196,9 @@ exports.updateOrder = (req, res) => {
     items.forEach(item => {
         totalItems += item.quantity;
         subtotal += item.price * item.quantity;
-        gstAmount += (item.price * item.quantity * item.gst) / 100;
+        const gst = item.gst || 5;
+
+gstAmount += (item.price * item.quantity * gst) / 100;
     });
 
     const grandTotal = subtotal + gstAmount;
