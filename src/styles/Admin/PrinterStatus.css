@@ -1,0 +1,23 @@
+.printer-card{
+    background:#fff;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+
+.printer-row{
+    display:flex;
+    justify-content:space-between;
+    padding:14px 0;
+    border-bottom:1px solid #EDF2F7;
+}
+
+.connected{
+    color:#22C55E;
+    font-weight:bold;
+}
+
+.disconnected{
+    color:#EF4444;
+    font-weight:bold;
+}

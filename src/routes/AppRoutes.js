@@ -1,4 +1,5 @@
-import React from "react";
+import Reports from "../pages/Admin/Reports";
+import Employee from "../pages/Admin/Employee";
 
 import {
     BrowserRouter,
@@ -35,7 +36,14 @@ function AppRoutes() {
                     path="/"
                     element={
                         token
-                            ? <Navigate to={`/${user.role}`} replace />
+                            ? <Navigate
+    to={
+        user.role === "admin"
+            ? "/admin/dashboard"
+            : `/${user.role}`
+    }
+    replace
+/>
                             : <Login />
                     }
                 />
@@ -48,15 +56,38 @@ function AppRoutes() {
                             : <Navigate to="/" replace />
                     }
                 />
-
                 <Route
-                    path="/admin"
-                    element={
-                        token && user?.role === "admin"
-                            ? <AdminDashboard />
-                            : <Navigate to="/" replace />
-                    }
-                />
+    path="/admin"
+    element={<Navigate to="/admin/dashboard" replace />}
+/>
+
+<Route
+    path="/admin/dashboard"
+    element={
+        token && user?.role === "admin"
+            ? <AdminDashboard />
+            : <Navigate to="/" replace />
+    }
+/>
+
+<Route
+    path="/admin/reports"
+    element={
+        token && user?.role === "admin"
+            ? <Reports />
+            : <Navigate to="/" replace />
+    }
+/>
+<Route
+    path="/admin/employees"
+    element={
+        token && user?.role === "admin"
+            ? <Employee />
+            : <Navigate to="/" replace />
+    }
+/>
+
+                
 
                 <Route
                     path="/cashier"
@@ -86,7 +117,6 @@ function AppRoutes() {
                 />
 
             </Routes>
-
         </BrowserRouter>
 
     );

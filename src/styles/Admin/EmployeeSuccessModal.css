@@ -1,0 +1,89 @@
+.success-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.success-modal {
+    width: 450px;
+    max-width: 95%;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    padding: 25px;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.success-modal h2 {
+    margin: 0 0 20px;
+    color: #16a34a;
+    text-align: center;
+}
+
+.success-content {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 12px 15px;
+    margin-bottom: 25px;
+}
+
+.success-content label {
+    font-weight: 600;
+    color: #555;
+}
+
+.success-content div {
+    background: #f7f7f7;
+    padding: 10px;
+    border-radius: 6px;
+    word-break: break-word;
+}
+
+.success-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.copy-btn,
+.ok-btn {
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.copy-btn {
+    background: #2563eb;
+    color: #fff;
+}
+
+.copy-btn:hover {
+    background: #1d4ed8;
+}
+
+.ok-btn {
+    background: #16a34a;
+    color: #fff;
+}
+
+.ok-btn:hover {
+    background: #15803d;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

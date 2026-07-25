@@ -1,0 +1,31 @@
+.table-card{
+    background:#fff;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+
+.table-card h3{
+    margin-top:0;
+    margin-bottom:20px;
+}
+
+.table-card table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.table-card th{
+    background:#F8FAFC;
+    padding:14px;
+    text-align:left;
+}
+
+.table-card td{
+    padding:14px;
+    border-bottom:1px solid #EEF2F7;
+}
+
+.table-card tr:hover{
+    background:#F8FAFC;
+}

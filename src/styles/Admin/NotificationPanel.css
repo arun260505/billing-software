@@ -1,0 +1,60 @@
+.notification-card{
+    background:#fff;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+
+.notification-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.notification-header span{
+    background:#EF4444;
+    color:#fff;
+    width:25px;
+    height:25px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;
+}
+
+.notification-item{
+    display:flex;
+    margin-bottom:18px;
+}
+
+.notification-dot{
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    margin-right:15px;
+    margin-top:6px;
+}
+
+.notification-dot.order{
+    background:#2563EB;
+}
+
+.notification-dot.stock{
+    background:#F59E0B;
+}
+
+.notification-dot.subscription{
+    background:#EF4444;
+}
+
+.notification-content p{
+    margin:0;
+    font-size:14px;
+    color:#0F172A;
+}
+
+.notification-content small{
+    color:#64748B;
+}

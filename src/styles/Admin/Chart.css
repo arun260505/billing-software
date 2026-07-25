@@ -1,0 +1,38 @@
+.chart-card{
+    background:#fff;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+    margin-bottom:25px;
+}
+
+.chart-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.chart-header h3{
+    margin:0;
+    color:#0F172A;
+}
+
+.chart-header select{
+    padding:8px 12px;
+    border:1px solid #ddd;
+    border-radius:6px;
+    outline:none;
+}
+
+.chart-placeholder{
+    height:300px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:#F8FAFC;
+    border:2px dashed #CBD5E1;
+    border-radius:10px;
+    color:#64748B;
+    font-size:18px;
+}

@@ -1,0 +1,50 @@
+.admin-header{
+    height:80px;
+    background:#ffffff;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:0 30px;
+    border-bottom:1px solid #E2E8F0;
+    box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+
+.header-left h2{
+    margin:0;
+    color:#0F172A;
+    font-size:24px;
+}
+
+.header-left p{
+    margin-top:5px;
+    color:#64748B;
+    font-size:14px;
+}
+
+.admin-profile{
+    display:flex;
+    align-items:center;
+}
+
+.profile-image{
+    width:45px;
+    height:45px;
+    border-radius:50%;
+    background:#2563EB;
+    color:#fff;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-weight:bold;
+    margin-right:12px;
+}
+
+.profile-info h4{
+    margin:0;
+    color:#0F172A;
+}
+
+.profile-info span{
+    font-size:13px;
+    color:#64748B;
+}

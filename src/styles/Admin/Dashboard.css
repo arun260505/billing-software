@@ -1,0 +1,24 @@
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    background:#F5F7FB;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+.dashboard-container{
+    display:flex;
+}
+
+.dashboard-main{
+    margin-left:250px;
+    width:calc(100% - 250px);
+    min-height:100vh;
+    background:#F5F7FB;
+}
+
+.dashboard-content{
+    padding:25px;
+}
