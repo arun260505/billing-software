@@ -1,6 +1,5 @@
 
-import Sidebar from "../../components/Admin/Sidebar";
-import Header from "../../components/Admin/Header";
+import AdminLayout from "../../layouts/AdminLayout";
 import DashboardCard from "../../components/Admin/DashboardCard";
 import SalesChart from "../../components/Admin/SalesChart";
 import RecentOrders from "../../components/Admin/RecentOrders";
@@ -39,12 +38,8 @@ const fetchSummary = () => {
     });
 };
 
-  return (
-    <div className="dashboard-container">
-      <Sidebar />
-
-      <div className="dashboard-main">
-        <Header />
+ return (
+    <AdminLayout>
 
         <div className="dashboard-content">
 
@@ -111,10 +106,10 @@ const fetchSummary = () => {
 
 </div>
 
-        </div>
-      </div>
-    </div>
-  );
+                </div>
+
+    </AdminLayout>
+);
 }
 
 export default Dashboard;

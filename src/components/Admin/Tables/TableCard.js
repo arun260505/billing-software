@@ -1,11 +1,6 @@
 import React from "react";
-import {
-    FaUsers,
-    FaMapMarkerAlt,
-    FaMoneyBillWave,
-    FaClock,
-    FaEllipsisV
-} from "react-icons/fa";
+import { FaEllipsisV } from "react-icons/fa";
+import TableIllustration from "./TableIllustration";
 
 import "../../../styles/Admin/Tables/TableCard.css";
 
@@ -39,63 +34,55 @@ const TableCard = ({ table }) => {
 
     return (
 
-        <div className="table-card">
+    <div className={`table-card ${getStatusClass(table.status)}`}>
 
-            <div className="table-card-header">
+        <button className="menu-btn">
+            <FaEllipsisV />
+        </button>
 
-                <div>
+        <TableIllustration
+    capacity={table.capacity}
+    status={table.status}
+/>
 
-                    <h3>{table.table_name}</h3>
+        <h3 className="table-name">
+            {table.table_name}
+        </h3>
 
-                    <span className={`status-badge ${getStatusClass(table.status)}`}>
-                        {table.status}
-                    </span>
+        <p className="table-seats">
+            {table.capacity} Seats
+        </p>
 
-                </div>
+        <span className={`status-badge ${getStatusClass(table.status)}`}>
+            {table.status}
+        </span>
 
-                <button className="menu-btn">
-                    <FaEllipsisV />
-                </button>
+        {table.status === "Billing" && (
 
-            </div>
+            <div className="table-bill">
 
-            <div className="table-info">
-
-                <p>
-                    <FaUsers />
-                    <span>{table.capacity} Seats</span>
-                </p>
-
-                <p>
-                    <FaMapMarkerAlt />
-                    <span>{table.location}</span>
-                </p>
-
-                <p>
-                    <FaMoneyBillWave />
-                    <span>${Number(table.current_bill).toFixed(2)}</span>
-                </p>
-
-                {table.reservation_time && (
-
-                    <p>
-
-                        <FaClock />
-
-                        <span>
-                            {new Date(table.reservation_time).toLocaleString()}
-                        </span>
-
-                    </p>
-
-                )}
+                ${Number(table.current_bill).toFixed(2)}
 
             </div>
 
-        </div>
+        )}
 
-    );
+        {table.status === "Reserved" && table.reservation_time && (
 
+            <div className="table-time">
+
+                {new Date(table.reservation_time).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                })}
+
+            </div>
+
+        )}
+
+    </div>
+
+);
 };
 
 export default TableCard;

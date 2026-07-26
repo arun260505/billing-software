@@ -1,7 +1,6 @@
 import React from "react";
 
-import Sidebar from "../../components/Admin/Sidebar";
-import Header from "../../components/Admin/Header";
+import AdminLayout from "../../layouts/AdminLayout";
 
 import DailySalesTable from "../../components/Admin/DailySalesTable";
 
@@ -10,24 +9,16 @@ import "../../styles/Admin/Dashboard.css";
 function Reports() {
 
     return (
-        <div className="dashboard-container">
+    <AdminLayout>
 
-            <Sidebar />
-
-            <div className="dashboard-main">
-
-                <Header />
-
-                <div className="dashboard-content">
+        <div className="dashboard-content">
 
                     <DailySalesTable />
 
-                </div>
+                                </div>
 
-            </div>
-
-        </div>
-    );
+    </AdminLayout>
+);
 }
 
 export default Reports;

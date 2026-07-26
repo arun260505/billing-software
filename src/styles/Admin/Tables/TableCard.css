@@ -1,117 +1,167 @@
 .table-card{
-
+    position:relative;
+    width:220px;
     background:#fff;
-    border-radius:16px;
-    padding:22px;
-    box-shadow:0 8px 20px rgba(0,0,0,.08);
+    border-radius:18px;
+    padding:20px;
+    border:2px solid #e5e7eb;
     transition:.3s;
-    display:flex;
-    flex-direction:column;
-    gap:20px;
-
+    cursor:pointer;
+    overflow:hidden;
 }
 
 .table-card:hover{
-
     transform:translateY(-6px);
-    box-shadow:0 14px 35px rgba(0,0,0,.15);
-
-}
-
-.table-card-header{
-
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-
-}
-
-.table-card-header h3{
-
-    margin:0;
-    font-size:22px;
-    color:#222;
-
+    box-shadow:0 15px 35px rgba(0,0,0,.12);
 }
 
 .menu-btn{
-
+    position:absolute;
+    top:15px;
+    right:15px;
     border:none;
     background:none;
     cursor:pointer;
+    color:#555;
     font-size:18px;
-    color:#666;
+}
 
+/* ---------- TABLE ---------- */
+
+.table-graphic{
+    width:130px;
+    height:130px;
+    margin:20px auto;
+    position:relative;
+}
+
+.table-circle{
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    border:3px solid #22c55e;
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    background:#fff;
+    box-shadow:0 6px 15px rgba(0,0,0,.08);
+}
+
+/* ---------- CHAIRS ---------- */
+
+.chair{
+    width:18px;
+    height:18px;
+    border:2px solid #22c55e;
+    border-radius:5px;
+    background:#fff;
+    position:absolute;
+}
+
+.chair.top{
+    left:50%;
+    top:8px;
+    transform:translateX(-50%);
+}
+
+.chair.right{
+    right:8px;
+    top:50%;
+    transform:translateY(-50%);
+}
+
+.chair.bottom{
+    left:50%;
+    bottom:8px;
+    transform:translateX(-50%);
+}
+
+.chair.left{
+    left:8px;
+    top:50%;
+    transform:translateY(-50%);
+}
+
+/* ---------- INFO ---------- */
+
+.table-name{
+    text-align:center;
+    margin:5px 0;
+    font-size:28px;
+    font-weight:700;
+}
+
+.table-seats{
+    text-align:center;
+    color:#666;
+    margin-bottom:12px;
 }
 
 .status-badge{
-
-    display:inline-block;
-    margin-top:8px;
-    padding:6px 12px;
-    border-radius:20px;
+    display:block;
+    width:max-content;
+    margin:auto;
+    padding:8px 18px;
+    border-radius:50px;
     font-size:13px;
     font-weight:600;
-
 }
 
-.available{
+/* ---------- STATUS ---------- */
 
+.available{
+    border-color:#22c55e;
+}
+
+.available .table-circle,
+.available .chair{
+    border-color:#22c55e;
+}
+
+.available .status-badge{
     background:#dcfce7;
     color:#15803d;
-
 }
 
 .occupied{
+    border-color:#ef4444;
+}
 
-    background:#ffedd5;
-    color:#ea580c;
+.occupied .table-circle,
+.occupied .chair{
+    border-color:#ef4444;
+}
 
+.occupied .status-badge{
+    background:#fee2e2;
+    color:#b91c1c;
 }
 
 .reserved{
+    border-color:#f59e0b;
+}
 
-    background:#ede9fe;
-    color:#6d28d9;
+.reserved .table-circle,
+.reserved .chair{
+    border-color:#f59e0b;
+}
 
+.reserved .status-badge{
+    background:#fef3c7;
+    color:#b45309;
 }
 
 .billing{
-
-    background:#fee2e2;
-    color:#dc2626;
-
+    border-color:#2563eb;
 }
 
-.cleaning{
-
-    background:#e5e7eb;
-    color:#4b5563;
-
+.billing .table-circle,
+.billing .chair{
+    border-color:#2563eb;
 }
 
-.table-info{
-
-    display:flex;
-    flex-direction:column;
-    gap:14px;
-
-}
-
-.table-info p{
-
-    margin:0;
-    display:flex;
-    align-items:center;
-    gap:12px;
-    color:#555;
-    font-size:15px;
-
-}
-
-.table-info svg{
-
-    color:#2563eb;
-    min-width:18px;
-
+.billing .status-badge{
+    background:#dbeafe;
+    color:#1d4ed8;
 }

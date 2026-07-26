@@ -1,5 +1,6 @@
 import React from "react";
-import "../../styles/Admin/Table.css";
+import "../../../styles/Admin/Tables/TableCard.css";
+import TableIllustration from "./TableIllustration";
 
 const statusColors = {
     Available: "#22c55e",
@@ -30,6 +31,9 @@ const TableCard = ({ table }) => {
                     {table.status}
                 </span>
             </div>
+            <TableIllustration
+    capacity={table.capacity}
+/>
 
             <div className="table-info">
 

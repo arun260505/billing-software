@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import EmployeeModal from "../../components/Admin/EmployeeModal";
 
-import Sidebar from "../../components/Admin/Sidebar";
-import Header from "../../components/Admin/Header";
+import AdminLayout from "../../layouts/AdminLayout";
 
 import EmployeeCards from "../../components/Admin/EmployeeCards";
 import EmployeeFilters from "../../components/Admin/EmployeeFilters";
@@ -101,15 +100,9 @@ useEffect(() => {
 
     return (
 
-        <div className="dashboard-container">
+    <AdminLayout>
 
-            <Sidebar />
-
-            <div className="dashboard-main">
-
-                <Header />
-
-                <div className="dashboard-content">
+        <div className="dashboard-content">
 
                     <div className="page-header">
 
@@ -140,15 +133,11 @@ useEffect(() => {
 />
 
 
-
                 </div>
 
-            </div>
+    </AdminLayout>
 
-        </div>
-
-    );
+);
 
 }
-
 export default Employee;
