@@ -1,0 +1,117 @@
+.table-card{
+
+    background:#fff;
+    border-radius:16px;
+    padding:22px;
+    box-shadow:0 8px 20px rgba(0,0,0,.08);
+    transition:.3s;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+
+}
+
+.table-card:hover{
+
+    transform:translateY(-6px);
+    box-shadow:0 14px 35px rgba(0,0,0,.15);
+
+}
+
+.table-card-header{
+
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+
+}
+
+.table-card-header h3{
+
+    margin:0;
+    font-size:22px;
+    color:#222;
+
+}
+
+.menu-btn{
+
+    border:none;
+    background:none;
+    cursor:pointer;
+    font-size:18px;
+    color:#666;
+
+}
+
+.status-badge{
+
+    display:inline-block;
+    margin-top:8px;
+    padding:6px 12px;
+    border-radius:20px;
+    font-size:13px;
+    font-weight:600;
+
+}
+
+.available{
+
+    background:#dcfce7;
+    color:#15803d;
+
+}
+
+.occupied{
+
+    background:#ffedd5;
+    color:#ea580c;
+
+}
+
+.reserved{
+
+    background:#ede9fe;
+    color:#6d28d9;
+
+}
+
+.billing{
+
+    background:#fee2e2;
+    color:#dc2626;
+
+}
+
+.cleaning{
+
+    background:#e5e7eb;
+    color:#4b5563;
+
+}
+
+.table-info{
+
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+
+}
+
+.table-info p{
+
+    margin:0;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    color:#555;
+    font-size:15px;
+
+}
+
+.table-info svg{
+
+    color:#2563eb;
+    min-width:18px;
+
+}

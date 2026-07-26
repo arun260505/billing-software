@@ -1,5 +1,6 @@
 import Reports from "../pages/Admin/Reports";
 import Employee from "../pages/Admin/Employee";
+import Tables from "../pages/Admin/Tables";
 
 import {
     BrowserRouter,
@@ -86,6 +87,15 @@ function AppRoutes() {
             : <Navigate to="/" replace />
     }
 />
+<Route
+    path="/admin/tables"
+    element={
+        token && user?.role === "admin"
+            ? <Tables />
+            : <Navigate to="/" replace />
+    }
+/>
+
 
                 
 

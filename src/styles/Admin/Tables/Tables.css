@@ -1,0 +1,29 @@
+.tables-page{
+
+    padding:25px;
+
+}
+
+.page-header{
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+
+}
+
+.page-header h2{
+
+    margin:0;
+    color:#222;
+    font-size:30px;
+
+}
+
+.page-header p{
+
+    margin-top:8px;
+    color:#666;
+
+}

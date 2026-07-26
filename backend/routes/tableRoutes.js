@@ -4,11 +4,14 @@ const router = express.Router();
 const tableController = require("../controllers/tableController");
 
 // Get all tables
+// Dashboard Statistics
+router.get("/dashboard/stats", tableController.getDashboardStats);
+
+// Get all tables
 router.get("/", tableController.getAllTables);
 
 // Get table by ID
 router.get("/:id", tableController.getTableById);
-
 // Create table
 router.post("/", tableController.createTable);
 

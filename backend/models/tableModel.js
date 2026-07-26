@@ -21,6 +21,7 @@ const getTableById = (id, callback) => {
 };
 
 // Create table
+// Create table
 const createTable = (table, callback) => {
 
     const sql = `
@@ -31,21 +32,29 @@ const createTable = (table, callback) => {
             capacity,
             location,
             status,
-            qr_code
+            qr_code,
+            current_bill,
+            reservation_time
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    db.query(sql, [
-        table.restaurant_id,
-        table.table_name,
-        table.capacity,
-        table.location,
-        table.status,
-        table.qr_code
-    ], callback);
-};
+    db.query(
+        sql,
+        [
+            1,                              // Default restaurant
+            table.table_name,
+            table.capacity,
+            table.location || "",
+            table.status,
+            null,                           // QR code will be generated later
+            0,                              // Current bill
+            null                            // Reservation time
+        ],
+        callback
+    );
 
+};
 // Update table
 const updateTable = (id, table, callback) => {
 
@@ -80,11 +89,29 @@ const deleteTable = (id, callback) => {
     );
 
 };
+// Dashboard Statistics
+const getDashboardStats = (callback) => {
+
+    const sql = `
+        SELECT
+            COUNT(*) AS totalTables,
+            SUM(status='Available') AS available,
+            SUM(status='Occupied') AS occupied,
+            SUM(status='Reserved') AS reserved,
+            SUM(status='Billing') AS billing,
+            SUM(status='Cleaning') AS cleaning
+        FROM dining_tables
+    `;
+
+    db.query(sql, callback);
+
+};
 
 module.exports = {
     getAllTables,
     getTableById,
     createTable,
     updateTable,
-    deleteTable
+    deleteTable,
+    getDashboardStats
 };

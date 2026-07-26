@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import "../../styles/Admin/Sidebar.css";
 
-function Sidebar() {
+function Sidebar({ isOpen }) {
   const location = useLocation();
 
   const menus = [
@@ -19,7 +19,7 @@ function Sidebar() {
   ];
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${isOpen ? "" : "collapsed"}`}>
       <div className="logo">
         <h2>InWallz POS</h2>
       </div>

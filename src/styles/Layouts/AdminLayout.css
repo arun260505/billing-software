@@ -1,0 +1,46 @@
+.admin-layout{
+
+    display:flex;
+    min-height:100vh;
+
+}
+
+.admin-main{
+
+    flex:1;
+    margin-left:260px;
+    transition:.3s;
+
+}
+
+.admin-main.expanded{
+
+    margin-left:80px;
+
+}
+
+.page-content{
+
+    padding:25px;
+
+}
+
+.sidebar-toggle{
+
+    width:46px;
+    height:46px;
+
+    border:none;
+
+    border-radius:10px;
+
+    background:#2563eb;
+    color:#fff;
+
+    cursor:pointer;
+
+    font-size:20px;
+
+    margin-bottom:20px;
+
+}

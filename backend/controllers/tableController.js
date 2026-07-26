@@ -112,3 +112,24 @@ exports.deleteTable = (req, res) => {
     });
 
 };
+
+// Dashboard Statistics
+exports.getDashboardStats = (req, res) => {
+
+    tableModel.getDashboardStats((err, result) => {
+
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: err.message
+            });
+        }
+
+        res.json({
+            success: true,
+            data: result[0]
+        });
+
+    });
+
+};
