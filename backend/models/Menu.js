@@ -41,15 +41,18 @@ const Menu = {
 
         const sql = `
             SELECT
-                id,
-                item_name,
-                price,
-                gst,
-                available_quantity,
-                status
-            FROM menu_items
-            WHERE category_id = ?
-            ORDER BY item_name ASC
+                m.id,
+                m.item_name,
+                m.price,
+                m.gst,
+                m.available_quantity,
+                m.status,
+                c.category_name
+            FROM menu_items m
+            INNER JOIN menu_categories c
+                ON m.category_id = c.id
+            WHERE m.category_id = ?
+            ORDER BY m.item_name ASC
         `;
 
         db.query(sql, [categoryId], callback);

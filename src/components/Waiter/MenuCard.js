@@ -1,12 +1,39 @@
-import chickenImage from "../../assets/chicken.jpg";
+import startersImage from "../../assets/startersImage.jpg";
+import breakfastImage from "../../assets/breakfastImage.jpg";
+import lunchImage from "../../assets/lunchImage.jpg";
+import dinnerImage from "../../assets/dinnerImage.jpg";
+import dessertsImage from "../../assets/dessertsImage.jpg";
+import beveragesImage from "../../assets/beveragesImage.jpg";
+import juicesImage from "../../assets/juicesImage.jpg";
+import iceCreamImage from "../../assets/iceCreamImage.jpg";
+import comboImage from "../../assets/comboImage.jpg";
 
 function MenuCard({ item, addToCart }) {
+
+     console.log(item);
+
+    
+
+    const categoryImages = {
+        "Starters": startersImage,
+        "Breakfast": breakfastImage,
+        "Lunch": lunchImage,
+        "Dinner": dinnerImage,
+        "Desserts": dessertsImage,
+        "Beverages": beveragesImage,
+        "Juices": juicesImage,
+        "Ice Cream": iceCreamImage,
+        "Combo Meals": comboImage,
+    };
+
+    const image = categoryImages[item.category_name] || lunchImage;
+
     return (
         <div className="menu-card">
             {/* Food Image */}
             <div className="menu-image">
                 <img
-                    src={chickenImage}
+                    src={image}
                     alt={item.item_name}
                 />
             </div>

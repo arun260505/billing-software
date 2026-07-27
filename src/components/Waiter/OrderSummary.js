@@ -26,17 +26,13 @@ function OrderSummary({
                 {cart.length === 0 ? (
 
                     <div className="empty-cart">
-
                         <h3>🛒</h3>
-
                         <p>No items added</p>
-
                     </div>
 
                 ) : (
 
                     cart.map((item) => (
-
                         <CartItem
                             key={item.id}
                             item={item}
@@ -44,7 +40,6 @@ function OrderSummary({
                             decreaseQuantity={decreaseQuantity}
                             removeItem={removeItem}
                         />
-
                     ))
 
                 )}
@@ -58,56 +53,37 @@ function OrderSummary({
                     <span>{totalItems}</span>
                 </div>
 
-                <div className="bill-row">
-                    <span>Subtotal</span>
-                    <span>₹{subtotal.toFixed(2)}</span>
-                </div>
-
-                <div className="bill-row">
-                    <span>GST (5%)</span>
-                    <span>₹{gst.toFixed(2)}</span>
-                </div>
-
                 <hr />
 
-                <div className="grand-total">
-
-                    <span>Grand Total</span>
-
-                    <span>
-                        ₹{grandTotal.toFixed(2)}
-                    </span>
-
-                </div>
-
+                
             </div>
 
             <div className="summary-buttons">
 
-    <button
-        className="clear-btn"
-        onClick={clearCart}
-    >
-        🗑 Clear Cart
-    </button>
+                <button
+                    className="clear-btn"
+                    onClick={clearCart}
+                >
+                    🗑 Clear Cart
+                </button>
 
-    <button
-        className="place-btn"
-        onClick={placeOrder}
-    >
-        {editingOrder ? "✏️ Update Order" : "✅ Place Order"}
-    </button>
+                <button
+                    className="place-btn"
+                    onClick={placeOrder}
+                >
+                    {editingOrder ? "✏️ Update Order" : "✅ Place Order"}
+                </button>
 
-    {editingOrder && (
-        <button
-            className="cancel-btn"
-            onClick={handleCancelOrder}
-        >
-            ❌ Cancel Order
-        </button>
-    )}
+                {editingOrder && (
+                    <button
+                        className="cancel-btn"
+                        onClick={handleCancelOrder}
+                    >
+                        ❌ Cancel Order
+                    </button>
+                )}
 
-</div>
+            </div>
 
         </div>
     );

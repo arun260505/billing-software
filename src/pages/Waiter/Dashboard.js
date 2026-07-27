@@ -110,6 +110,7 @@ function Dashboard() {
                 {
                     ...item,
                     quantity: 1,
+                    isNew: true,
                 },
             ];
         });
@@ -195,9 +196,11 @@ const loadMenuItems = async (categoryId) => {
     menu_item_id: item.menu_item_id,
     item_name: item.item_name,
     quantity: item.quantity,
+    originalQuantity: item.quantity,
     price: Number(item.price),
     gst: 5,
-    available_quantity: 999
+    available_quantity: 999,
+    isNew: false
 }));
 
         setCart(items);
