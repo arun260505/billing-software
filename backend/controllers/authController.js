@@ -1,26 +1,35 @@
 const authModel = require("../models/authModel");
+const { success, error } = require("../utils/response");
 
 exports.login = (req, res) => {
 
-    authModel.login(req.body, (err, result) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return error(res, "Username and password are required.", 400);
+    }
+
+    authModel.login(username, password, (err, result) => {
 
         if (err) {
-
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-
+            return error(res, err.message, 500);
         }
 
         if (!result.success) {
-
-            return res.status(401).json(result);
-
+            return error(res, result.message, 401);
         }
 
-        res.json(result);
+        return success(res, "Login successful.", {
+            token: result.token,
+            user: result.user
+        });
 
     });
+
+};
+
+exports.me = (req, res) => {
+
+    return success(res, "Authenticated user.", req.user);
 
 };

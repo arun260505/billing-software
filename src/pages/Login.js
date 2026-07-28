@@ -6,10 +6,11 @@ const handleSubmit = async (e) => {
 
         const response = await authService.login(form);
 
-        localStorage.setItem("token", response.token);
-        localStorage.setItem("user", JSON.stringify(response.user));
+        console.log("Login Response:", response);
+        localStorage.setItem("token", response.data.token);
+localStorage.setItem("user", JSON.stringify(response.data.user));
 
-        switch (response.user.role) {
+            switch (response.user.role) {
 
             case "super_admin":
                 navigate("/super_admin");

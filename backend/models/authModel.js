@@ -2,26 +2,28 @@ const db = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-exports.login = (data, callback) => {
+exports.login = (username, password, callback) => {
 
     const sql = `
         SELECT
-            id,
-            full_name,
-            username,
-            password,
-            role,
-            status
-        FROM users
-        WHERE username = ?
+            u.id,
+            u.restaurant_id,
+            u.full_name,
+            u.username,
+            u.password,
+            u.role,
+            u.status,
+            r.restaurant_name
+        FROM users u
+        LEFT JOIN restaurants r
+            ON u.restaurant_id = r.id
+        WHERE u.username = ?
         LIMIT 1
     `;
 
-    db.query(sql, [data.username], (err, results) => {
+    db.query(sql, [username], (err, results) => {
 
-        if (err) {
-            return callback(err);
-        }
+        if (err) return callback(err);
 
         if (results.length === 0) {
             return callback(null, {
@@ -39,11 +41,9 @@ exports.login = (data, callback) => {
             });
         }
 
-        bcrypt.compare(data.password, user.password, (err, match) => {
+        bcrypt.compare(password, user.password, (err, match) => {
 
-            if (err) {
-                return callback(err);
-            }
+            if (err) return callback(err);
 
             if (!match) {
                 return callback(null, {
@@ -55,12 +55,13 @@ exports.login = (data, callback) => {
             const token = jwt.sign(
                 {
                     id: user.id,
+                    restaurant_id: user.restaurant_id,
                     username: user.username,
                     role: user.role
                 },
                 process.env.JWT_SECRET,
                 {
-                    expiresIn: "8h"
+                    expiresIn: process.env.JWT_EXPIRES_IN || "8h"
                 }
             );
 
@@ -69,6 +70,8 @@ exports.login = (data, callback) => {
                 token,
                 user: {
                     id: user.id,
+                    restaurant_id: user.restaurant_id,
+                    restaurant_name: user.restaurant_name,
                     full_name: user.full_name,
                     username: user.username,
                     role: user.role

@@ -1,6 +1,7 @@
 import Reports from "../pages/Admin/Reports";
 import Employee from "../pages/Admin/Employee";
-import Tables from "../pages/Admin/Tables";
+import Categories from "../pages/Admin/Categories";
+import Menu from "../pages/Admin/Menu";
 
 import {
     BrowserRouter,
@@ -12,40 +13,35 @@ import {
 import Login from "../pages/Auth/Login";
 
 import SuperAdminDashboard from "../pages/SuperAdmin/Dashboard";
-
 import AdminDashboard from "../pages/Admin/Dashboard";
-
 import CashierDashboard from "../pages/Cashier/Dashboard";
-
 import WaiterDashboard from "../pages/Waiter/Dashboard";
-
 import KitchenDashboard from "../pages/Kitchen/Dashboard";
 
 function AppRoutes() {
 
     const token = localStorage.getItem("token");
-
     const user = JSON.parse(localStorage.getItem("user"));
 
     return (
-
         <BrowserRouter>
-
             <Routes>
 
                 <Route
                     path="/"
                     element={
-                        token
-                            ? <Navigate
-    to={
-        user.role === "admin"
-            ? "/admin/dashboard"
-            : `/${user.role}`
-    }
-    replace
-/>
-                            : <Login />
+                        token ? (
+                            <Navigate
+                                to={
+                                    user.role === "admin"
+                                        ? "/admin/dashboard"
+                                        : `/${user.role}`
+                                }
+                                replace
+                            />
+                        ) : (
+                            <Login />
+                        )
                     }
                 />
 
@@ -57,47 +53,56 @@ function AppRoutes() {
                             : <Navigate to="/" replace />
                     }
                 />
+
                 <Route
-    path="/admin"
-    element={<Navigate to="/admin/dashboard" replace />}
-/>
+                    path="/admin"
+                    element={<Navigate to="/admin/dashboard" replace />}
+                />
 
-<Route
-    path="/admin/dashboard"
-    element={
-        token && user?.role === "admin"
-            ? <AdminDashboard />
-            : <Navigate to="/" replace />
-    }
-/>
+                <Route
+                    path="/admin/dashboard"
+                    element={
+                        token && user?.role === "admin"
+                            ? <AdminDashboard />
+                            : <Navigate to="/" replace />
+                    }
+                />
 
-<Route
-    path="/admin/reports"
-    element={
-        token && user?.role === "admin"
-            ? <Reports />
-            : <Navigate to="/" replace />
-    }
-/>
-<Route
-    path="/admin/employees"
-    element={
-        token && user?.role === "admin"
-            ? <Employee />
-            : <Navigate to="/" replace />
-    }
-/>
-<Route
-    path="/admin/tables"
-    element={
-        token && user?.role === "admin"
-            ? <Tables />
-            : <Navigate to="/" replace />
-    }
-/>
+                <Route
+                    path="/admin/reports"
+                    element={
+                        token && user?.role === "admin"
+                            ? <Reports />
+                            : <Navigate to="/" replace />
+                    }
+                />
 
+                <Route
+                    path="/admin/employees"
+                    element={
+                        token && user?.role === "admin"
+                            ? <Employee />
+                            : <Navigate to="/" replace />
+                    }
+                />
 
-                
+                <Route
+                    path="/admin/categories"
+                    element={
+                        token && user?.role === "admin"
+                            ? <Categories />
+                            : <Navigate to="/" replace />
+                    }
+                />
+
+                <Route
+                    path="/admin/menu"
+                    element={
+                        token && user?.role === "admin"
+                            ? <Menu />
+                            : <Navigate to="/" replace />
+                    }
+                />
 
                 <Route
                     path="/cashier"
@@ -128,9 +133,7 @@ function AppRoutes() {
 
             </Routes>
         </BrowserRouter>
-
     );
-
 }
 
 export default AppRoutes;

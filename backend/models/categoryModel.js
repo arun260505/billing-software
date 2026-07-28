@@ -1,82 +1,187 @@
 const db = require("../config/db");
 
-// Get all categories
-const getAllCategories = (callback) => {
+// ===============================
+// Get All Categories
+// ===============================
+exports.getCategories = (callback) => {
+
     const sql = `
-        SELECT *
+        SELECT
+            id,
+            restaurant_id,
+            category_name,
+            description,
+            display_order,
+            status,
+            created_at
         FROM categories
         ORDER BY display_order ASC, category_name ASC
     `;
 
     db.query(sql, callback);
+
 };
 
-// Get category by ID
-const getCategoryById = (id, callback) => {
-    db.query(
-        "SELECT * FROM categories WHERE id = ?",
-        [id],
-        callback
-    );
-};
+// ===============================
+// Summary Cards
+// ===============================
+exports.getSummary = (callback) => {
 
-// Create category
-const createCategory = (category, callback) => {
     const sql = `
-        INSERT INTO categories
-        (
-            restaurant_id,
-            category_name,
-            description,
-            display_order,
-            status
-        )
-        VALUES (?, ?, ?, ?, ?)
+        SELECT
+
+            COUNT(*) AS total,
+
+            SUM(
+                CASE
+                    WHEN status='Active'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS active,
+
+            SUM(
+                CASE
+                    WHEN status='Inactive'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS inactive
+
+        FROM categories
     `;
 
-    db.query(sql, [
-        category.restaurant_id,
-        category.category_name,
-        category.description,
-        category.display_order,
-        category.status
-    ], callback);
+    db.query(sql, (err, results) => {
+
+        if (err) {
+            return callback(err);
+        }
+
+        callback(null, results[0]);
+
+    });
+
 };
 
-// Update category
-const updateCategory = (id, category, callback) => {
+// ===============================
+// Add Category
+// ===============================
+exports.addCategory = (data, callback) => {
+
+    db.query(
+
+        "SELECT id FROM categories WHERE category_name=?",
+
+        [data.category_name],
+
+        (err, rows) => {
+
+            if (err) {
+                return callback(err);
+            }
+
+            if (rows.length > 0) {
+
+                return callback(
+                    new Error("Category already exists.")
+                );
+
+            }
+
+            const sql = `
+                INSERT INTO categories
+                (
+                    restaurant_id,
+                    category_name,
+                    description,
+                    display_order,
+                    status
+                )
+                VALUES
+                (?, ?, ?, ?, ?)
+            `;
+
+            db.query(
+
+                sql,
+
+                [
+    2,
+    data.category_name,
+    data.description,
+    data.display_order || 0,
+    data.status || "Active"
+]
+                ,
+
+                callback
+
+            );
+
+        }
+
+    );
+
+};
+
+// ===============================
+// Update Category
+// ===============================
+exports.updateCategory = (id, data, callback) => {
+
     const sql = `
         UPDATE categories
+
         SET
-            category_name = ?,
-            description = ?,
-            display_order = ?,
-            status = ?
-        WHERE id = ?
+
+            category_name=?,
+
+            description=?,
+
+            display_order=?,
+
+            status=?
+
+        WHERE id=?
     `;
 
-    db.query(sql, [
-        category.category_name,
-        category.description,
-        category.display_order,
-        category.status,
-        id
-    ], callback);
-};
-
-// Delete category
-const deleteCategory = (id, callback) => {
     db.query(
-        "DELETE FROM categories WHERE id = ?",
-        [id],
+
+        sql,
+
+        [
+
+            data.category_name,
+
+            data.description,
+
+            data.display_order,
+
+            data.status,
+
+            id
+
+        ],
+
         callback
+
     );
+
 };
 
-module.exports = {
-    getAllCategories,
-    getCategoryById,
-    createCategory,
-    updateCategory,
-    deleteCategory
+// ===============================
+// Delete Category
+// ===============================
+exports.deleteCategory = (id, callback) => {
+
+    db.query(
+
+        "DELETE FROM categories WHERE id=?",
+
+        [id],
+
+        callback
+
+    );
+
 };

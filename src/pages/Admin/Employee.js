@@ -39,7 +39,9 @@ useEffect(() => {
 
             .then((res) => {
 
-                setEmployees(res.data);
+                setEmployees(res.data.data);
+            
+
 
             })
 
@@ -86,7 +88,8 @@ useEffect(() => {
 
             .then((res) => {
 
-                setSummary(res.data);
+                setSummary(res.data.data);
+               
 
             })
 

@@ -1,36 +1,21 @@
-import axios from "axios";
+import api from "./api";
 
-const API = "http://localhost:5000/api/employees";
+const API = "/employees";
 
-const getEmployees = () => {
-    return axios.get(API);
-};
+const getEmployees = () => api.get(API);
 
-const getSummary = () => {
-    return axios.get(`${API}/summary`);
-};
-const addEmployee = async (data) => {
+const getSummary = () => api.get(`${API}/summary`);
 
-    const response = await axios.post(API, data);
+const addEmployee = (data) => api.post(API, data);
 
-    return response.data;
+const updateEmployee = (id, data) => api.put(`${API}/${id}`, data);
 
-};
+const deleteEmployee = (id) => api.delete(`${API}/${id}`);
 
-const updateEmployee = (id, data) => {
-    return axios.put(`${API}/${id}`, data);
-};
-
-const deleteEmployee = (id) => {
-    return axios.delete(`${API}/${id}`);
-};
-
-const employeeService = {
+export default {
     getEmployees,
     getSummary,
     addEmployee,
     updateEmployee,
     deleteEmployee
 };
-
-export default employeeService;
