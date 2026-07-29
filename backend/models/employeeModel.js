@@ -74,16 +74,22 @@ exports.addEmployee = (data, callback) => {
                 username = `${name}_${data.role}${result[0].total + 1}@${restaurant}`;
             }
 
-            // Generate Random Password
-            const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+            // Use the password shown to the admin in the Add-Employee form
+            // (data.password). Only generate one as a fallback if none was sent,
+            // so that what the admin sees is exactly what gets stored.
+            let plainPassword = (data.password && String(data.password).trim().length >= 6)
+                ? String(data.password).trim()
+                : "";
 
-            let plainPassword = "";
+            if (!plainPassword) {
 
-            for (let i = 0; i < 8; i++) {
+                const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-                plainPassword += chars.charAt(
-                    Math.floor(Math.random() * chars.length)
-                );
+                for (let i = 0; i < 8; i++) {
+                    plainPassword += chars.charAt(
+                        Math.floor(Math.random() * chars.length)
+                    );
+                }
 
             }
 
