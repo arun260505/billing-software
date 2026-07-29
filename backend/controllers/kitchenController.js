@@ -1,21 +1,14 @@
 const kitchenModel = require("../models/kitchenModel");
+const { success, error } = require("../utils/response");
 
 // Get all kitchen orders
 exports.getKitchenOrders = (req, res) => {
 
-    kitchenModel.getKitchenOrders((err, results) => {
+    kitchenModel.getKitchenOrders(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: results
-        });
+        return success(res, "Kitchen orders fetched.", results);
 
     });
 
@@ -24,19 +17,11 @@ exports.getKitchenOrders = (req, res) => {
 // Get kitchen order items
 exports.getKitchenOrderItems = (req, res) => {
 
-    kitchenModel.getKitchenOrderItems(req.params.id, (err, results) => {
+    kitchenModel.getKitchenOrderItems(req.params.id, req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: results
-        });
+        return success(res, "Kitchen order items fetched.", results);
 
     });
 
@@ -47,20 +32,13 @@ exports.updateKitchenStatus = (req, res) => {
 
     kitchenModel.updateKitchenStatus(
         req.params.id,
+        req.user.restaurant_id,
         req.body.order_status,
         (err) => {
 
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-            }
+            if (err) return error(res, err.message, 500);
 
-            res.json({
-                success: true,
-                message: "Kitchen status updated successfully"
-            });
+            return success(res, "Kitchen status updated successfully.");
 
         }
     );

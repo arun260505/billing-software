@@ -1,134 +1,81 @@
 const categoryModel = require("../models/categoryModel");
+const { success, error } = require("../utils/response");
 
-// ===============================
 // Get All Categories
-// ===============================
 exports.getCategories = (req, res) => {
 
-    categoryModel.getCategories((err, results) => {
+    categoryModel.getCategories(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
+        if (err) return error(res, err.message, 500);
 
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-
-        }
-
-        res.json(results);
+        return success(res, "Categories fetched.", results);
 
     });
 
 };
 
-// ===============================
 // Summary
-// ===============================
 exports.getSummary = (req, res) => {
 
-    categoryModel.getSummary((err, result) => {
+    categoryModel.getSummary(req.user.restaurant_id, (err, result) => {
 
-        if (err) {
+        if (err) return error(res, err.message, 500);
 
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-
-        }
-
-        res.json(result);
+        return success(res, "Category summary fetched.", result);
 
     });
 
 };
 
-// ===============================
 // Add Category
-// ===============================
 exports.addCategory = (req, res) => {
 
-    categoryModel.addCategory(req.body, (err) => {
+    const data = {
+        ...req.body,
+        restaurant_id: req.user.restaurant_id
+    };
 
-        if (err) {
+    categoryModel.addCategory(data, (err) => {
 
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
+        if (err) return error(res, err.message, 400);
 
-        }
-
-        res.json({
-            success: true,
-            message: "Category created successfully."
-        });
+        return success(res, "Category created successfully.", null, 201);
 
     });
 
 };
 
-// ===============================
 // Update Category
-// ===============================
 exports.updateCategory = (req, res) => {
 
     categoryModel.updateCategory(
-
         req.params.id,
-
+        req.user.restaurant_id,
         req.body,
-
         (err) => {
 
-            if (err) {
+            if (err) return error(res, err.message, 500);
 
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-
-            }
-
-            res.json({
-                success: true,
-                message: "Category updated successfully."
-            });
+            return success(res, "Category updated successfully.");
 
         }
-
     );
 
 };
 
-// ===============================
 // Delete Category
-// ===============================
 exports.deleteCategory = (req, res) => {
 
     categoryModel.deleteCategory(
-
         req.params.id,
-
+        req.user.restaurant_id,
         (err) => {
 
-            if (err) {
+            if (err) return error(res, err.message, 500);
 
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-
-            }
-
-            res.json({
-                success: true,
-                message: "Category deleted successfully."
-            });
+            return success(res, "Category deleted successfully.");
 
         }
-
     );
 
 };

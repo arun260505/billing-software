@@ -34,7 +34,8 @@ require("./config/db");
 app.use(cors({
     origin: [
         "http://localhost:3000",
-        "http://localhost:3001"
+        "http://localhost:3001",
+        "http://localhost:3002"
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -97,20 +98,13 @@ app.get("/", (req, res) => {
 */
 
 
-// Global Error Handler
-app.get("/", (req, res) => {
-    res.json({
-        message: "InWallz Billing Backend Running"
-    });
-});
-
 app.get("/test", (req, res) => {
     res.json({
         message: "Test route working"
     });
 });
 
-// Global Error Handler
+// Global Error Handler (must be registered last)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;

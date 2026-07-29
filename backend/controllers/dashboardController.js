@@ -1,116 +1,75 @@
 const dashboardModel = require("../models/dashboardModel");
+const { success, error } = require("../utils/response");
 
 exports.getSummary = (req, res) => {
 
-    dashboardModel.getSummary((err, result) => {
+    dashboardModel.getSummary(req.user.restaurant_id, (err, result) => {
 
-        if (err)
-            return res.status(500).json({
-                success:false,
-                message:err.message
-            });
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success:true,
-            data:result[0]
-        });
+        return success(res, "Dashboard summary fetched.", result[0]);
 
     });
 
 };
 
-exports.getTodaysSales = (req,res)=>{
+exports.getTodaysSales = (req, res) => {
 
-    dashboardModel.getTodaysSales((err,result)=>{
+    dashboardModel.getTodaysSales(req.user.restaurant_id, (err, result) => {
 
-        if(err)
-            return res.status(500).json({
-                success:false,
-                message:err.message
-            });
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success:true,
-            data:result
-        });
+        return success(res, "Today's sales fetched.", result);
 
     });
 
 };
 
-exports.getRecentOrders=(req,res)=>{
+exports.getRecentOrders = (req, res) => {
 
-    dashboardModel.getRecentOrders((err,result)=>{
+    dashboardModel.getRecentOrders(req.user.restaurant_id, (err, result) => {
 
-        if(err)
-            return res.status(500).json({
-                success:false,
-                message:err.message
-            });
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success:true,
-            data:result
-        });
+        return success(res, "Recent orders fetched.", result);
 
     });
 
 };
 
-exports.getTopItems=(req,res)=>{
+exports.getTopItems = (req, res) => {
 
-    dashboardModel.getTopItems((err,result)=>{
+    dashboardModel.getTopItems(req.user.restaurant_id, (err, result) => {
 
-        if(err)
-            return res.status(500).json({
-                success:false,
-                message:err.message
-            });
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success:true,
-            data:result
-        });
+        return success(res, "Top items fetched.", result);
 
     });
 
 };
 
-exports.getTableStatus=(req,res)=>{
+exports.getTableStatus = (req, res) => {
 
-    dashboardModel.getTableStatus((err,result)=>{
+    dashboardModel.getTableStatus(req.user.restaurant_id, (err, result) => {
 
-        if(err)
-            return res.status(500).json({
-                success:false,
-                message:err.message
-            });
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success:true,
-            data:result
-        });
+        return success(res, "Table status fetched.", result);
 
     });
 
 };
+
 exports.getSalesChart = (req, res) => {
 
     const period = req.query.period || "today";
 
-    dashboardModel.getSalesChart(period, (err, result) => {
+    dashboardModel.getSalesChart(period, req.user.restaurant_id, (err, result) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: result
-        });
+        return success(res, "Sales chart fetched.", result);
 
     });
 

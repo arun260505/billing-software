@@ -1,37 +1,38 @@
 const db = require("../config/db");
 
-// Get all orders
-const getAllOrders = (callback) => {
+// Get all orders (tenant-scoped)
+const getAllOrders = (restaurantId, callback) => {
 
     const sql = `
         SELECT
             o.*,
             c.customer_name,
             dt.table_name,
-            u.name AS employee_name
+            u.full_name AS employee_name
         FROM orders o
         LEFT JOIN customers c ON o.customer_id = c.id
         LEFT JOIN dining_tables dt ON o.table_id = dt.id
         LEFT JOIN users u ON o.employee_id = u.id
+        WHERE o.restaurant_id = ?
         ORDER BY o.created_at DESC
     `;
 
-    db.query(sql, callback);
+    db.query(sql, [restaurantId], callback);
 };
 
-// Get order by ID
-const getOrderById = (id, callback) => {
+// Get order by ID (tenant-scoped)
+const getOrderById = (id, restaurantId, callback) => {
 
     const sql = `
         SELECT *
         FROM orders
-        WHERE id = ?
+        WHERE id = ? AND restaurant_id = ?
     `;
 
-    db.query(sql, [id], callback);
+    db.query(sql, [id, restaurantId], callback);
 };
 
-// Create order
+// Create order (restaurant_id + employee_id set by controller from JWT)
 const createOrder = (order, callback) => {
 
     const sql = `
@@ -71,17 +72,19 @@ const createOrder = (order, callback) => {
     ], callback);
 };
 
-// Delete order
-const deleteOrder = (id, callback) => {
+// Delete order (tenant-scoped)
+const deleteOrder = (id, restaurantId, callback) => {
 
     db.query(
-        "DELETE FROM orders WHERE id=?",
-        [id],
+        "DELETE FROM orders WHERE id=? AND restaurant_id=?",
+        [id, restaurantId],
         callback
     );
 
 };
-const getInvoiceByOrderId = (orderId, callback) => {
+
+// Invoice header (tenant-scoped)
+const getInvoiceByOrderId = (orderId, restaurantId, callback) => {
 
     const sql = `
         SELECT
@@ -95,59 +98,44 @@ const getInvoiceByOrderId = (orderId, callback) => {
             o.discount,
             o.grand_total,
             o.created_at,
-
             r.restaurant_name,
             r.address,
             r.mobile,
-
             c.customer_name,
             c.mobile AS customer_mobile,
-
             dt.table_name,
-
             u.full_name AS employee_name
-
         FROM orders o
-
-        LEFT JOIN restaurants r
-            ON o.restaurant_id = r.id
-
-        LEFT JOIN customers c
-            ON o.customer_id = c.id
-
-        LEFT JOIN dining_tables dt
-            ON o.table_id = dt.id
-
-        LEFT JOIN users u
-            ON o.employee_id = u.id
-
-        WHERE o.id = ?
+        LEFT JOIN restaurants r ON o.restaurant_id = r.id
+        LEFT JOIN customers c ON o.customer_id = c.id
+        LEFT JOIN dining_tables dt ON o.table_id = dt.id
+        LEFT JOIN users u ON o.employee_id = u.id
+        WHERE o.id = ? AND o.restaurant_id = ?
     `;
 
-    db.query(sql, [orderId], callback);
+    db.query(sql, [orderId, restaurantId], callback);
 
 };
-const getInvoiceItems = (orderId, callback) => {
+
+// Invoice line items (tenant-scoped via parent order)
+const getInvoiceItems = (orderId, restaurantId, callback) => {
 
     const sql = `
         SELECT
             oi.quantity,
             oi.price,
             oi.total,
-
             mi.item_name
-
         FROM order_items oi
-
-        INNER JOIN menu_items mi
-            ON oi.menu_item_id = mi.id
-
-        WHERE oi.order_id = ?
+        INNER JOIN menu_items mi ON oi.menu_item_id = mi.id
+        INNER JOIN orders o ON oi.order_id = o.id
+        WHERE oi.order_id = ? AND o.restaurant_id = ?
     `;
 
-    db.query(sql, [orderId], callback);
+    db.query(sql, [orderId, restaurantId], callback);
 
 };
+
 const createOrderItems = (items, orderId, callback) => {
 
     if (!items || items.length === 0) {
@@ -172,11 +160,13 @@ const createOrderItems = (items, orderId, callback) => {
     db.query(sql, [values], callback);
 
 };
-const updateTableStatus = (tableId, status, callback) => {
+
+// Update a table's status (tenant-scoped)
+const updateTableStatus = (tableId, restaurantId, status, callback) => {
 
     db.query(
-        "UPDATE dining_tables SET status = ? WHERE id = ?",
-        [status, tableId],
+        "UPDATE dining_tables SET status = ? WHERE id = ? AND restaurant_id = ?",
+        [status, tableId, restaurantId],
         callback
     );
 
@@ -191,6 +181,4 @@ module.exports = {
     getInvoiceByOrderId,
     getInvoiceItems,
     updateTableStatus
-
-    
 };

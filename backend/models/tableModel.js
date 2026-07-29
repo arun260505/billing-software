@@ -1,27 +1,27 @@
 const db = require("../config/db");
 
-// Get all tables
-const getAllTables = (callback) => {
+// Get all tables (tenant-scoped)
+const getAllTables = (restaurantId, callback) => {
     const sql = `
         SELECT *
         FROM dining_tables
+        WHERE restaurant_id = ?
         ORDER BY table_name ASC
     `;
 
-    db.query(sql, callback);
+    db.query(sql, [restaurantId], callback);
 };
 
-// Get table by ID
-const getTableById = (id, callback) => {
+// Get table by ID (tenant-scoped)
+const getTableById = (id, restaurantId, callback) => {
     db.query(
-        "SELECT * FROM dining_tables WHERE id = ?",
-        [id],
+        "SELECT * FROM dining_tables WHERE id = ? AND restaurant_id = ?",
+        [id, restaurantId],
         callback
     );
 };
 
-// Create table
-// Create table
+// Create table (restaurant_id from caller)
 const createTable = (table, callback) => {
 
     const sql = `
@@ -42,7 +42,7 @@ const createTable = (table, callback) => {
     db.query(
         sql,
         [
-            1,                              // Default restaurant
+            table.restaurant_id,
             table.table_name,
             table.capacity,
             table.location || "",
@@ -55,8 +55,9 @@ const createTable = (table, callback) => {
     );
 
 };
-// Update table
-const updateTable = (id, table, callback) => {
+
+// Update table (tenant-scoped)
+const updateTable = (id, restaurantId, table, callback) => {
 
     const sql = `
         UPDATE dining_tables
@@ -66,7 +67,7 @@ const updateTable = (id, table, callback) => {
             location=?,
             status=?,
             qr_code=?
-        WHERE id=?
+        WHERE id=? AND restaurant_id=?
     `;
 
     db.query(sql, [
@@ -75,22 +76,24 @@ const updateTable = (id, table, callback) => {
         table.location,
         table.status,
         table.qr_code,
-        id
+        id,
+        restaurantId
     ], callback);
 };
 
-// Delete table
-const deleteTable = (id, callback) => {
+// Delete table (tenant-scoped)
+const deleteTable = (id, restaurantId, callback) => {
 
     db.query(
-        "DELETE FROM dining_tables WHERE id=?",
-        [id],
+        "DELETE FROM dining_tables WHERE id=? AND restaurant_id=?",
+        [id, restaurantId],
         callback
     );
 
 };
-// Dashboard Statistics
-const getDashboardStats = (callback) => {
+
+// Dashboard Statistics (tenant-scoped)
+const getDashboardStats = (restaurantId, callback) => {
 
     const sql = `
         SELECT
@@ -101,9 +104,10 @@ const getDashboardStats = (callback) => {
             SUM(status='Billing') AS billing,
             SUM(status='Cleaning') AS cleaning
         FROM dining_tables
+        WHERE restaurant_id = ?
     `;
 
-    db.query(sql, callback);
+    db.query(sql, [restaurantId], callback);
 
 };
 

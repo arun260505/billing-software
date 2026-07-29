@@ -35,16 +35,18 @@ function Login() {
 
             const response = await authService.login(loginData);
 
-            if (response.success) {
+            if (response.success && response.data) {
 
-                localStorage.setItem("token", response.token);
+                const { token, user } = response.data;
+
+                localStorage.setItem("token", token);
 
                 localStorage.setItem(
                     "user",
-                    JSON.stringify(response.user)
+                    JSON.stringify(user)
                 );
 
-                switch (response.user.role) {
+                switch (user.role) {
 
                     case "super_admin":
                         window.location.href = "/super_admin";

@@ -1,21 +1,15 @@
 const orderModel = require("../models/orderModel");
 const generateOrderNumber = require("../utils/orderNumber");
+const { success, error } = require("../utils/response");
+
 // Get all orders
 exports.getAllOrders = (req, res) => {
 
-    orderModel.getAllOrders((err, results) => {
+    orderModel.getAllOrders(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: results
-        });
+        return success(res, "Orders fetched.", results);
 
     });
 
@@ -24,183 +18,91 @@ exports.getAllOrders = (req, res) => {
 // Get order by ID
 exports.getOrderById = (req, res) => {
 
-    orderModel.getOrderById(req.params.id, (err, results) => {
+    orderModel.getOrderById(req.params.id, req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        if (results.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Order not found"
-            });
-        }
+        if (results.length === 0) return error(res, "Order not found.", 404);
 
-        res.json({
-            success: true,
-            data: results[0]
-        });
+        return success(res, "Order fetched.", results[0]);
 
     });
 
 };
 
-// Create order
+// Create order (+ items, + occupy table for Dine-In)
 exports.createOrder = (req, res) => {
 
-    const restaurantId = req.body.restaurant_id;
+    const restaurantId = req.user.restaurant_id;   // tenant from JWT, never the body
+    const { items } = req.body;
 
     generateOrderNumber(restaurantId, (err, orderNumber) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        req.body.order_number = orderNumber;
+        const order = {
+            ...req.body,
+            restaurant_id: restaurantId,
+            employee_id: req.user.id,               // the staff member who took the order
+            order_number: orderNumber,
+            order_status: req.body.order_status || "Pending",
+            payment_status: req.body.payment_status || "Pending",
+            subtotal: req.body.subtotal || 0,
+            discount: req.body.discount || 0,
+            tax: req.body.tax || 0,
+            grand_total: req.body.grand_total || 0
+        };
 
-        req.body.order_status =
-            req.body.order_status || "Pending";
+        orderModel.createOrder(order, (err, result) => {
 
-        req.body.payment_status =
-            req.body.payment_status || "Pending";
-
-        req.body.discount =
-            req.body.discount || 0;
-
-        req.body.tax =
-            req.body.tax || 0;
-
-        req.body.subtotal =
-            req.body.subtotal || 0;
-
-        req.body.grand_total =
-            req.body.grand_total || 0;
-
-        orderModel.createOrder(req.body, (err, result) => {
-
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-            }
-
-            res.status(201).json({
-                success: true,
-                message: "Order created successfully",
-                order_id: result.insertId,
-                order_number: orderNumber
-            });
-
-        });
-
-    });
-
-};
-
-exports.createOrder = (req, res) => {
-
-    const { items } = req.body;
-
-    generateOrderNumber(req.body.restaurant_id, (err, orderNumber) => {
-
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        req.body.order_number = orderNumber;
-        req.body.order_status = req.body.order_status || "Pending";
-        req.body.payment_status = req.body.payment_status || "Pending";
-
-        orderModel.createOrder(req.body, (err, result) => {
-
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-            }
+            if (err) return error(res, err.message, 500);
 
             const orderId = result.insertId;
+
             orderModel.createOrderItems(items, orderId, (err) => {
 
-    if (err) {
-        return res.status(500).json({
-            success: false,
-            message: err.message
-        });
-    }
+                if (err) return error(res, err.message, 500);
 
-    // If it's a Dine-In order, occupy the table
-    if (req.body.order_type === "Dine-In" && req.body.table_id) {
+                const respond = () => success(
+                    res,
+                    "Order created successfully.",
+                    { order_id: orderId, order_number: orderNumber },
+                    201
+                );
 
-        orderModel.updateTableStatus(
-            req.body.table_id,
-            "Occupied",
-            (err) => {
+                // Dine-In orders occupy the selected table.
+                if (order.order_type === "Dine-In" && order.table_id) {
 
-                if (err) {
-                    return res.status(500).json({
-                        success: false,
-                        message: err.message
-                    });
+                    orderModel.updateTableStatus(
+                        order.table_id,
+                        restaurantId,
+                        "Occupied",
+                        (err) => {
+                            if (err) return error(res, err.message, 500);
+                            return respond();
+                        }
+                    );
+
+                } else {
+                    return respond();
                 }
 
-                res.status(201).json({
-                    success: true,
-                    message: "Order created successfully",
-                    order_id: orderId,
-                    order_number: orderNumber
-                });
-
-            }
-        );
-
-    } else {
-
-        res.status(201).json({
-            success: true,
-            message: "Order created successfully",
-            order_id: orderId,
-            order_number: orderNumber
-        });
-
-    }
-
-});
-
+            });
 
         });
 
     });
 
 };
+
 // Delete order
 exports.deleteOrder = (req, res) => {
 
-    orderModel.deleteOrder(req.params.id, (err) => {
+    orderModel.deleteOrder(req.params.id, req.user.restaurant_id, (err) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            message: "Order deleted successfully"
-        });
+        return success(res, "Order deleted successfully.");
 
     });
 

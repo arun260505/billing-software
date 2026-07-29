@@ -3,15 +3,18 @@ const router = express.Router();
 
 const menuController = require("../controllers/menuController");
 const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 
-router.get("/", authMiddleware, menuController.getAllMenuItems);
+// All menu endpoints require a valid JWT (tenant-scoped).
+router.use(authMiddleware);
 
-router.get("/summary", authMiddleware, menuController.getSummary);
+// Reads: any authenticated role (waiters/cashiers need the menu to take orders).
+router.get("/", menuController.getAllMenuItems);
+router.get("/summary", menuController.getSummary);
 
-router.post("/", authMiddleware, menuController.addMenuItem);
-
-router.put("/:id", authMiddleware, menuController.updateMenuItem);
-
-router.delete("/:id", authMiddleware, menuController.deleteMenuItem);
+// Writes: admin only.
+router.post("/", roleMiddleware(["admin"]), menuController.addMenuItem);
+router.put("/:id", roleMiddleware(["admin"]), menuController.updateMenuItem);
+router.delete("/:id", roleMiddleware(["admin"]), menuController.deleteMenuItem);
 
 module.exports = router;

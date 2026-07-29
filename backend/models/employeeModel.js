@@ -8,8 +8,6 @@ exports.getEmployees = (restaurantId, callback) => {
             id,
             full_name,
             username,
-            mobile,
-            email,
             role,
             status,
             created_at

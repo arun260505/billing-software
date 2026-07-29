@@ -23,9 +23,25 @@ const getToken = () => {
 
 const getUser = () => {
 
-    const user = localStorage.getItem("user");
+    const raw = localStorage.getItem("user");
 
-    return user ? JSON.parse(user) : null;
+    // Guard against null and the literal string "undefined" (which
+    // JSON.parse would throw on with '"undefined" is not valid JSON').
+    if (!raw || raw === "undefined" || raw === "null") {
+        return null;
+    }
+
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+
+};
+
+const isAuthenticated = () => {
+
+    return Boolean(getToken()) && Boolean(getUser());
 
 };
 
@@ -33,7 +49,8 @@ const authService = {
     login,
     logout,
     getToken,
-    getUser
+    getUser,
+    isAuthenticated
 };
 
 export default authService;

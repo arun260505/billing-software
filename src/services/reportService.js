@@ -1,21 +1,10 @@
-import axios from "axios";
+import api from "./api";
 
-const API_URL = "http://localhost:5000/api/reports";
+const API = "/reports";
 
-export const getDailySales = () =>
-    axios.get(`${API_URL}/daily-sales`);
-
-export const getMonthlySales = () =>
-    axios.get(`${API_URL}/monthly-sales`);
-
-export const getPaymentSummary = () =>
-    axios.get(`${API_URL}/payment-summary`);
-
-export const getTopSellingItems = () =>
-    axios.get(`${API_URL}/top-selling-items`);
-
-export const getEmployeeSales = () =>
-    axios.get(`${API_URL}/employee-sales`);
-
-export const getTableSales = () =>
-    axios.get(`${API_URL}/table-sales`);
+export const getDailySales = () => api.get(`${API}/daily-sales`);
+export const getMonthlySales = () => api.get(`${API}/monthly-sales`);
+export const getPaymentSummary = () => api.get(`${API}/payment-summary`);
+export const getTopSellingItems = () => api.get(`${API}/top-selling-items`);
+export const getEmployeeSales = () => api.get(`${API}/employee-sales`);
+export const getTableSales = () => api.get(`${API}/table-sales`);

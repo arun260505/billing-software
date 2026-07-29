@@ -1,7 +1,7 @@
 const db = require("../config/db");
 
-// Get All Menu Items
-exports.getAllMenuItems = (callback) => {
+// Get All Menu Items (tenant-scoped)
+exports.getAllMenuItems = (restaurantId, callback) => {
 
     const sql = `
         SELECT
@@ -10,14 +10,16 @@ exports.getAllMenuItems = (callback) => {
         FROM menu_items m
         JOIN categories c
             ON m.category_id = c.id
+        WHERE m.restaurant_id = ?
         ORDER BY m.display_order ASC, m.item_name ASC
     `;
 
-    db.query(sql, callback);
+    db.query(sql, [restaurantId], callback);
 
 };
 
-exports.getSummary = (callback) => {
+// Summary (tenant-scoped)
+exports.getSummary = (restaurantId, callback) => {
 
     const sql = `
         SELECT
@@ -26,13 +28,14 @@ exports.getSummary = (callback) => {
             COALESCE(SUM(is_best_seller = 1), 0) AS bestSellerItems,
             COALESCE(SUM(is_today_special = 1), 0) AS todaySpecialItems
         FROM menu_items
+        WHERE restaurant_id = ?
     `;
 
-    db.query(sql, callback);
+    db.query(sql, [restaurantId], callback);
 
 };
 
-// Add Menu Item
+// Add Menu Item (restaurant_id from caller)
 exports.addMenuItem = (data, callback) => {
 
     const sql = `
@@ -60,7 +63,6 @@ exports.addMenuItem = (data, callback) => {
     `;
 
     db.query(sql, [
-
         data.restaurant_id,
         data.category_id,
         data.item_name,
@@ -78,13 +80,12 @@ exports.addMenuItem = (data, callback) => {
         data.is_new_item,
         data.is_seasonal,
         data.image
-
     ], callback);
 
 };
 
-// Update Menu Item
-exports.updateMenuItem = (id, data, callback) => {
+// Update Menu Item (tenant-scoped)
+exports.updateMenuItem = (id, restaurantId, data, callback) => {
 
     const sql = `
         UPDATE menu_items
@@ -105,11 +106,10 @@ exports.updateMenuItem = (id, data, callback) => {
             is_new_item=?,
             is_seasonal=?,
             image=?
-        WHERE id=?
+        WHERE id=? AND restaurant_id=?
     `;
 
     db.query(sql, [
-
         data.category_id,
         data.item_name,
         data.item_code,
@@ -126,18 +126,18 @@ exports.updateMenuItem = (id, data, callback) => {
         data.is_new_item,
         data.is_seasonal,
         data.image,
-        id
-
+        id,
+        restaurantId
     ], callback);
 
 };
 
-// Delete Menu Item
-exports.deleteMenuItem = (id, callback) => {
+// Delete Menu Item (tenant-scoped)
+exports.deleteMenuItem = (id, restaurantId, callback) => {
 
     db.query(
-        "DELETE FROM menu_items WHERE id=?",
-        [id],
+        "DELETE FROM menu_items WHERE id=? AND restaurant_id=?",
+        [id, restaurantId],
         callback
     );
 

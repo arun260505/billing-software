@@ -1,9 +1,9 @@
 const db = require("../config/db");
 
 // ===============================
-// Get All Categories
+// Get All Categories (tenant-scoped)
 // ===============================
-exports.getCategories = (callback) => {
+exports.getCategories = (restaurantId, callback) => {
 
     const sql = `
         SELECT
@@ -15,47 +15,31 @@ exports.getCategories = (callback) => {
             status,
             created_at
         FROM categories
+        WHERE restaurant_id = ?
         ORDER BY display_order ASC, category_name ASC
     `;
 
-    db.query(sql, callback);
+    db.query(sql, [restaurantId], callback);
 
 };
 
 // ===============================
-// Summary Cards
+// Summary Cards (tenant-scoped)
 // ===============================
-exports.getSummary = (callback) => {
+exports.getSummary = (restaurantId, callback) => {
 
     const sql = `
         SELECT
-
             COUNT(*) AS total,
-
-            SUM(
-                CASE
-                    WHEN status='Active'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS active,
-
-            SUM(
-                CASE
-                    WHEN status='Inactive'
-                    THEN 1
-                    ELSE 0
-                END
-            ) AS inactive
-
+            SUM(CASE WHEN status='Active' THEN 1 ELSE 0 END) AS active,
+            SUM(CASE WHEN status='Inactive' THEN 1 ELSE 0 END) AS inactive
         FROM categories
+        WHERE restaurant_id = ?
     `;
 
-    db.query(sql, (err, results) => {
+    db.query(sql, [restaurantId], (err, results) => {
 
-        if (err) {
-            return callback(err);
-        }
+        if (err) return callback(err);
 
         callback(null, results[0]);
 
@@ -64,28 +48,20 @@ exports.getSummary = (callback) => {
 };
 
 // ===============================
-// Add Category
+// Add Category (restaurant_id from caller, not client)
 // ===============================
 exports.addCategory = (data, callback) => {
 
+    // Duplicate-name check is scoped to the caller's restaurant.
     db.query(
-
-        "SELECT id FROM categories WHERE category_name=?",
-
-        [data.category_name],
-
+        "SELECT id FROM categories WHERE category_name = ? AND restaurant_id = ?",
+        [data.category_name, data.restaurant_id],
         (err, rows) => {
 
-            if (err) {
-                return callback(err);
-            }
+            if (err) return callback(err);
 
             if (rows.length > 0) {
-
-                return callback(
-                    new Error("Category already exists.")
-                );
-
+                return callback(new Error("Category already exists."));
             }
 
             const sql = `
@@ -102,86 +78,61 @@ exports.addCategory = (data, callback) => {
             `;
 
             db.query(
-
                 sql,
-
                 [
-    2,
-    data.category_name,
-    data.description,
-    data.display_order || 0,
-    data.status || "Active"
-]
-                ,
-
+                    data.restaurant_id,
+                    data.category_name,
+                    data.description,
+                    data.display_order || 0,
+                    data.status || "Active"
+                ],
                 callback
-
             );
 
         }
-
     );
 
 };
 
 // ===============================
-// Update Category
+// Update Category (tenant-scoped)
 // ===============================
-exports.updateCategory = (id, data, callback) => {
+exports.updateCategory = (id, restaurantId, data, callback) => {
 
     const sql = `
         UPDATE categories
-
         SET
-
-            category_name=?,
-
-            description=?,
-
-            display_order=?,
-
-            status=?
-
-        WHERE id=?
+            category_name = ?,
+            description = ?,
+            display_order = ?,
+            status = ?
+        WHERE id = ? AND restaurant_id = ?
     `;
 
     db.query(
-
         sql,
-
         [
-
             data.category_name,
-
             data.description,
-
             data.display_order,
-
             data.status,
-
-            id
-
+            id,
+            restaurantId
         ],
-
         callback
-
     );
 
 };
 
 // ===============================
-// Delete Category
+// Delete Category (tenant-scoped)
 // ===============================
-exports.deleteCategory = (id, callback) => {
+exports.deleteCategory = (id, restaurantId, callback) => {
 
     db.query(
-
-        "DELETE FROM categories WHERE id=?",
-
-        [id],
-
+        "DELETE FROM categories WHERE id = ? AND restaurant_id = ?",
+        [id, restaurantId],
         callback
-
     );
 
 };

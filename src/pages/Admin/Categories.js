@@ -46,7 +46,7 @@ const [deleteCategory, setDeleteCategory] = useState(null);
 
             .then((res) => {
 
-                setCategories(res.data);
+                setCategories(res.data.data || []);
 
             })
 
@@ -60,7 +60,7 @@ const [deleteCategory, setDeleteCategory] = useState(null);
 
             .then((res) => {
 
-                setSummary(res.data);
+                setSummary(res.data.data);
 
             })
 

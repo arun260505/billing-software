@@ -5,28 +5,12 @@ const employeeController = require("../controllers/employeeController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
-// Get Employees
-router.get(
-    "/",
-    authMiddleware,
-    roleMiddleware(["admin"]),
-    employeeController.getEmployees
-);
+// Every employee endpoint requires a valid JWT and admin role.
+router.use(authMiddleware);
+router.use(roleMiddleware(["admin"]));
 
-// Employee Summary
-router.get(
-    "/summary",
-    authMiddleware,
-    roleMiddleware(["admin"]),
-    employeeController.getSummary
-);
-
-// Add Employee
-router.post(
-    "/",
-    authMiddleware,
-    roleMiddleware(["admin"]),
-    employeeController.addEmployee
-);
+router.get("/", employeeController.getEmployees);
+router.get("/summary", employeeController.getSummary);
+router.post("/", employeeController.addEmployee);
 
 module.exports = router;

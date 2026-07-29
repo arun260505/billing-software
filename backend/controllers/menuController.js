@@ -1,92 +1,62 @@
 const menuModel = require("../models/menuModel");
+const { success, error } = require("../utils/response");
 
 // Get All Menu Items
 exports.getAllMenuItems = (req, res) => {
 
-    menuModel.getAllMenuItems((err, results) => {
+    menuModel.getAllMenuItems(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json(results);
+        return success(res, "Menu items fetched.", results);
 
     });
 
 };
 
-// Get Dashboard Summary
+// Summary
 exports.getSummary = (req, res) => {
 
-    menuModel.getSummary((err, results) => {
+    menuModel.getSummary(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json(results[0]);
+        return success(res, "Menu summary fetched.", results[0]);
 
     });
 
 };
 
 // Add Menu Item
-// Add Menu Item
 exports.addMenuItem = (req, res) => {
-
-    console.log("===== MENU REQUEST =====");
-    console.log("req.user:", req.user);
-    console.log("req.body:", req.body);
 
     const data = {
         ...req.body,
         restaurant_id: req.user.restaurant_id
     };
 
-    menuModel.addMenuItem(data, (err, result) => {
+    menuModel.addMenuItem(data, (err) => {
 
-        if (err) {
-            console.error("DB ERROR:", err);
+        if (err) return error(res, err.message, 500);
 
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        res.json({
-            success: true,
-            message: "Menu item added successfully."
-        });
+        return success(res, "Menu item added successfully.", null, 201);
 
     });
 
 };
+
 // Update Menu Item
 exports.updateMenuItem = (req, res) => {
 
     menuModel.updateMenuItem(
         req.params.id,
+        req.user.restaurant_id,
         req.body,
-        (err, result) => {
+        (err) => {
 
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-            }
+            if (err) return error(res, err.message, 500);
 
-            res.json({
-                success: true,
-                message: "Menu item updated successfully."
-            });
+            return success(res, "Menu item updated successfully.");
 
         }
     );
@@ -96,20 +66,16 @@ exports.updateMenuItem = (req, res) => {
 // Delete Menu Item
 exports.deleteMenuItem = (req, res) => {
 
-    menuModel.deleteMenuItem(req.params.id, (err, result) => {
+    menuModel.deleteMenuItem(
+        req.params.id,
+        req.user.restaurant_id,
+        (err) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
+            if (err) return error(res, err.message, 500);
+
+            return success(res, "Menu item deleted successfully.");
+
         }
-
-        res.json({
-            success: true,
-            message: "Menu item deleted successfully."
-        });
-
-    });
+    );
 
 };

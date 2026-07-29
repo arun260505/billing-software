@@ -2,20 +2,17 @@ const express = require("express");
 const router = express.Router();
 
 const customerController = require("../controllers/customerController");
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 
-// Get all customers
+// Customers are managed by admin and used by front-of-house staff.
+router.use(authMiddleware);
+router.use(roleMiddleware(["admin", "cashier", "waiter"]));
+
 router.get("/", customerController.getAllCustomers);
-
-// Get customer by ID
 router.get("/:id", customerController.getCustomerById);
-
-// Create customer
 router.post("/", customerController.createCustomer);
-
-// Update customer
 router.put("/:id", customerController.updateCustomer);
-
-// Delete customer
 router.delete("/:id", customerController.deleteCustomer);
 
 module.exports = router;

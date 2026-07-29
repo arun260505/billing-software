@@ -60,8 +60,8 @@ useEffect(() => {
 
         setCredentials({
             full_name: form.full_name,
-            username: response.credentials.username,
-            password: response.credentials.password
+            username: response.data.data.username,
+            password: response.data.data.password
         });
 
         setShowModal(false);

@@ -1,23 +1,24 @@
 const db = require("../config/db");
 
-// Get all customers
-const getAllCustomers = (callback) => {
+// Get all customers (tenant-scoped)
+const getAllCustomers = (restaurantId, callback) => {
     db.query(
-        "SELECT * FROM customers ORDER BY customer_name ASC",
+        "SELECT * FROM customers WHERE restaurant_id = ? ORDER BY customer_name ASC",
+        [restaurantId],
         callback
     );
 };
 
-// Get customer by ID
-const getCustomerById = (id, callback) => {
+// Get customer by ID (tenant-scoped)
+const getCustomerById = (id, restaurantId, callback) => {
     db.query(
-        "SELECT * FROM customers WHERE id = ?",
-        [id],
+        "SELECT * FROM customers WHERE id = ? AND restaurant_id = ?",
+        [id, restaurantId],
         callback
     );
 };
 
-// Create customer
+// Create customer (restaurant_id from caller)
 const createCustomer = (customer, callback) => {
 
     const sql = `
@@ -55,8 +56,8 @@ const createCustomer = (customer, callback) => {
     ], callback);
 };
 
-// Update customer
-const updateCustomer = (id, customer, callback) => {
+// Update customer (tenant-scoped)
+const updateCustomer = (id, restaurantId, customer, callback) => {
 
     const sql = `
         UPDATE customers
@@ -72,7 +73,7 @@ const updateCustomer = (id, customer, callback) => {
             total_orders=?,
             total_spent=?,
             status=?
-        WHERE id=?
+        WHERE id=? AND restaurant_id=?
     `;
 
     db.query(sql, [
@@ -87,15 +88,16 @@ const updateCustomer = (id, customer, callback) => {
         customer.total_orders,
         customer.total_spent,
         customer.status,
-        id
+        id,
+        restaurantId
     ], callback);
 };
 
-// Delete customer
-const deleteCustomer = (id, callback) => {
+// Delete customer (tenant-scoped)
+const deleteCustomer = (id, restaurantId, callback) => {
     db.query(
-        "DELETE FROM customers WHERE id = ?",
-        [id],
+        "DELETE FROM customers WHERE id = ? AND restaurant_id = ?",
+        [id, restaurantId],
         callback
     );
 };

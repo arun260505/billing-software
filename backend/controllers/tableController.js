@@ -1,21 +1,14 @@
 const tableModel = require("../models/tableModel");
+const { success, error } = require("../utils/response");
 
 // Get all tables
 exports.getAllTables = (req, res) => {
 
-    tableModel.getAllTables((err, results) => {
+    tableModel.getAllTables(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: results
-        });
+        return success(res, "Tables fetched.", results);
 
     });
 
@@ -24,26 +17,13 @@ exports.getAllTables = (req, res) => {
 // Get table by ID
 exports.getTableById = (req, res) => {
 
-    tableModel.getTableById(req.params.id, (err, results) => {
+    tableModel.getTableById(req.params.id, req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        if (results.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Table not found"
-            });
-        }
+        if (results.length === 0) return error(res, "Table not found.", 404);
 
-        res.json({
-            success: true,
-            data: results[0]
-        });
+        return success(res, "Table fetched.", results[0]);
 
     });
 
@@ -52,20 +32,16 @@ exports.getTableById = (req, res) => {
 // Create table
 exports.createTable = (req, res) => {
 
-    tableModel.createTable(req.body, (err, result) => {
+    const data = {
+        ...req.body,
+        restaurant_id: req.user.restaurant_id
+    };
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+    tableModel.createTable(data, (err, result) => {
 
-        res.status(201).json({
-            success: true,
-            message: "Table created successfully",
-            id: result.insertId
-        });
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Table created successfully.", { id: result.insertId }, 201);
 
     });
 
@@ -74,19 +50,11 @@ exports.createTable = (req, res) => {
 // Update table
 exports.updateTable = (req, res) => {
 
-    tableModel.updateTable(req.params.id, req.body, (err) => {
+    tableModel.updateTable(req.params.id, req.user.restaurant_id, req.body, (err) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            message: "Table updated successfully"
-        });
+        return success(res, "Table updated successfully.");
 
     });
 
@@ -95,19 +63,11 @@ exports.updateTable = (req, res) => {
 // Delete table
 exports.deleteTable = (req, res) => {
 
-    tableModel.deleteTable(req.params.id, (err) => {
+    tableModel.deleteTable(req.params.id, req.user.restaurant_id, (err) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            message: "Table deleted successfully"
-        });
+        return success(res, "Table deleted successfully.");
 
     });
 
@@ -116,19 +76,11 @@ exports.deleteTable = (req, res) => {
 // Dashboard Statistics
 exports.getDashboardStats = (req, res) => {
 
-    tableModel.getDashboardStats((err, result) => {
+    tableModel.getDashboardStats(req.user.restaurant_id, (err, result) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: result[0]
-        });
+        return success(res, "Table stats fetched.", result[0]);
 
     });
 

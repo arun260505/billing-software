@@ -1,94 +1,74 @@
 const customerModel = require("../models/customerModel");
+const { success, error } = require("../utils/response");
 
 // Get all customers
 exports.getAllCustomers = (req, res) => {
-    customerModel.getAllCustomers((err, results) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
 
-        res.json({
-            success: true,
-            data: results
-        });
+    customerModel.getAllCustomers(req.user.restaurant_id, (err, results) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Customers fetched.", results);
+
     });
+
 };
 
 // Get customer by ID
 exports.getCustomerById = (req, res) => {
-    customerModel.getCustomerById(req.params.id, (err, results) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
 
-        if (results.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Customer not found"
-            });
-        }
+    customerModel.getCustomerById(req.params.id, req.user.restaurant_id, (err, results) => {
 
-        res.json({
-            success: true,
-            data: results[0]
-        });
+        if (err) return error(res, err.message, 500);
+
+        if (results.length === 0) return error(res, "Customer not found.", 404);
+
+        return success(res, "Customer fetched.", results[0]);
+
     });
+
 };
 
 // Create customer
 exports.createCustomer = (req, res) => {
-    customerModel.createCustomer(req.body, (err, result) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
 
-        res.status(201).json({
-            success: true,
-            message: "Customer created successfully",
-            id: result.insertId
-        });
+    const data = {
+        ...req.body,
+        restaurant_id: req.user.restaurant_id
+    };
+
+    customerModel.createCustomer(data, (err, result) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Customer created successfully.", { id: result.insertId }, 201);
+
     });
+
 };
 
 // Update customer
 exports.updateCustomer = (req, res) => {
-    customerModel.updateCustomer(req.params.id, req.body, (err) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
 
-        res.json({
-            success: true,
-            message: "Customer updated successfully"
-        });
+    customerModel.updateCustomer(req.params.id, req.user.restaurant_id, req.body, (err) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Customer updated successfully.");
+
     });
+
 };
 
 // Delete customer
 exports.deleteCustomer = (req, res) => {
-    customerModel.deleteCustomer(req.params.id, (err) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
 
-        res.json({
-            success: true,
-            message: "Customer deleted successfully"
-        });
+    customerModel.deleteCustomer(req.params.id, req.user.restaurant_id, (err) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Customer deleted successfully.");
+
     });
+
 };

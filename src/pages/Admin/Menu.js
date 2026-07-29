@@ -52,7 +52,7 @@ function Menu() {
 
             const data = await menuService.getMenuItems();
 
-            setMenuItems(data);
+            setMenuItems(data.data || []);
 
         } catch (err) {
 
@@ -72,7 +72,7 @@ function Menu() {
 
             const data = await menuService.getSummary();
 
-            setSummary(data);
+            setSummary(data.data);
 
         } catch (err) {
 

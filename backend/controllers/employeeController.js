@@ -1,48 +1,27 @@
 const employeeModel = require("../models/employeeModel");
+const { success, error } = require("../utils/response");
 
 exports.getEmployees = (req, res) => {
 
-    employeeModel.getEmployees(
-        req.user.restaurant_id,
-        (err, results) => {
+    employeeModel.getEmployees(req.user.restaurant_id, (err, results) => {
 
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-            }
+        if (err) return error(res, err.message, 500);
 
-            res.json({
-                success: true,
-                data: results
-            });
+        return success(res, "Employees fetched.", results);
 
-        }
-    );
+    });
 
 };
 
 exports.getSummary = (req, res) => {
 
-    employeeModel.getSummary(
-        req.user.restaurant_id,
-        (err, summary) => {
+    employeeModel.getSummary(req.user.restaurant_id, (err, summary) => {
 
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-            }
+        if (err) return error(res, err.message, 500);
 
-            res.json({
-                success: true,
-                data: summary
-            });
+        return success(res, "Employee summary fetched.", summary);
 
-        }
-    );
+    });
 
 };
 
@@ -56,21 +35,12 @@ exports.addEmployee = (req, res) => {
 
     employeeModel.addEmployee(employeeData, (err, result) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            message: "Employee created successfully.",
-            credentials: {
-                username: result.username,
-                password: result.password
-            }
-        });
+        return success(res, "Employee created successfully.", {
+            username: result.username,
+            password: result.password
+        }, 201);
 
     });
 

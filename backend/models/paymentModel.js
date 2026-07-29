@@ -1,33 +1,33 @@
 const db = require("../config/db");
 
-// Get all payments
-const getAllPayments = (callback) => {
+// Get all payments (tenant-scoped)
+const getAllPayments = (restaurantId, callback) => {
 
     const sql = `
         SELECT
             p.*,
             o.order_number
         FROM payments p
-        INNER JOIN orders o
-            ON p.order_id = o.id
+        INNER JOIN orders o ON p.order_id = o.id
+        WHERE p.restaurant_id = ?
         ORDER BY p.payment_date DESC
     `;
 
-    db.query(sql, callback);
+    db.query(sql, [restaurantId], callback);
 };
 
-// Get payment by ID
-const getPaymentById = (id, callback) => {
+// Get payment by ID (tenant-scoped)
+const getPaymentById = (id, restaurantId, callback) => {
 
     db.query(
-        "SELECT * FROM payments WHERE id = ?",
-        [id],
+        "SELECT * FROM payments WHERE id = ? AND restaurant_id = ?",
+        [id, restaurantId],
         callback
     );
 
 };
 
-// Create payment
+// Create payment (restaurant_id set by controller from JWT)
 const createPayment = (payment, callback) => {
 
     const sql = `
@@ -58,69 +58,71 @@ const createPayment = (payment, callback) => {
 
 };
 
-// Delete payment
-const deletePayment = (id, callback) => {
+// Delete payment (tenant-scoped)
+const deletePayment = (id, restaurantId, callback) => {
 
     db.query(
-        "DELETE FROM payments WHERE id=?",
-        [id],
-        callback
-    );
-
-};
-// Get order total
-const getOrderById = (orderId, callback) => {
-
-    db.query(
-        "SELECT * FROM orders WHERE id = ?",
-        [orderId],
+        "DELETE FROM payments WHERE id=? AND restaurant_id=?",
+        [id, restaurantId],
         callback
     );
 
 };
 
-// Get total paid
-const getTotalPaid = (orderId, callback) => {
+// Get order (tenant-scoped)
+const getOrderById = (orderId, restaurantId, callback) => {
+
+    db.query(
+        "SELECT * FROM orders WHERE id = ? AND restaurant_id = ?",
+        [orderId, restaurantId],
+        callback
+    );
+
+};
+
+// Get total already paid for an order (tenant-scoped)
+const getTotalPaid = (orderId, restaurantId, callback) => {
 
     const sql = `
         SELECT IFNULL(SUM(amount),0) AS totalPaid
         FROM payments
         WHERE order_id = ?
-        AND payment_status = 'Success'
+          AND restaurant_id = ?
+          AND payment_status = 'Success'
     `;
 
-    db.query(sql, [orderId], callback);
+    db.query(sql, [orderId, restaurantId], callback);
 
 };
 
-// Update payment status
-const updateOrderPaymentStatus = (orderId, status, callback) => {
+// Update order payment status (tenant-scoped)
+const updateOrderPaymentStatus = (orderId, restaurantId, status, callback) => {
 
     db.query(
-        "UPDATE orders SET payment_status=? WHERE id=?",
-        [status, orderId],
+        "UPDATE orders SET payment_status=? WHERE id=? AND restaurant_id=?",
+        [status, orderId, restaurantId],
         callback
     );
 
 };
 
-// Update order status
-const updateOrderStatus = (orderId, status, callback) => {
+// Update order status (tenant-scoped)
+const updateOrderStatus = (orderId, restaurantId, status, callback) => {
 
     db.query(
-        "UPDATE orders SET order_status=? WHERE id=?",
-        [status, orderId],
+        "UPDATE orders SET order_status=? WHERE id=? AND restaurant_id=?",
+        [status, orderId, restaurantId],
         callback
     );
 
 };
 
-// Make table available
-const makeTableAvailable = (tableId, callback) => {
+// Make table available (tenant-scoped)
+const makeTableAvailable = (tableId, restaurantId, callback) => {
 
     db.query(
-        "UPDATE dining_tables SET status='Available' WHERE id=?",
-        [tableId],
+        "UPDATE dining_tables SET status='Available' WHERE id=? AND restaurant_id=?",
+        [tableId, restaurantId],
         callback
     );
 
@@ -131,7 +133,6 @@ module.exports = {
     getPaymentById,
     createPayment,
     deletePayment,
-
     getOrderById,
     getTotalPaid,
     updateOrderPaymentStatus,

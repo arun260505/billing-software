@@ -2,17 +2,19 @@ const express = require("express");
 const router = express.Router();
 
 const paymentController = require("../controllers/paymentController");
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 
-// Get all payments
-router.get("/", paymentController.getAllPayments);
+router.use(authMiddleware);
 
-// Get payment by ID
-router.get("/:id", paymentController.getPaymentById);
+// Reads: admin oversight + cashier at the till.
+router.get("/", roleMiddleware(["admin", "cashier"]), paymentController.getAllPayments);
+router.get("/:id", roleMiddleware(["admin", "cashier"]), paymentController.getPaymentById);
 
-// Create payment
-router.post("/", paymentController.createPayment);
+// Take payment: cashier.
+router.post("/", roleMiddleware(["cashier"]), paymentController.createPayment);
 
-// Delete payment
-router.delete("/:id", paymentController.deletePayment);
+// Delete/void: admin only.
+router.delete("/:id", roleMiddleware(["admin"]), paymentController.deletePayment);
 
 module.exports = router;

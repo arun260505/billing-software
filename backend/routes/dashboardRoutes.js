@@ -2,6 +2,12 @@ const express = require("express");
 const router = express.Router();
 
 const dashboardController = require("../controllers/dashboardController");
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
+
+// Dashboard analytics are for the restaurant admin.
+router.use(authMiddleware);
+router.use(roleMiddleware(["admin"]));
 
 router.get("/summary", dashboardController.getSummary);
 router.get("/todays-sales", dashboardController.getTodaysSales);

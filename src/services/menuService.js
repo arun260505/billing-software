@@ -12,7 +12,9 @@ const getSummary = async () => {
 
 const getCategories = async () => {
     const response = await api.get("/categories");
-    return response.data.filter(c => c.status === "Active");
+    // Categories now come back in the standard { success, message, data } envelope.
+    const categories = response.data.data || [];
+    return categories.filter(c => c.status === "Active");
 };
 
 const addMenuItem = async (data) => {

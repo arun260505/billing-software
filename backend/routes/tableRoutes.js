@@ -2,23 +2,20 @@ const express = require("express");
 const router = express.Router();
 
 const tableController = require("../controllers/tableController");
+const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 
-// Get all tables
-// Dashboard Statistics
+// All table endpoints require a valid JWT (tenant-scoped).
+router.use(authMiddleware);
+
+// Reads: any authenticated role (staff need to see tables while serving).
 router.get("/dashboard/stats", tableController.getDashboardStats);
-
-// Get all tables
 router.get("/", tableController.getAllTables);
-
-// Get table by ID
 router.get("/:id", tableController.getTableById);
-// Create table
-router.post("/", tableController.createTable);
 
-// Update table
-router.put("/:id", tableController.updateTable);
-
-// Delete table
-router.delete("/:id", tableController.deleteTable);
+// Writes: admin only (table layout management).
+router.post("/", roleMiddleware(["admin"]), tableController.createTable);
+router.put("/:id", roleMiddleware(["admin"]), tableController.updateTable);
+router.delete("/:id", roleMiddleware(["admin"]), tableController.deleteTable);
 
 module.exports = router;
