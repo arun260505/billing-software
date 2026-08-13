@@ -142,3 +142,63 @@ exports.deleteMenuItem = (id, restaurantId, callback) => {
     );
 
 };
+
+// ---------------------------------------------------------------------------
+// Waiter ordering support (tenant-scoped)
+// ---------------------------------------------------------------------------
+
+// Active categories for the order screen
+exports.getMenuCategories = (restaurantId, callback) => {
+
+    const sql = `
+        SELECT id, category_name, status
+        FROM categories
+        WHERE restaurant_id = ? AND status = 'Active'
+        ORDER BY category_name ASC
+    `;
+
+    db.query(sql, [restaurantId], callback);
+
+};
+
+// Items in the shape the waiter UI expects (available_quantity + category_name)
+exports.getWaiterItems = (restaurantId, callback) => {
+
+    const sql = `
+        SELECT
+            m.id,
+            m.item_name,
+            m.price,
+            m.gst,
+            m.available AS available_quantity,
+            c.category_name
+        FROM menu_items m
+        INNER JOIN categories c ON m.category_id = c.id
+        WHERE m.restaurant_id = ?
+        ORDER BY m.item_name ASC
+    `;
+
+    db.query(sql, [restaurantId], callback);
+
+};
+
+// Items for one category (tenant-scoped)
+exports.getWaiterItemsByCategory = (categoryId, restaurantId, callback) => {
+
+    const sql = `
+        SELECT
+            m.id,
+            m.item_name,
+            m.price,
+            m.gst,
+            m.available AS available_quantity,
+            c.category_name
+        FROM menu_items m
+        INNER JOIN categories c ON m.category_id = c.id
+        WHERE m.category_id = ? AND m.restaurant_id = ?
+        ORDER BY m.item_name ASC
+    `;
+
+    db.query(sql, [categoryId, restaurantId], callback);
+
+};

@@ -8,11 +8,14 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 // All menu endpoints require a valid JWT (tenant-scoped).
 router.use(authMiddleware);
 
-// Reads: any authenticated role (waiters/cashiers need the menu to take orders).
+// Reads — any authenticated role (waiters/cashiers need the menu to take orders).
 router.get("/", menuController.getAllMenuItems);
 router.get("/summary", menuController.getSummary);
+router.get("/categories", menuController.getCategories);
+router.get("/items", menuController.getAllItems);
+router.get("/items/category/:id", menuController.getItemsByCategory);
 
-// Writes: admin only.
+// Writes — admin only.
 router.post("/", roleMiddleware(["admin"]), menuController.addMenuItem);
 router.put("/:id", roleMiddleware(["admin"]), menuController.updateMenuItem);
 router.delete("/:id", roleMiddleware(["admin"]), menuController.deleteMenuItem);

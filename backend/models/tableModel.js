@@ -111,11 +111,23 @@ const getDashboardStats = (restaurantId, callback) => {
 
 };
 
+// Update only a table's status (tenant-scoped) — used by the waiter board.
+const updateStatus = (id, restaurantId, status, callback) => {
+
+    db.query(
+        "UPDATE dining_tables SET status = ? WHERE id = ? AND restaurant_id = ?",
+        [status, id, restaurantId],
+        callback
+    );
+
+};
+
 module.exports = {
     getAllTables,
     getTableById,
     createTable,
     updateTable,
     deleteTable,
-    getDashboardStats
+    getDashboardStats,
+    updateStatus
 };

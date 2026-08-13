@@ -2,6 +2,29 @@ const orderModel = require("../models/orderModel");
 const generateOrderNumber = require("../utils/orderNumber");
 const { success, error } = require("../utils/response");
 
+// Compute subtotal / tax / grand_total from a cart of items.
+// Each item: { menu_item_id, quantity, price, gst }
+const computeTotals = (items = []) => {
+    let subtotal = 0;
+    let tax = 0;
+    items.forEach((it) => {
+        const line = Number(it.price) * Number(it.quantity);
+        subtotal += line;
+        tax += (line * (Number(it.gst) || 0)) / 100;
+    });
+    return { subtotal, tax, grand_total: subtotal + tax };
+};
+
+// Normalise cart items into the order_items shape (adds `total`).
+const toOrderItems = (items = []) =>
+    items.map((it) => ({
+        menu_item_id: it.menu_item_id,
+        quantity: it.quantity,
+        price: it.price,
+        total: Number(it.price) * Number(it.quantity),
+        notes: it.notes || null
+    }));
+
 // Get all orders
 exports.getAllOrders = (req, res) => {
 
@@ -36,6 +59,12 @@ exports.createOrder = (req, res) => {
     const restaurantId = req.user.restaurant_id;   // tenant from JWT, never the body
     const { items } = req.body;
 
+    // Totals: use the ones sent, otherwise compute from the cart.
+    const computed = computeTotals(items);
+    const subtotal = req.body.subtotal != null ? Number(req.body.subtotal) : computed.subtotal;
+    const tax = req.body.tax != null ? Number(req.body.tax) : computed.tax;
+    const grand_total = req.body.grand_total != null ? Number(req.body.grand_total) : computed.grand_total;
+
     generateOrderNumber(restaurantId, (err, orderNumber) => {
 
         if (err) return error(res, err.message, 500);
@@ -43,14 +72,15 @@ exports.createOrder = (req, res) => {
         const order = {
             ...req.body,
             restaurant_id: restaurantId,
-            employee_id: req.user.id,               // the staff member who took the order
+            employee_id: req.user.id,               // the logged-in waiter/cashier
             order_number: orderNumber,
+            order_type: req.body.order_type || "Dine-In",
             order_status: req.body.order_status || "Pending",
             payment_status: req.body.payment_status || "Pending",
-            subtotal: req.body.subtotal || 0,
+            subtotal,
             discount: req.body.discount || 0,
-            tax: req.body.tax || 0,
-            grand_total: req.body.grand_total || 0
+            tax,
+            grand_total
         };
 
         orderModel.createOrder(order, (err, result) => {
@@ -59,7 +89,7 @@ exports.createOrder = (req, res) => {
 
             const orderId = result.insertId;
 
-            orderModel.createOrderItems(items, orderId, (err) => {
+            orderModel.createOrderItems(toOrderItems(items), orderId, (err) => {
 
                 if (err) return error(res, err.message, 500);
 
@@ -70,9 +100,7 @@ exports.createOrder = (req, res) => {
                     201
                 );
 
-                // Dine-In orders occupy the selected table.
                 if (order.order_type === "Dine-In" && order.table_id) {
-
                     orderModel.updateTableStatus(
                         order.table_id,
                         restaurantId,
@@ -82,7 +110,6 @@ exports.createOrder = (req, res) => {
                             return respond();
                         }
                     );
-
                 } else {
                     return respond();
                 }
@@ -95,14 +122,77 @@ exports.createOrder = (req, res) => {
 
 };
 
-// Delete order
-exports.deleteOrder = (req, res) => {
+// ============================ Waiter board ============================
 
-    orderModel.deleteOrder(req.params.id, req.user.restaurant_id, (err) => {
+// GET /api/orders/running
+exports.getRunningOrders = (req, res) => {
+
+    orderModel.getRunningOrders(req.user.restaurant_id, (err, results) => {
 
         if (err) return error(res, err.message, 500);
 
-        return success(res, "Order deleted successfully.");
+        return success(res, "Running orders fetched.", results);
+
+    });
+
+};
+
+// GET /api/orders/:id/items
+exports.getOrderDetails = (req, res) => {
+
+    orderModel.getOrderDetails(req.params.id, req.user.restaurant_id, (err, results) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Order items fetched.", results);
+
+    });
+
+};
+
+// PUT /api/orders/:id  — replace the order's items and recompute totals
+exports.updateOrder = (req, res) => {
+
+    const restaurantId = req.user.restaurant_id;
+    const orderId = req.params.id;
+    const { items } = req.body;
+
+    if (!items || items.length === 0) {
+        return error(res, "Order must contain at least one item.", 400);
+    }
+
+    const totals = computeTotals(items);
+
+    orderModel.updateOrderTotals(orderId, restaurantId, totals, (err) => {
+
+        if (err) return error(res, err.message, 500);
+
+        orderModel.deleteOrderItems(orderId, restaurantId, (err) => {
+
+            if (err) return error(res, err.message, 500);
+
+            orderModel.createOrderItems(toOrderItems(items), orderId, (err) => {
+
+                if (err) return error(res, err.message, 500);
+
+                return success(res, "Order updated successfully.");
+
+            });
+
+        });
+
+    });
+
+};
+
+// DELETE /api/orders/:id  — soft cancel
+exports.cancelOrder = (req, res) => {
+
+    orderModel.cancelOrder(req.params.id, req.user.restaurant_id, (err) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Order cancelled successfully.");
 
     });
 

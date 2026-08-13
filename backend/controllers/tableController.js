@@ -1,6 +1,9 @@
 const tableModel = require("../models/tableModel");
 const { success, error } = require("../utils/response");
 
+// Maps the waiter UI's FREE/OCCUPIED to the DB status vocabulary.
+const UI_TO_DB = { FREE: "Available", OCCUPIED: "Occupied" };
+
 // Get all tables
 exports.getAllTables = (req, res) => {
 
@@ -83,5 +86,31 @@ exports.getDashboardStats = (req, res) => {
         return success(res, "Table stats fetched.", result[0]);
 
     });
+
+};
+
+// PUT /api/tables/:id/status  — waiter board (FREE/OCCUPIED)
+exports.updateTableStatus = (req, res) => {
+
+    const { status } = req.body;
+
+    if (!status || !UI_TO_DB[status]) {
+        return error(res, "Invalid status. Must be FREE or OCCUPIED.", 400);
+    }
+
+    tableModel.updateStatus(
+        req.params.id,
+        req.user.restaurant_id,
+        UI_TO_DB[status],
+        (err, result) => {
+
+            if (err) return error(res, err.message, 500);
+
+            if (result.affectedRows === 0) return error(res, "Table not found.", 404);
+
+            return success(res, `Table status updated to ${status}.`);
+
+        }
+    );
 
 };

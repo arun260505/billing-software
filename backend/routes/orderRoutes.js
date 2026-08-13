@@ -7,14 +7,18 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 
 router.use(authMiddleware);
 
-// Reads: admin oversight + front-of-house staff.
-router.get("/", roleMiddleware(["admin", "cashier", "waiter"]), orderController.getAllOrders);
-router.get("/:id", roleMiddleware(["admin", "cashier", "waiter"]), orderController.getOrderById);
+const staff = roleMiddleware(["admin", "cashier", "waiter"]);
+const takers = roleMiddleware(["cashier", "waiter"]);
 
-// Create: cashier/waiter take orders.
-router.post("/", roleMiddleware(["cashier", "waiter"]), orderController.createOrder);
+// Reads. NOTE: static/more-specific paths must be registered before "/:id".
+router.get("/", staff, orderController.getAllOrders);
+router.get("/running", staff, orderController.getRunningOrders);
+router.get("/:id/items", staff, orderController.getOrderDetails);
+router.get("/:id", staff, orderController.getOrderById);
 
-// Delete/void: admin only.
-router.delete("/:id", roleMiddleware(["admin"]), orderController.deleteOrder);
+// Writes.
+router.post("/", takers, orderController.createOrder);
+router.put("/:id", takers, orderController.updateOrder);
+router.delete("/:id", staff, orderController.cancelOrder);   // soft cancel
 
 module.exports = router;

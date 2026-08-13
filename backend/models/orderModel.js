@@ -172,6 +172,98 @@ const updateTableStatus = (tableId, restaurantId, status, callback) => {
 
 };
 
+// ---------------------------------------------------------------------------
+// Waiter ordering support (tenant-scoped)
+// ---------------------------------------------------------------------------
+
+// Active/running orders for the waiter board
+const getRunningOrders = (restaurantId, callback) => {
+
+    const sql = `
+        SELECT
+            o.id,
+            o.order_number,
+            o.employee_id,
+            o.table_id,
+            (SELECT COALESCE(SUM(oi.quantity), 0)
+             FROM order_items oi
+             WHERE oi.order_id = o.id) AS total_items,
+            o.grand_total,
+            o.order_status AS status,
+            o.created_at
+        FROM orders o
+        WHERE o.restaurant_id = ?
+          AND o.order_status IN ('Pending','Preparing','Ready')
+        ORDER BY o.created_at DESC
+    `;
+
+    db.query(sql, [restaurantId], callback);
+
+};
+
+// Line items for one order (tenant-scoped via parent order)
+const getOrderDetails = (orderId, restaurantId, callback) => {
+
+    const sql = `
+        SELECT
+            oi.id,
+            oi.menu_item_id,
+            mi.item_name,
+            oi.quantity,
+            oi.price,
+            oi.total
+        FROM order_items oi
+        INNER JOIN menu_items mi ON oi.menu_item_id = mi.id
+        INNER JOIN orders o ON oi.order_id = o.id
+        WHERE oi.order_id = ? AND o.restaurant_id = ?
+    `;
+
+    db.query(sql, [orderId, restaurantId], callback);
+
+};
+
+// Update an order's totals (tenant-scoped)
+const updateOrderTotals = (orderId, restaurantId, totals, callback) => {
+
+    const sql = `
+        UPDATE orders
+        SET subtotal = ?, tax = ?, grand_total = ?
+        WHERE id = ? AND restaurant_id = ?
+    `;
+
+    db.query(
+        sql,
+        [totals.subtotal, totals.tax, totals.grand_total, orderId, restaurantId],
+        callback
+    );
+
+};
+
+// Replace an order's items: delete existing then re-insert (only if the order
+// belongs to this tenant).
+const deleteOrderItems = (orderId, restaurantId, callback) => {
+
+    const sql = `
+        DELETE oi FROM order_items oi
+        INNER JOIN orders o ON oi.order_id = o.id
+        WHERE oi.order_id = ? AND o.restaurant_id = ?
+    `;
+
+    db.query(sql, [orderId, restaurantId], callback);
+
+};
+
+// Soft-cancel an order (tenant-scoped)
+const cancelOrder = (orderId, restaurantId, callback) => {
+
+    db.query(
+        "UPDATE orders SET order_status = 'Cancelled' WHERE id = ? AND restaurant_id = ?",
+        [orderId, restaurantId],
+        callback
+    );
+
+};
+
 module.exports = {
     getAllOrders,
     getOrderById,
@@ -180,5 +272,10 @@ module.exports = {
     deleteOrder,
     getInvoiceByOrderId,
     getInvoiceItems,
-    updateTableStatus
+    updateTableStatus,
+    getRunningOrders,
+    getOrderDetails,
+    updateOrderTotals,
+    deleteOrderItems,
+    cancelOrder
 };

@@ -1,5 +1,15 @@
 import api from "./api";
 
+// ---------------------------------------------------------------------------
+// Waiter ordering screen (named exports)
+// ---------------------------------------------------------------------------
+export const getCategories = () => api.get("/menu/categories");
+export const getAllItems = () => api.get("/menu/items");
+export const getItemsByCategory = (id) => api.get(`/menu/items/category/${id}`);
+
+// ---------------------------------------------------------------------------
+// Admin menu management (default export)
+// ---------------------------------------------------------------------------
 const getMenuItems = async () => {
     const response = await api.get("/menu");
     return response.data;
@@ -10,11 +20,10 @@ const getSummary = async () => {
     return response.data;
 };
 
-const getCategories = async () => {
+const getAdminCategories = async () => {
     const response = await api.get("/categories");
-    // Categories now come back in the standard { success, message, data } envelope.
     const categories = response.data.data || [];
-    return categories.filter(c => c.status === "Active");
+    return categories.filter((c) => c.status === "Active");
 };
 
 const addMenuItem = async (data) => {
@@ -35,7 +44,7 @@ const deleteMenuItem = async (id) => {
 export default {
     getMenuItems,
     getSummary,
-    getCategories,
+    getCategories: getAdminCategories,
     addMenuItem,
     updateMenuItem,
     deleteMenuItem
