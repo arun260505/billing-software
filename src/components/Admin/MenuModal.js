@@ -41,6 +41,7 @@ function MenuModal({
             setFormData(initialForm);
         }
 
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [editItem]);
 
     const handleChange = (e) => {

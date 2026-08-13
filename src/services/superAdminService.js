@@ -31,8 +31,10 @@ const deleteAdmin = async (id) => {
 
 };
 
-export default {
+const superAdminService = {
     createAdmin,
     getAdmins,
     deleteAdmin
 };
+
+export default superAdminService;

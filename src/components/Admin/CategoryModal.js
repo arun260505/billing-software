@@ -36,6 +36,7 @@ function CategoryModal({
 
         }
 
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [category, isEditMode]);
 
     const handleChange = (e) => {

@@ -41,7 +41,7 @@ const deleteMenuItem = async (id) => {
     return response.data;
 };
 
-export default {
+const menuService = {
     getMenuItems,
     getSummary,
     getCategories: getAdminCategories,
@@ -49,3 +49,5 @@ export default {
     updateMenuItem,
     deleteMenuItem
 };
+
+export default menuService;

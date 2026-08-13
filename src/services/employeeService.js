@@ -12,10 +12,12 @@ const updateEmployee = (id, data) => api.put(`${API}/${id}`, data);
 
 const deleteEmployee = (id) => api.delete(`${API}/${id}`);
 
-export default {
+const employeeService = {
     getEmployees,
     getSummary,
     addEmployee,
     updateEmployee,
     deleteEmployee
 };
+
+export default employeeService;

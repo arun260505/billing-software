@@ -79,6 +79,7 @@ function EmployeeModal({ show, onClose, onSave }) {
 
         generateUsername();
 
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [form.full_name, form.role]);
 
     useEffect(() => {

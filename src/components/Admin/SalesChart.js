@@ -18,6 +18,7 @@ function SalesChart() {
   const [chartData, setChartData] = useState([]);
 useEffect(() => {
     fetchChartData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [period]);
   const fetchChartData = () => {
     getSalesChart(period)
