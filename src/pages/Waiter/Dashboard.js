@@ -71,7 +71,7 @@ function Dashboard() {
 );
 
     const totalItems = cart.reduce(
-        (sum, item) => sum + item.quantity,
+        (sum, item) => sum + Number(item.quantity),
         0
     );
 

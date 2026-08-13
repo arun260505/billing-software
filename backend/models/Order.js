@@ -7,14 +7,14 @@ const Order = {
         const sql = `
             INSERT INTO orders
             (
-                order_number,
-                waiter_id,
+                restaurant_id,
+                employee_id,
                 table_id,
-                total_items,
+                order_number,
+                order_type,
                 subtotal,
-                gst_amount,
-                grand_total,
-                status
+                tax,
+                grand_total
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
@@ -22,14 +22,14 @@ const Order = {
         db.query(
             sql,
             [
-                orderData.order_number,
-                orderData.waiter_id,
+                orderData.restaurant_id,
+                orderData.employee_id,
                 orderData.table_id,
-                orderData.total_items,
+                orderData.order_number,
+                orderData.order_type || "Dine-In",
                 orderData.subtotal,
-                orderData.gst_amount,
-                orderData.grand_total,
-                "Pending"
+                orderData.tax,
+                orderData.grand_total
             ],
             callback
         );
@@ -67,7 +67,7 @@ const Order = {
     getOrders(callback) {
 
         const sql = `
-            SELECT *
+            SELECT *, order_status AS status
             FROM orders
             ORDER BY created_at DESC
         `;
@@ -79,7 +79,7 @@ const Order = {
     getOrderById(id, callback) {
 
         const sql = `
-            SELECT *
+            SELECT *, order_status AS status
             FROM orders
             WHERE id = ?
         `;
@@ -92,17 +92,19 @@ const Order = {
 
         const sql = `
             SELECT
-                id,
-                order_number,
-                waiter_id,
-                table_id,
-                total_items,
-                grand_total,
-                status,
-                created_at
-            FROM orders
-            WHERE status IN ('Pending','Preparing','Ready')
-            ORDER BY created_at DESC
+                o.id,
+                o.order_number,
+                o.employee_id,
+                o.table_id,
+                (SELECT COALESCE(SUM(oi.quantity), 0)
+                 FROM order_items oi
+                 WHERE oi.order_id = o.id) AS total_items,
+                o.grand_total,
+                o.order_status AS status,
+                o.created_at
+            FROM orders o
+            WHERE o.order_status IN ('Pending','Preparing','Ready')
+            ORDER BY o.created_at DESC
         `;
 
         db.query(sql, callback);
@@ -134,9 +136,8 @@ const Order = {
         const sql = `
             UPDATE orders
             SET
-                total_items = ?,
                 subtotal = ?,
-                gst_amount = ?,
+                tax = ?,
                 grand_total = ?
             WHERE id = ?
         `;
@@ -144,9 +145,8 @@ const Order = {
         db.query(
             sql,
             [
-                orderData.total_items,
                 orderData.subtotal,
-                orderData.gst_amount,
+                orderData.tax,
                 orderData.grand_total,
                 orderData.order_id
             ],
@@ -198,7 +198,7 @@ const Order = {
 
         const sql = `
             UPDATE orders
-            SET status = 'Cancelled'
+            SET order_status = 'Cancelled'
             WHERE id = ?
         `;
 

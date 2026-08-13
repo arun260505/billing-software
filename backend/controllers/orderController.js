@@ -29,14 +29,14 @@ exports.createOrder = (req, res) => {
     const grandTotal = subtotal + gstAmount;
 
     const orderData = {
-    order_number,
-    waiter_id,
-    table_id,
-    total_items: totalItems,
-    subtotal,
-    gst_amount: gstAmount,
-    grand_total: grandTotal
-};
+        restaurant_id: 1,
+        order_number,
+        employee_id: waiter_id,
+        table_id,
+        subtotal,
+        tax: gstAmount,
+        grand_total: grandTotal
+    };
 
     Order.createOrder(orderData, (err, result) => {
 
@@ -205,9 +205,8 @@ gstAmount += (item.price * item.quantity * gst) / 100;
 
     const orderData = {
         order_id: orderId,
-        total_items: totalItems,
         subtotal,
-        gst_amount: gstAmount,
+        tax: gstAmount,
         grand_total: grandTotal
     };
 

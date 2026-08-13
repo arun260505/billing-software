@@ -1,5 +1,19 @@
 const Table = require("../models/Table");
 
+// Maps DB status values to the API contract (FREE/OCCUPIED)
+const STATUS_MAP = {
+    "Available": "FREE",
+    "Occupied": "OCCUPIED",
+    "Reserved": "OCCUPIED",
+    "Billing": "OCCUPIED",
+    "Cleaning": "OCCUPIED"
+};
+
+const mapStatus = (table) => ({
+    ...table,
+    status: STATUS_MAP[table.status] || "OCCUPIED"
+});
+
 // GET /api/tables
 exports.getTables = (req, res) => {
 
@@ -14,7 +28,7 @@ exports.getTables = (req, res) => {
 
         res.json({
             success: true,
-            data: results
+            data: results.map(mapStatus)
         });
 
     });
@@ -44,7 +58,7 @@ exports.getTableById = (req, res) => {
 
         res.json({
             success: true,
-            data: results[0]
+            data: mapStatus(results[0])
         });
 
     });
@@ -64,7 +78,9 @@ exports.updateTableStatus = (req, res) => {
         });
     }
 
-    Table.updateStatus(id, status, (err, results) => {
+    const dbStatus = status === "FREE" ? "Available" : "Occupied";
+
+    Table.updateStatus(id, dbStatus, (err, results) => {
 
         if (err) {
             return res.status(500).json({

@@ -33,7 +33,7 @@ function RunningOrders({
                             </p>
 
                             <p>
-                                Items: {order.total_items}
+                                Items: {Math.round(Number(order.total_items))}
                             </p>
 
                             <p>

@@ -5,8 +5,8 @@ const Table = {
     getAll(callback) {
 
         const sql = `
-            SELECT *
-            FROM restaurant_tables
+            SELECT id, table_name AS table_number, capacity, status
+            FROM dining_tables
             ORDER BY table_number ASC
         `;
 
@@ -17,8 +17,8 @@ const Table = {
     getById(id, callback) {
 
         const sql = `
-            SELECT *
-            FROM restaurant_tables
+            SELECT id, table_name AS table_number, capacity, status
+            FROM dining_tables
             WHERE id = ?
         `;
 
@@ -29,7 +29,7 @@ const Table = {
     updateStatus(id, status, callback) {
 
         const sql = `
-            UPDATE restaurant_tables
+            UPDATE dining_tables
             SET status = ?
             WHERE id = ?
         `;
@@ -42,7 +42,7 @@ const Table = {
 
         const sql = `
             SELECT t.*
-            FROM restaurant_tables t
+            FROM dining_tables t
             INNER JOIN orders o ON o.table_id = t.id
             WHERE o.id = ?
         `;

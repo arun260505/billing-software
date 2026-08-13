@@ -2,6 +2,8 @@ require("dotenv").config();
 
 const db = require("../config/db");
 
+const RESTAURANT_ID = 1;
+
 const menuByCategory = {
     Beverages: [
         ["Coke", 40],
@@ -207,12 +209,12 @@ function ensureCategory(categoryName) {
     return new Promise((resolve, reject) => {
         const findSql = `
             SELECT id
-            FROM menu_categories
-            WHERE category_name = ?
+            FROM categories
+            WHERE category_name = ? AND restaurant_id = ?
             LIMIT 1
         `;
 
-        db.query(findSql, [categoryName], (findErr, rows) => {
+        db.query(findSql, [categoryName, RESTAURANT_ID], (findErr, rows) => {
             if (findErr) {
                 reject(findErr);
                 return;
@@ -224,11 +226,11 @@ function ensureCategory(categoryName) {
             }
 
             const insertSql = `
-                INSERT INTO menu_categories (category_name, status)
-                VALUES (?, 'Active')
+                INSERT INTO categories (restaurant_id, category_name, status)
+                VALUES (?, ?, 'Active')
             `;
 
-            db.query(insertSql, [categoryName], (insertErr, result) => {
+            db.query(insertSql, [RESTAURANT_ID, categoryName], (insertErr, result) => {
                 if (insertErr) {
                     reject(insertErr);
                     return;
@@ -262,13 +264,13 @@ function insertItemIfMissing(categoryId, itemName, price) {
 
             const insertSql = `
                 INSERT INTO menu_items
-                (category_id, item_name, price, gst, available_quantity, status)
+                (restaurant_id, category_id, item_name, price, gst, available)
                 VALUES (?, ?, ?, ?, ?, ?)
             `;
 
             db.query(
                 insertSql,
-                [categoryId, itemName, price, 5, 50, "Active"],
+                [RESTAURANT_ID, categoryId, itemName, price, 5, 1],
                 (insertErr) => {
                     if (insertErr) {
                         reject(insertErr);

@@ -6,8 +6,8 @@ const Menu = {
     getCategories(callback) {
 
         const sql = `
-            SELECT *
-            FROM menu_categories
+            SELECT id, category_name, status
+            FROM categories
             WHERE status = 'Active'
             ORDER BY category_name ASC
         `;
@@ -24,11 +24,10 @@ const Menu = {
                 m.item_name,
                 m.price,
                 m.gst,
-                m.available_quantity,
-                m.status,
+                m.available AS available_quantity,
                 c.category_name
             FROM menu_items m
-            INNER JOIN menu_categories c
+            INNER JOIN categories c
                 ON m.category_id = c.id
             ORDER BY m.item_name ASC
         `;
@@ -45,11 +44,10 @@ const Menu = {
                 m.item_name,
                 m.price,
                 m.gst,
-                m.available_quantity,
-                m.status,
+                m.available AS available_quantity,
                 c.category_name
             FROM menu_items m
-            INNER JOIN menu_categories c
+            INNER JOIN categories c
                 ON m.category_id = c.id
             WHERE m.category_id = ?
             ORDER BY m.item_name ASC
