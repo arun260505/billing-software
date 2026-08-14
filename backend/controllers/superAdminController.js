@@ -1,6 +1,8 @@
 const db = require("../config/db");
 const bcrypt = require("bcrypt");
 
+// Creating an admin also creates that admin's restaurant and links them, so
+// the admin is a proper tenant and can manage employees/menu/tables/etc.
 const createAdmin = async (req, res) => {
 
     try {
@@ -8,75 +10,84 @@ const createAdmin = async (req, res) => {
         const {
             fullName,
             username,
-            password
+            password,
+            restaurantName,
+            mobile
         } = req.body;
 
-        if (!fullName || !username || !password) {
+        if (!fullName || !username || !password || !restaurantName || !mobile) {
 
             return res.status(400).json({
                 success: false,
-                message: "All fields are required."
+                message: "All fields are required (full name, username, password, restaurant name, mobile)."
             });
 
         }
 
         db.query(
 
-            "SELECT * FROM users WHERE username=?",
+            "SELECT id FROM users WHERE username=?",
 
             [username],
 
-            async (err, result) => {
+            (err, result) => {
 
                 if (err) {
-
-                    return res.status(500).json({
-                        success: false,
-                        message: err.message
-                    });
-
+                    return res.status(500).json({ success: false, message: err.message });
                 }
 
                 if (result.length > 0) {
-
-                    return res.status(400).json({
-                        success: false,
-                        message: "Username already exists."
-                    });
-
+                    return res.status(400).json({ success: false, message: "Username already exists." });
                 }
 
-                const hashedPassword = await bcrypt.hash(password, 10);
-
+                // 1) Create the restaurant for this admin.
                 db.query(
 
-                    `INSERT INTO users
-                    (username,password,full_name,role,created_by)
-                    VALUES(?,?,?,?,?)`,
+                    `INSERT INTO restaurants
+                    (restaurant_name, owner_name, mobile, status)
+                    VALUES (?, ?, ?, 'Active')`,
 
-                    [
-                        username,
-                        hashedPassword,
-                        fullName,
-                        "admin",
-                        1
-                    ],
+                    [restaurantName, fullName, mobile],
 
-                    (err) => {
+                    async (err, restResult) => {
 
                         if (err) {
-
-                            return res.status(500).json({
-                                success: false,
-                                message: err.message
-                            });
-
+                            return res.status(500).json({ success: false, message: err.message });
                         }
 
-                        return res.json({
-                            success: true,
-                            message: "Admin Created Successfully"
-                        });
+                        const restaurantId = restResult.insertId;
+
+                        try {
+
+                            const hashedPassword = await bcrypt.hash(password, 10);
+
+                            // 2) Create the admin, linked to that restaurant.
+                            db.query(
+
+                                `INSERT INTO users
+                                (restaurant_id, username, password, full_name, mobile, role, status, created_by)
+                                VALUES (?, ?, ?, ?, ?, 'admin', 'Active', 1)`,
+
+                                [restaurantId, username, hashedPassword, fullName, mobile],
+
+                                (err) => {
+
+                                    if (err) {
+                                        return res.status(500).json({ success: false, message: err.message });
+                                    }
+
+                                    return res.json({
+                                        success: true,
+                                        message: "Admin & Restaurant created successfully."
+                                    });
+
+                                }
+
+                            );
+
+                        } catch (e) {
+                            return res.status(500).json({ success: false, message: e.message });
+                        }
 
                     }
 

@@ -8,7 +8,9 @@ import superAdminService from "../../services/superAdminService";
 function Dashboard() {
 
     const [adminData, setAdminData] = useState({
+        restaurantName: "",
         fullName: "",
+        mobile: "",
         username: "",
         password: ""
     });
@@ -43,7 +45,9 @@ function Dashboard() {
         alert(response.message);
 
         setAdminData({
+            restaurantName: "",
             fullName: "",
+            mobile: "",
             username: "",
             password: ""
         });
@@ -178,9 +182,27 @@ const handleDelete = async (id) => {
 
                             <input
                                 type="text"
+                                name="restaurantName"
+                                placeholder="Restaurant Name"
+                                value={adminData.restaurantName}
+                                onChange={handleChange}
+                                required
+                            />
+
+                            <input
+                                type="text"
                                 name="fullName"
-                                placeholder="Full Name"
+                                placeholder="Owner / Admin Full Name"
                                 value={adminData.fullName}
+                                onChange={handleChange}
+                                required
+                            />
+
+                            <input
+                                type="text"
+                                name="mobile"
+                                placeholder="Mobile Number"
+                                value={adminData.mobile}
                                 onChange={handleChange}
                                 required
                             />
