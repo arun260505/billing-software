@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 //import { toast } from "react-toastify";
 
-import Sidebar from "../../components/Admin/Sidebar";
-import Header from "../../components/Admin/Header";
+import AdminLayout from "../../layouts/AdminLayout";
 
 import CategoryCards from "../../components/Admin/CategoryCards";
 import CategoryFilters from "../../components/Admin/CategoryFilters";
@@ -170,13 +169,7 @@ const currentCategories = filteredCategories.slice(
 const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
     return (
 
-        <div className="dashboard-container">
-
-            <Sidebar />
-
-            <div className="dashboard-main">
-
-                <Header />
+        <AdminLayout>
 
                 <div className="dashboard-content">
 
@@ -253,9 +246,7 @@ const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
 
                 </div>
 
-            </div>
-
-        </div>
+        </AdminLayout>
 
     );
 

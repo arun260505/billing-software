@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import Sidebar from "../../components/Admin/Sidebar";
-import Header from "../../components/Admin/Header";
+import AdminLayout from "../../layouts/AdminLayout";
 import MenuModal from "../../components/Admin/MenuModal";
 import DeleteModal from "../../components/Admin/DeleteModal";
 
@@ -205,13 +204,7 @@ function Menu() {
 
     return (
 
-        <div className="dashboard-container">
-
-            <Sidebar />
-
-            <div className="dashboard-main">
-
-                <Header />
+        <AdminLayout>
 
                 <div className="dashboard-content">
 
@@ -684,8 +677,6 @@ function Menu() {
 
                 </div>
 
-            </div>
-
             {/* Menu Modal */}
 
             <MenuModal
@@ -726,7 +717,7 @@ function Menu() {
                 onDelete={handleDelete}
             />
 
-        </div>
+        </AdminLayout>
 
     );
 
