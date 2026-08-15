@@ -3,7 +3,7 @@ import React from "react";
 function CategoryTabs({ categories, selectedCategory, onSelectCategory }) {
     return (
         <div className="category-tabs">
-            {categories.map((category) => (
+            {categories.map((category, index) => (
                 <button
                     key={category.id}
                     onClick={() => onSelectCategory(category.id)}
@@ -13,6 +13,9 @@ function CategoryTabs({ categories, selectedCategory, onSelectCategory }) {
                             : ""
                     }
                 >
+                    {selectedCategory === category.id && (
+                        <span className="tab-star">★ </span>
+                    )}
                     {category.category_name}
                 </button>
             ))}

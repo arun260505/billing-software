@@ -28,49 +28,38 @@ function MenuCard({ item, addToCart }) {
 
     const image = categoryImages[item.category_name] || lunchImage;
 
+    const isOutOfStock = item.available_quantity === 0;
+
     return (
-        <div className="menu-card">
+        <div className={`menu-card${isOutOfStock ? " out-of-stock-card" : ""}`}>
             {/* Food Image */}
             <div className="menu-image">
                 <img
                     src={image}
                     alt={item.item_name}
                 />
+                {isOutOfStock && (
+                    <div className="out-of-stock-overlay">Out of Stock</div>
+                )}
             </div>
 
             {/* Food Details */}
             <div className="menu-details">
-                <h3>{item.item_name}</h3>
-
-                <div className="menu-badges">
-                    <span className="price-badge">
-                        ₹{Number(item.price).toFixed(2)}
-                    </span>
-
-                    {item.available_quantity === 0 && (
-                        <span className="stock-badge out-stock">
-                            Out of Stock
-                        </span>
-                    )}
+                <div className="menu-info">
+                    <h3>{item.item_name}</h3>
+                    <span className="menu-price">₹{Number(item.price).toFixed(0)}</span>
                 </div>
 
-                {item.available_quantity > 10 && (
-                    <span className="best-seller">
-                        ⭐ Best Seller
-                    </span>
-                )}
+                {/* Add to Cart Button */}
+                <button
+                    className="add-cart-btn"
+                    disabled={isOutOfStock}
+                    onClick={() => addToCart(item)}
+                    title={isOutOfStock ? "Out of Stock" : "Add to cart"}
+                >
+                    +
+                </button>
             </div>
-
-            {/* Add to Cart Button */}
-            <button
-                className="add-cart-btn"
-                disabled={item.available_quantity === 0}
-                onClick={() => addToCart(item)}
-            >
-                {item.available_quantity === 0
-                    ? "Out of Stock"
-                    : "Add to Cart"}
-            </button>
         </div>
     );
 }

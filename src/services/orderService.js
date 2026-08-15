@@ -6,6 +6,9 @@ export const createOrder = (data) =>
 export const getRunningOrders = () =>
   api.get("/orders/running");
 
+export const getTodaysOrderCount = () =>
+  api.get("/orders/today-count");
+
 export const getOrderDetails = (id) =>
   api.get(`/orders/${id}/items`);
 

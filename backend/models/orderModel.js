@@ -264,6 +264,20 @@ const cancelOrder = (orderId, restaurantId, callback) => {
 
 };
 
+// Count of orders created today (tenant-scoped)
+const getTodaysOrderCount = (restaurantId, callback) => {
+
+    db.query(
+        `SELECT COUNT(*) AS total
+         FROM orders
+         WHERE restaurant_id = ? AND DATE(created_at) = CURDATE()
+           AND order_status != 'Cancelled'`,
+        [restaurantId],
+        callback
+    );
+
+};
+
 module.exports = {
     getAllOrders,
     getOrderById,
@@ -277,5 +291,6 @@ module.exports = {
     getOrderDetails,
     updateOrderTotals,
     deleteOrderItems,
-    cancelOrder
+    cancelOrder,
+    getTodaysOrderCount
 };
