@@ -137,6 +137,19 @@ exports.getRunningOrders = (req, res) => {
 
 };
 
+// GET /api/orders/today-count
+exports.getTodaysOrderCount = (req, res) => {
+
+    orderModel.getTodaysOrderCount(req.user.restaurant_id, (err, results) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Today's order count fetched.", Number(results[0].total));
+
+    });
+
+};
+
 // GET /api/orders/:id/items
 exports.getOrderDetails = (req, res) => {
 
