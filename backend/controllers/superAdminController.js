@@ -62,11 +62,14 @@ const createAdmin = async (req, res) => {
                             const hashedPassword = await bcrypt.hash(password, 10);
 
                             // 2) Create the admin, linked to that restaurant.
+                            // created_by is left NULL (super-admin route is not
+                            // authenticated, and hardcoding an id breaks the
+                            // users.created_by foreign key on a fresh database).
                             db.query(
 
                                 `INSERT INTO users
-                                (restaurant_id, username, password, full_name, mobile, role, status, created_by)
-                                VALUES (?, ?, ?, ?, ?, 'admin', 'Active', 1)`,
+                                (restaurant_id, username, password, full_name, mobile, role, status)
+                                VALUES (?, ?, ?, ?, ?, 'admin', 'Active')`,
 
                                 [restaurantId, username, hashedPassword, fullName, mobile],
 
