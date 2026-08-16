@@ -173,3 +173,50 @@
 .kitchen-app .kd-items li.kd-item-served .kd-item-name { text-decoration: line-through; color: #64748b; }
 .kitchen-app .kd-items li.kd-item-served .kd-qty { color: #64748b; }
 .kitchen-app .kd-served { color: #22c55e; font-size: 11px; font-weight: 700; margin-left: 6px; }
+
+/* ============================================================
+   TABLE-GROUPED KITCHEN VIEW
+   ============================================================ */
+
+/* Fixed table strip at the very top */
+.kitchen-app .kd-header { position: sticky; top: 0; z-index: 20; background: #0f172a; flex-wrap: wrap; gap: 12px; }
+.kitchen-app .kd-tablebar { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+.kitchen-app .kd-tab {
+    display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+    background: #1e293b; color: #93c5fd; border: 1px solid #334155;
+    padding: 6px 14px; border-radius: 999px; font-size: 15px; font-weight: 700;
+}
+.kitchen-app .kd-tab.done { color: #86efac; border-color: #14532d; background: #0f2a1a; }
+.kitchen-app .kd-tab-badge {
+    min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+    background: #f59e0b; color: #1a1a1a; font-size: 12px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* Table cards */
+.kitchen-app .kd-table {
+    background: #1e293b; border-radius: 14px; padding: 14px;
+    border-top: 6px solid #3b82f6; display: flex; flex-direction: column;
+    box-shadow: 0 6px 16px rgba(0,0,0,.35);
+}
+.kitchen-app .kd-table.all-served { border-top-color: #22c55e; opacity: .85; }
+.kitchen-app .kd-table-head {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+}
+.kitchen-app .kd-table-name { font-size: 26px; font-weight: 800; color: #f8fafc; }
+.kitchen-app .kd-table-count {
+    font-size: 12px; font-weight: 700; color: #93c5fd;
+    background: #0f2036; border-radius: 999px; padding: 3px 12px;
+}
+
+/* Item rows with a Serve button */
+.kitchen-app .kd-items li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 0; border-bottom: 1px dashed #334155; font-size: 17px;
+}
+.kitchen-app .kd-serve {
+    margin-left: auto; background: #16a34a; color: #fff; border: none;
+    border-radius: 8px; padding: 7px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.kitchen-app .kd-serve:hover { background: #15803d; }
+.kitchen-app .kd-items li.kd-item-served .kd-served { margin-left: auto; }

@@ -881,3 +881,6 @@
 }
 .waiter-app .tsc-occupied .tsc-served { background: #fdeccf; color: #b45309; }
 .waiter-app .tsc-billed .tsc-served { background: #fee2e2; color: #b91c1c; }
+
+/* Billed tables are locked until the cashier settles them */
+.waiter-app .tsc-locked { cursor: not-allowed; opacity: .92; }

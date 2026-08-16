@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { getKitchenTickets, updateTicketStatus } from "../../services/kitchenService";
+import { getKitchenTables, markKitchenItemServed } from "../../services/kitchenService";
 import "../../styles/pages/Kitchen/Dashboard.css";
 
 function timeAgo(iso) {
@@ -11,22 +11,22 @@ function timeAgo(iso) {
     return `${hrs}h ${mins % 60}m ago`;
 }
 
-// Orders auto-start as "Preparing" when sent. The only kitchen action is to mark
-// an order served (the waiter can also do this) — which removes it from here.
+// Kitchen display grouped by table. Each item has a Serve button that strikes it
+// through. Once a table is billed it drops off the board automatically.
 function Dashboard() {
 
-    const [tickets, setTickets] = useState([]);
+    const [tables, setTables] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [, setTick] = useState(0); // forces the "time ago" labels to refresh
+    const [, setTick] = useState(0); // refresh the "time ago" labels
 
     const load = useCallback(async () => {
         try {
-            const res = await getKitchenTickets();
-            setTickets(res.data.data || []);
+            const res = await getKitchenTables();
+            setTables(res.data.data || []);
             setError("");
         } catch (e) {
-            setError(e.response?.data?.message || "Could not load kitchen tickets.");
+            setError(e.response?.data?.message || "Could not load the kitchen board.");
         } finally {
             setLoading(false);
         }
@@ -34,16 +34,23 @@ function Dashboard() {
 
     useEffect(() => {
         load();
-        const poll = setInterval(load, 5000);      // pull new tickets every 5s
-        const clock = setInterval(() => setTick((t) => t + 1), 1000); // update timers
+        const poll = setInterval(load, 4000);
+        const clock = setInterval(() => setTick((t) => t + 1), 1000);
         return () => { clearInterval(poll); clearInterval(clock); };
     }, [load]);
 
-    const markServed = async (ticket) => {
-        // remove from the board immediately
-        setTickets((prev) => prev.filter((t) => t.id !== ticket.id));
+    const serve = async (tableId, item) => {
+        // optimistic strike-through
+        setTables((prev) =>
+            prev.map((t) =>
+                t.table_id !== tableId ? t : {
+                    ...t,
+                    items: t.items.map((it) => (it.id === item.id ? { ...it, served: 1 } : it)),
+                }
+            )
+        );
         try {
-            await updateTicketStatus(ticket.id, "Served");
+            await markKitchenItemServed(item.id);
         } catch (e) {
             alert(e.response?.data?.message || "Could not mark served.");
             load();
@@ -56,13 +63,27 @@ function Dashboard() {
         window.location.href = "/";
     };
 
+    const totalTables = tables.length;
+
     return (
         <div className="kitchen-app">
 
+            {/* Fixed table strip at the top */}
             <header className="kd-header">
                 <div className="kd-title">
-                    <h1>Kitchen Display</h1>
-                    <span className="kd-count">{tickets.length} active</span>
+                    <h1>Kitchen</h1>
+                    <span className="kd-count">{totalTables} table{totalTables === 1 ? "" : "s"}</span>
+                </div>
+                <div className="kd-tablebar">
+                    {tables.map((t) => {
+                        const pending = t.items.filter((it) => !Number(it.served)).length;
+                        return (
+                            <a key={t.table_id} href={`#tbl-${t.table_id}`} className={`kd-tab${pending === 0 ? " done" : ""}`}>
+                                T{t.table_name}
+                                {pending > 0 && <span className="kd-tab-badge">{pending}</span>}
+                            </a>
+                        );
+                    })}
                 </div>
                 <button className="kd-logout" onClick={handleLogout}>Logout</button>
             </header>
@@ -70,36 +91,37 @@ function Dashboard() {
             {error && <div className="kd-error">{error}</div>}
 
             {loading ? (
-                <div className="kd-empty">Loading tickets…</div>
-            ) : tickets.length === 0 ? (
-                <div className="kd-empty">No active orders. New tickets appear here automatically.</div>
+                <div className="kd-empty">Loading…</div>
+            ) : tables.length === 0 ? (
+                <div className="kd-empty">No active tables. New orders appear here automatically.</div>
             ) : (
                 <div className="kd-grid">
-                    {tickets.map((t) => (
-                        <div key={t.id} className={`kd-ticket status-${t.status.toLowerCase()}`}>
-                            <div className="kd-ticket-head">
-                                <span className="kd-table">{t.table_name || "—"}</span>
-                                <span className={`kd-status status-${t.status.toLowerCase()}`}>{t.status}</span>
+                    {tables.map((t) => {
+                        const served = t.items.filter((it) => Number(it.served)).length;
+                        const allDone = served === t.items.length;
+                        return (
+                            <div key={t.table_id} id={`tbl-${t.table_id}`} className={`kd-table${allDone ? " all-served" : ""}`}>
+                                <div className="kd-table-head">
+                                    <span className="kd-table-name">T{t.table_name}</span>
+                                    <span className="kd-table-count">{served}/{t.items.length} served</span>
+                                </div>
+                                <ul className="kd-items">
+                                    {t.items.map((it) => (
+                                        <li key={it.id} className={Number(it.served) ? "kd-item-served" : ""}>
+                                            <span className="kd-qty">{Number(it.quantity)}×</span>
+                                            <span className="kd-item-name">{it.item_name}</span>
+                                            {it.notes && <span className="kd-note">— {it.notes}</span>}
+                                            {Number(it.served) ? (
+                                                <span className="kd-served">✓ served</span>
+                                            ) : (
+                                                <button className="kd-serve" onClick={() => serve(t.table_id, it)}>Serve</button>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
-                            <div className="kd-ticket-sub">
-                                <span className="kd-order-no">{t.order_number}</span>
-                                <span className="kd-time">{timeAgo(t.created_at)}</span>
-                            </div>
-                            <ul className="kd-items">
-                                {t.items.map((it, i) => (
-                                    <li key={i} className={Number(it.served) ? "kd-item-served" : ""}>
-                                        <span className="kd-qty">{Number(it.quantity)}×</span>
-                                        <span className="kd-item-name">{it.item_name}</span>
-                                        {Number(it.served) ? <span className="kd-served">✓ served</span> : null}
-                                        {it.notes && <span className="kd-note">— {it.notes}</span>}
-                                    </li>
-                                ))}
-                            </ul>
-                            <button className="kd-advance" onClick={() => markServed(t)}>
-                                ✓ Mark Served
-                            </button>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

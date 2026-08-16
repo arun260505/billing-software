@@ -10,6 +10,8 @@ router.use(authMiddleware);
 router.use(roleMiddleware(["kitchen", "admin"]));
 
 router.get("/tickets", kitchenController.getKitchenTickets);
+router.get("/tables", kitchenController.getKitchenByTable);
+router.put("/item/:itemId/serve", kitchenController.serveItem);
 router.get("/orders", kitchenController.getKitchenOrders);
 router.get("/orders/:id", kitchenController.getKitchenOrderItems);
 router.put("/orders/:id", kitchenController.updateKitchenStatus);

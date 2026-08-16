@@ -1,5 +1,32 @@
 const kitchenModel = require("../models/kitchenModel");
+const orderModel = require("../models/orderModel");
 const { success, error } = require("../utils/response");
+
+// Active items grouped by table (billed tables drop off / reset)
+exports.getKitchenByTable = (req, res) => {
+
+    kitchenModel.getKitchenByTable(req.user.restaurant_id, (err, tables) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Kitchen tables fetched.", tables);
+
+    });
+
+};
+
+// Kitchen marks a single item served (strikes it through)
+exports.serveItem = (req, res) => {
+
+    orderModel.markItemServed(req.params.itemId, req.user.restaurant_id, (err) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Item marked served.");
+
+    });
+
+};
 
 // Get all kitchen orders
 exports.getKitchenOrders = (req, res) => {

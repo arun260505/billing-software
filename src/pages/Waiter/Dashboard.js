@@ -207,6 +207,11 @@ function Dashboard() {
     };
 
     const handleSelectTable = async (table) => {
+        // A billed table is locked until the cashier settles/clears it.
+        if (table.needs_bill) {
+            alert(`Table ${table.table_number} is billed — waiting for the cashier to settle it. It'll reopen once cleared.`);
+            return;
+        }
         setSelectedTable(table);
         await loadCategories();
         // Fresh cart for the NEW batch (each send = a separate kitchen ticket).
@@ -627,9 +632,9 @@ function Dashboard() {
                         const isFree     = table.status === "FREE";
                         const isBilled   = table.needs_bill;   // bill sent to cashier
                         const isSelected = selectedTable?.id === table.id;
-                        const stateCls   = isFree ? "tsc-free" : isBilled ? "tsc-billed" : "tsc-occupied";
+                        const stateCls   = isFree ? "tsc-free" : isBilled ? "tsc-billed tsc-locked" : "tsc-occupied";
                         const badgeCls   = isFree ? "badge-free" : isBilled ? "badge-billed" : "badge-occupied";
-                        const badgeText  = isFree ? "Available" : isBilled ? "Billed" : "Occupied";
+                        const badgeText  = isFree ? "Available" : isBilled ? "🔒 Billed" : "Occupied";
                         return (
                             <div
                                 key={table.id}

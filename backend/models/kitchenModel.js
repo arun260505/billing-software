@@ -137,9 +137,62 @@ const getKitchenTickets = (restaurantId, callback) => {
 
 };
 
+// Active kitchen items grouped by TABLE. Only tables currently 'Occupied' are
+// included — once a table is billed ('Billing') it drops off (resets). Served
+// items are still returned (struck through) until the table is billed/settled.
+const getKitchenByTable = (restaurantId, callback) => {
+
+    const sql = `
+        SELECT
+            dt.id           AS table_id,
+            dt.table_name,
+            oi.id           AS item_id,
+            mi.item_name,
+            oi.quantity,
+            oi.notes,
+            oi.served,
+            o.order_number,
+            o.created_at
+        FROM dining_tables dt
+        INNER JOIN orders o        ON o.table_id = dt.id AND o.restaurant_id = dt.restaurant_id
+        INNER JOIN order_items oi  ON oi.order_id = o.id
+        INNER JOIN menu_items mi   ON oi.menu_item_id = mi.id
+        WHERE dt.restaurant_id = ?
+          AND dt.status = 'Occupied'
+          AND o.order_status IN ('Pending','Preparing','Ready','Served')
+        ORDER BY dt.table_name ASC, oi.id ASC
+    `;
+
+    db.query(sql, [restaurantId], (err, rows) => {
+        if (err) return callback(err);
+
+        const byTable = {};
+        const tables = [];
+        rows.forEach((r) => {
+            if (!byTable[r.table_id]) {
+                byTable[r.table_id] = { table_id: r.table_id, table_name: r.table_name, items: [] };
+                tables.push(byTable[r.table_id]);
+            }
+            byTable[r.table_id].items.push({
+                id: r.item_id,
+                item_name: r.item_name,
+                quantity: r.quantity,
+                notes: r.notes,
+                served: r.served,
+                order_number: r.order_number,
+                created_at: r.created_at
+            });
+        });
+
+        callback(null, tables);
+    });
+
+};
+
 module.exports = {
     getKitchenOrders,
     getKitchenOrderItems,
     updateKitchenStatus,
-    getKitchenTickets
+    getKitchenTickets,
+    getKitchenByTable
 };
