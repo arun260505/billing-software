@@ -157,14 +157,10 @@ function Dashboard() {
         if (blockIfParcelLocked()) return;
         setSelectedTable(table);
         await loadCategories();
-        if (table.status === "OCCUPIED") {
-            const running = runningOrders.find((o) => o.table_id === table.id);
-            if (running) await openOrder(running);
-            else alert("No running order found for this table.");
-        } else {
-            setCart([]);
-            setEditingOrder(null);
-        }
+        // Always start a fresh batch, so each send is a new order = a separate
+        // kitchen ticket. Existing orders can be corrected from Running Orders.
+        setCart([]);
+        setEditingOrder(null);
     };
 
     const handleParcelSelect = () => {
