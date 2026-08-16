@@ -61,9 +61,6 @@ function Dashboard() {
     );
 
     const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity), 0);
-    const subtotal   = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const gst        = subtotal * 0.05;
-    const grandTotal = subtotal + gst; // used: drives displayTotal + ws-total-value
 
     const normalizeQuantity = (value) => {
         const parsed = Number(value);
@@ -78,6 +75,10 @@ function Dashboard() {
     };
 
     const addToCart = (item) => {
+        if (!selectedTable) {
+            alert("Please select a table first.");
+            return;
+        }
         const existingItem = cart.find((c) => c.id === item.id);
         const limit = getItemQuantityLimit(item);
         if (existingItem && normalizeQuantity(existingItem.quantity) >= limit) {
@@ -126,12 +127,6 @@ function Dashboard() {
         // creates a new order = a separate kitchen ticket (never merged into the
         // table's previous batch). Corrections to a specific order are still
         // possible via the Running Orders panel.
-        setCart([]);
-        setEditingOrder(null);
-    };
-
-    const handleParcelSelect = () => {
-        setSelectedTable({ id: null, table_number: "Parcel", isParcel: true, status: "FREE" });
         setCart([]);
         setEditingOrder(null);
     };
@@ -224,6 +219,7 @@ function Dashboard() {
 
     const placeOrder = async () => {
         if (cart.length === 0) { alert("Please add items."); return; }
+        if (!selectedTable) { alert("Please select a table first."); return; }
         const orderData = {
             order_number: `ORD-${Date.now()}`,
             waiter_id: 1,
@@ -289,8 +285,6 @@ function Dashboard() {
     // ── UI-only computed values ─────────────────────────────────────
     const availableCount = tables.filter((t) => t.status === "FREE").length;
     const occupiedCount  = tables.filter((t) => t.status === "OCCUPIED").length;
-    const serviceCharge  = subtotal * 0.02;
-    const displayTotal   = grandTotal + serviceCharge; // grandTotal = subtotal+gst
 
     const visibleTables = tables.filter((t) => {
         const matchFilter =
@@ -386,15 +380,6 @@ function Dashboard() {
                         <span className="stat-value">{availableCount}</span>
                     </div>
                 </div>
-                <div className="stat-card">
-                    <div className="stat-icon-wrap stat-orange">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    </div>
-                    <div className="stat-text">
-                        <span className="stat-label">Today's Revenue</span>
-                        <span className="stat-value stat-revenue">₹0</span>
-                    </div>
-                </div>
             </div>
 
             {/* ══════════════ TABLE STATUS ══════════════ */}
@@ -411,9 +396,6 @@ function Dashboard() {
                             onChange={(e) => setTableSearch(e.target.value)}
                         />
                     </div>
-                    <button className="tss-new-btn" onClick={handleParcelSelect}>
-                        + New Reservation
-                    </button>
                 </div>
 
                 {/* Filter tabs */}
@@ -459,29 +441,10 @@ function Dashboard() {
                             </div>
                         );
                     })}
-
-                    {/* Parcel card */}
-                    <div
-                        className={`tsc tsc-parcel ${selectedTable?.isParcel ? "tsc-selected" : ""}`}
-                        onClick={handleParcelSelect}
-                    >
-                        <div className="tsc-head">
-                            <span className="tsc-num">📦</span>
-                            <span className="tsc-cap">Parcel</span>
-                        </div>
-                        <div className="tsc-body tsc-parcel-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                                <line x1="12" y1="22.08" x2="12" y2="12"/>
-                            </svg>
-                        </div>
-                        <div className="tsc-status-badge badge-parcel">Parcel</div>
-                    </div>
                 </div>
             </div>
 
-            {/* ══════════════ 3-COLUMN WORKSPACE ══════════════ */}
+            {/* ══════════════ 2-COLUMN WORKSPACE ══════════════ */}
             <div className="main-workspace">
 
                 {/* ── LEFT: Active Cart ── */}
@@ -593,50 +556,6 @@ function Dashboard() {
                             ))
                         )}
                     </div>
-                </div>
-
-                {/* ── RIGHT: Order Summary ── */}
-                <div className="workspace-summary">
-                    <div className="ws-header">
-                        <span className="ws-title">Order Summary</span>
-                        <button className="ws-trash-btn" onClick={clearCart}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                        </button>
-                    </div>
-
-                    <div className="ws-items">
-                        {cart.length === 0 ? (
-                            <div className="ws-empty">No items added</div>
-                        ) : (
-                            cart.map((item) => (
-                                <div key={item.id} className="ws-line">
-                                    <span className="ws-item-name">{item.item_name}</span>
-                                    <span className="ws-item-calc">₹{item.price} × {item.quantity}</span>
-                                    <span className="ws-item-total">₹{(item.price * item.quantity).toFixed(0)}</span>
-                                </div>
-                            ))
-                        )}
-                    </div>
-
-                    <div className="ws-totals">
-                        <div className="ws-row"><span>Subtotal</span><span>₹{subtotal.toFixed(0)}</span></div>
-                        <div className="ws-row"><span>GST (5%)</span><span>₹{gst.toFixed(0)}</span></div>
-                        <div className="ws-row"><span>Service Charge (2%)</span><span>₹{serviceCharge.toFixed(0)}</span></div>
-                    </div>
-
-                    <div className="ws-total-row">
-                        <span className="ws-total-label">Total Amount</span>
-                        <span className="ws-total-value">₹{displayTotal.toFixed(0)}</span>
-                    </div>
-
-                    <button className="ws-proceed-btn" onClick={placeOrder}>
-                        Proceed to Billing
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                    </button>
-                    <button className="ws-save-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                        Save Order
-                    </button>
                 </div>
             </div>
 
