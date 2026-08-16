@@ -36,6 +36,7 @@ function Dashboard() {
     const [showBill, setShowBill] = useState(false);
     const [billData, setBillData] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [notes, setNotes] = useState("");          // cooking instructions → kitchen
     const [orderNumber, setOrderNumber] = useState(1001);
     const [cashierName] = useState("Cashier");
     const [currentDate, setCurrentDate] = useState("");
@@ -313,6 +314,7 @@ function Dashboard() {
                         quantity: 0,
                         price: it.price,
                         gst: it.gst,
+                        notes: notes.trim() || null,   // cooking instructions → kitchen
                     };
                 }
                 acc[k].quantity += normalizeQuantity(it.quantity);
@@ -368,6 +370,7 @@ function Dashboard() {
             }
             if (!selectedTable?.isParcel) {
                 setCart([]);
+                setNotes("");
                 setSelectedTable(null);
                 setEditingOrder(null);
             }
@@ -450,6 +453,7 @@ function Dashboard() {
         setShowBill(false);
         setBillData(null);
         setCart([]);
+        setNotes("");
         setSelectedTable(null);
         setEditingOrder(null);
         alert("Bill Generated Successfully");
@@ -647,6 +651,13 @@ function Dashboard() {
 
                     {/* Totals + actions (always docked at the bottom) */}
                     <div className="pos-bill-foot">
+                        <input
+                            type="text"
+                            className="pos-notes"
+                            placeholder="🍳 Cooking instructions (sent to kitchen)…"
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                        />
                         <div className="pos-tot-row"><span>Subtotal</span><span>₹{subtotal.toFixed(0)}</span></div>
                         <div className="pos-tot-row"><span>GST (5%)</span><span>₹{gst.toFixed(0)}</span></div>
                         <div className="pos-tot-row"><span>Service (2%)</span><span>₹{serviceCharge.toFixed(0)}</span></div>

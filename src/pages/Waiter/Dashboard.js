@@ -29,6 +29,7 @@ function Dashboard() {
     // The selected table's already-sent items, shown read-only for reference.
     const [previousItems, setPreviousItems] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [notes, setNotes] = useState("");          // cooking instructions → kitchen
     const [waiterName] = useState("John");
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
@@ -413,7 +414,7 @@ function Dashboard() {
         const mergedItems = Object.values(
             cart.reduce((acc, item) => {
                 const k = item.id;
-                if (!acc[k]) acc[k] = { menu_item_id: item.id, quantity: 0, price: item.price, gst: item.gst };
+                if (!acc[k]) acc[k] = { menu_item_id: item.id, quantity: 0, price: item.price, gst: item.gst, notes: notes.trim() || null };
                 acc[k].quantity += normalizeQuantity(item.quantity);
                 return acc;
             }, {})
@@ -442,6 +443,7 @@ function Dashboard() {
                 alert(selectedTable?.isParcel ? "Parcel Order Sent To Kitchen" : "Order Sent To Kitchen");
             }
             setCart([]);
+            setNotes("");
             setShowCart(false);
             setSelectedTable(null);
             setEditingOrder(null);
@@ -768,6 +770,8 @@ function Dashboard() {
                     tableLabel={selectedTable.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`}
                     items={cart}
                     editing={!!editingOrder}
+                    notes={notes}
+                    onNotesChange={setNotes}
                     increaseQuantity={increaseQuantity}
                     decreaseQuantity={decreaseQuantity}
                     removeItem={removeItem}
