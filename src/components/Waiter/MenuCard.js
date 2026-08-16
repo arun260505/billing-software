@@ -8,11 +8,9 @@ import juicesImage from "../../assets/juicesImage.jpg";
 import iceCreamImage from "../../assets/iceCreamImage.jpg";
 import comboImage from "../../assets/comboImage.jpg";
 
-function MenuCard({ item, addToCart }) {
-
-     console.log(item);
-
-    
+// onToggleAvailability is optional — only the cashier passes it, which shows the
+// "Mark Available / Unavailable" toggle on each card.
+function MenuCard({ item, addToCart, onToggleAvailability }) {
 
     const categoryImages = {
         "Starters": startersImage,
@@ -28,18 +26,15 @@ function MenuCard({ item, addToCart }) {
 
     const image = categoryImages[item.category_name] || lunchImage;
 
-    const isOutOfStock = item.available_quantity === 0;
+    const isUnavailable = Number(item.available_quantity) === 0;
 
     return (
-        <div className={`menu-card${isOutOfStock ? " out-of-stock-card" : ""}`}>
+        <div className={`menu-card${isUnavailable ? " out-of-stock-card" : ""}`}>
             {/* Food Image */}
             <div className="menu-image">
-                <img
-                    src={image}
-                    alt={item.item_name}
-                />
-                {isOutOfStock && (
-                    <div className="out-of-stock-overlay">Out of Stock</div>
+                <img src={image} alt={item.item_name} />
+                {isUnavailable && (
+                    <div className="out-of-stock-overlay">Unavailable</div>
                 )}
             </div>
 
@@ -50,16 +45,26 @@ function MenuCard({ item, addToCart }) {
                     <span className="menu-price">₹{Number(item.price).toFixed(0)}</span>
                 </div>
 
-                {/* Add to Cart Button */}
                 <button
                     className="add-cart-btn"
-                    disabled={isOutOfStock}
+                    disabled={isUnavailable}
                     onClick={() => addToCart(item)}
-                    title={isOutOfStock ? "Out of Stock" : "Add to cart"}
+                    title={isUnavailable ? "Unavailable" : "Add to cart"}
                 >
                     +
                 </button>
             </div>
+
+            {/* Cashier-only availability toggle */}
+            {onToggleAvailability && (
+                <button
+                    className={`avail-toggle${isUnavailable ? " is-off" : " is-on"}`}
+                    onClick={() => onToggleAvailability(item)}
+                    title={isUnavailable ? "Mark available" : "Mark unavailable"}
+                >
+                    {isUnavailable ? "✓ Mark Available" : "✕ Mark Unavailable"}
+                </button>
+            )}
         </div>
     );
 }

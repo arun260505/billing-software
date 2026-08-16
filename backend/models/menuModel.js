@@ -182,6 +182,17 @@ exports.getWaiterItems = (restaurantId, callback) => {
 
 };
 
+// Toggle an item's availability (tenant-scoped) — cashier/admin.
+exports.setAvailability = (id, restaurantId, available, callback) => {
+
+    db.query(
+        "UPDATE menu_items SET available=? WHERE id=? AND restaurant_id=?",
+        [available ? 1 : 0, id, restaurantId],
+        callback
+    );
+
+};
+
 // Items for one category (tenant-scoped)
 exports.getWaiterItemsByCategory = (categoryId, restaurantId, callback) => {
 

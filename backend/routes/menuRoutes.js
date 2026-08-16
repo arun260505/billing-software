@@ -15,6 +15,9 @@ router.get("/categories", menuController.getCategories);
 router.get("/items", menuController.getAllItems);
 router.get("/items/category/:id", menuController.getItemsByCategory);
 
+// Availability toggle — cashier + admin (when an item runs out).
+router.patch("/:id/availability", roleMiddleware(["admin", "cashier"]), menuController.setAvailability);
+
 // Writes — admin only.
 router.post("/", roleMiddleware(["admin"]), menuController.addMenuItem);
 router.put("/:id", roleMiddleware(["admin"]), menuController.updateMenuItem);

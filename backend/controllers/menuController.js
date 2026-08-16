@@ -82,6 +82,19 @@ exports.deleteMenuItem = (req, res) => {
 
 };
 
+// PATCH /api/menu/:id/availability — cashier/admin marks item available/unavailable
+exports.setAvailability = (req, res) => {
+
+    menuModel.setAvailability(req.params.id, req.user.restaurant_id, req.body.available, (err) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Availability updated.");
+
+    });
+
+};
+
 // ============================ Waiter ordering screen ============================
 
 // GET /api/menu/categories

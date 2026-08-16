@@ -7,6 +7,10 @@ export const getCategories = () => api.get("/menu/categories");
 export const getAllItems = () => api.get("/menu/items");
 export const getItemsByCategory = (id) => api.get(`/menu/items/category/${id}`);
 
+// Cashier/admin: mark an item available (1) or unavailable (0).
+export const setItemAvailability = (id, available) =>
+    api.patch(`/menu/${id}/availability`, { available });
+
 // ---------------------------------------------------------------------------
 // Admin menu management (default export)
 // ---------------------------------------------------------------------------

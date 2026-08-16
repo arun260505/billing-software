@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
-import { getCategories, getItemsByCategory } from "../../services/menuService";
+import { getCategories, getItemsByCategory, setItemAvailability } from "../../services/menuService";
 import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
@@ -198,6 +198,24 @@ function Dashboard() {
             const res = await getItemsByCategory(categoryId);
             setMenuItems(res.data.data);
         } catch (e) { console.error(e); }
+    };
+
+    // Cashier toggles an item available/unavailable (e.g. idli sold out).
+    const handleToggleAvailability = async (item) => {
+        const nowAvailable = Number(item.available_quantity) === 0 ? 1 : 0;
+        // optimistic update so the card greys out instantly
+        setMenuItems((prev) =>
+            prev.map((m) => (m.id === item.id ? { ...m, available_quantity: nowAvailable } : m))
+        );
+        try {
+            await setItemAvailability(item.id, nowAvailable);
+        } catch (e) {
+            // revert on failure
+            setMenuItems((prev) =>
+                prev.map((m) => (m.id === item.id ? { ...m, available_quantity: nowAvailable ? 0 : 1 } : m))
+            );
+            alert("Could not update availability.");
+        }
     };
 
     const loadRunningOrders = async () => {
@@ -723,7 +741,7 @@ function Dashboard() {
                             <p className="no-items-msg">No items available</p>
                         ) : (
                             filteredItems.map((item) => (
-                                <MenuCard key={item.id} item={item} addToCart={addToCart} />
+                                <MenuCard key={item.id} item={item} addToCart={addToCart} onToggleAvailability={handleToggleAvailability} />
                             ))
                         )}
                     </div>
