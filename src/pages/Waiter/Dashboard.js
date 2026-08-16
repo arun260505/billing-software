@@ -657,7 +657,7 @@ function Dashboard() {
                         {selectedTable.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`}
                     </span>
                     {previousItems.length > 0 && (
-                        <button className="ws-bill-chip" onClick={() => setShowBill(true)}>🧾 Bill</button>
+                        <button className="ws-bill-chip" onClick={() => { loadAllItems(); setShowBill(true); }}>🧾 Bill</button>
                     )}
                 </div>
 

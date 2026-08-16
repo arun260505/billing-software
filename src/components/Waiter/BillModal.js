@@ -98,7 +98,9 @@ function BillModal({ tableLabel, items, menuItems, busy, onSetQty, onRemoveGroup
                             />
                             <div className="bill-add-list">
                                 {addable.length === 0 ? (
-                                    <p className="bill-empty">No matching items.</p>
+                                    <p className="bill-empty">
+                                        {(menuItems || []).length === 0 ? "Loading menu…" : "No matching items."}
+                                    </p>
                                 ) : (
                                     addable.slice(0, 30).map((mi) => (
                                         <button key={mi.id} className="bill-add-row" disabled={busy} onClick={() => pick(mi)}>
