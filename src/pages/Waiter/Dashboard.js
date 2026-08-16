@@ -3,7 +3,7 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Waiter/Dashboard.css";
 import { getCategories, getItemsByCategory } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -246,6 +246,17 @@ function Dashboard() {
         setEditingOrder(null);
         setPreviousItems([]);
         await loadTables();
+    };
+
+    // Waiter marks a running order as served (removes it from the kitchen display).
+    const handleMarkServed = async (order) => {
+        try {
+            await markOrderServed(order.id);
+            await loadRunningOrders();
+            await loadTables();
+        } catch (e) {
+            alert("Could not mark the order as served.");
+        }
     };
 
     // Send the table's bill to the cashier for printing (marks it "Billing").
@@ -659,6 +670,7 @@ function Dashboard() {
                     runningOrders={runningOrders}
                     closeOrders={() => setShowRunningOrders(false)}
                     openOrder={openOrder}
+                    onMarkServed={handleMarkServed}
                 />
             )}
         </div>

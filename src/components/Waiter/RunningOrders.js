@@ -1,7 +1,10 @@
+// onMarkServed is optional — only the waiter passes it, which shows a
+// "Mark Served" button on each running order (kitchen is display-only).
 function RunningOrders({
     runningOrders,
     closeOrders,
     openOrder,
+    onMarkServed,
 }) {
     return (
         <div className="running-orders-overlay">
@@ -20,11 +23,11 @@ function RunningOrders({
                 ) : (
                     runningOrders.map((order) => (
                         <div
-    className="running-card"
-    key={order.id}
-    onClick={() => openOrder(order)}
-    style={{ cursor: "pointer" }}
->
+                            className="running-card"
+                            key={order.id}
+                            onClick={() => openOrder(order)}
+                            style={{ cursor: "pointer" }}
+                        >
                             <h3>{order.order_number}</h3>
 
                             <p>
@@ -40,6 +43,18 @@ function RunningOrders({
                                 Total: Rs.
                                 {Number(order.grand_total).toFixed(2)}
                             </p>
+
+                            {onMarkServed && (
+                                <button
+                                    className="running-served-btn"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onMarkServed(order);
+                                    }}
+                                >
+                                    ✓ Mark Served
+                                </button>
+                            )}
 
                         </div>
                     ))

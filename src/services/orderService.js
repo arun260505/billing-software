@@ -18,6 +18,9 @@ export const getTableItems = (tableId) =>
 export const settleTable = (tableId) =>
   api.post(`/orders/table/${tableId}/settle`);
 
+export const markOrderServed = (id) =>
+  api.put(`/orders/${id}/serve`);
+
 export const updateOrder = (id, data) =>
   api.put(`/orders/${id}`, data);
 

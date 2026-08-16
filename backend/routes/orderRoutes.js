@@ -19,6 +19,9 @@ router.get("/today-count", staff, orderController.getTodaysOrderCount);
 router.get("/:id/items", staff, orderController.getOrderDetails);
 router.get("/:id", staff, orderController.getOrderById);
 
+// Waiter marks a served order (before the generic /:id routes).
+router.put("/:id/serve", roleMiddleware(["admin", "waiter", "cashier"]), orderController.markServed);
+
 // Writes.
 router.post("/", takers, orderController.createOrder);
 router.put("/:id", takers, orderController.updateOrder);

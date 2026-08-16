@@ -286,6 +286,19 @@ const getTableActiveItems = (tableId, restaurantId, callback) => {
 
 };
 
+// Mark one order Served (waiter delivered it) — leaves the kitchen display.
+const markServed = (orderId, restaurantId, callback) => {
+
+    db.query(
+        `UPDATE orders SET order_status='Served'
+         WHERE id=? AND restaurant_id=?
+           AND order_status IN ('Pending','Preparing','Ready')`,
+        [orderId, restaurantId],
+        callback
+    );
+
+};
+
 // Settle a table: mark all its active orders Completed/Paid and free the table.
 const settleTable = (tableId, restaurantId, callback) => {
 
@@ -337,5 +350,6 @@ module.exports = {
     cancelOrder,
     getTodaysOrderCount,
     getTableActiveItems,
-    settleTable
+    settleTable,
+    markServed
 };

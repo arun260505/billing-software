@@ -416,3 +416,18 @@
     cursor: pointer;
 }
 .waiter-app .wc-bill-btn:hover { background: #6d28d9; }
+
+/* Mark-served button on running order cards */
+.waiter-app .running-served-btn {
+    margin-top: 8px;
+    width: 100%;
+    padding: 7px;
+    border: none;
+    border-radius: 8px;
+    background: #16a34a;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.waiter-app .running-served-btn:hover { background: #15803d; }

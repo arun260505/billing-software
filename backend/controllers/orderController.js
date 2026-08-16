@@ -75,7 +75,8 @@ exports.createOrder = (req, res) => {
             employee_id: req.user.id,               // the logged-in waiter/cashier
             order_number: orderNumber,
             order_type: req.body.order_type || "Dine-In",
-            order_status: req.body.order_status || "Pending",
+            // Orders auto-start as Preparing — the kitchen is display-only.
+            order_status: req.body.order_status || "Preparing",
             payment_status: req.body.payment_status || "Pending",
             subtotal,
             discount: req.body.discount || 0,
@@ -145,6 +146,19 @@ exports.getTodaysOrderCount = (req, res) => {
         if (err) return error(res, err.message, 500);
 
         return success(res, "Today's order count fetched.", Number(results[0].total));
+
+    });
+
+};
+
+// PUT /api/orders/:id/serve — waiter marks an order Served (off the kitchen board)
+exports.markServed = (req, res) => {
+
+    orderModel.markServed(req.params.id, req.user.restaurant_id, (err) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Order marked as served.");
 
     });
 

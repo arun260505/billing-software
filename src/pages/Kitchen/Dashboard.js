@@ -2,13 +2,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { getKitchenTickets, updateTicketStatus } from "../../services/kitchenService";
 import "../../styles/pages/Kitchen/Dashboard.css";
 
-// Next status in the flow, and the button label that triggers it.
-const NEXT = {
-    Pending: { status: "Preparing", label: "Start" },
-    Preparing: { status: "Ready", label: "Mark Ready" },
-    Ready: { status: "Served", label: "Served" }
-};
-
 function timeAgo(iso) {
     const secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
     if (secs < 60) return `${secs}s ago`;
@@ -18,6 +11,8 @@ function timeAgo(iso) {
     return `${hrs}h ${mins % 60}m ago`;
 }
 
+// Orders auto-start as "Preparing" when sent. The only kitchen action is to mark
+// an order served (the waiter can also do this) — which removes it from here.
 function Dashboard() {
 
     const [tickets, setTickets] = useState([]);
@@ -44,19 +39,14 @@ function Dashboard() {
         return () => { clearInterval(poll); clearInterval(clock); };
     }, [load]);
 
-    const advance = async (ticket) => {
-        const next = NEXT[ticket.status];
-        if (!next) return;
+    const markServed = async (ticket) => {
+        // remove from the board immediately
+        setTickets((prev) => prev.filter((t) => t.id !== ticket.id));
         try {
-            await updateTicketStatus(ticket.id, next.status);
-            // "Served" leaves the board immediately; otherwise reflect new status.
-            setTickets((prev) =>
-                next.status === "Served"
-                    ? prev.filter((t) => t.id !== ticket.id)
-                    : prev.map((t) => (t.id === ticket.id ? { ...t, status: next.status } : t))
-            );
+            await updateTicketStatus(ticket.id, "Served");
         } catch (e) {
-            alert(e.response?.data?.message || "Could not update ticket.");
+            alert(e.response?.data?.message || "Could not mark served.");
+            load();
         }
     };
 
@@ -85,35 +75,30 @@ function Dashboard() {
                 <div className="kd-empty">No active orders. New tickets appear here automatically.</div>
             ) : (
                 <div className="kd-grid">
-                    {tickets.map((t) => {
-                        const next = NEXT[t.status];
-                        return (
-                            <div key={t.id} className={`kd-ticket status-${t.status.toLowerCase()}`}>
-                                <div className="kd-ticket-head">
-                                    <span className="kd-table">{t.table_name || "—"}</span>
-                                    <span className={`kd-status status-${t.status.toLowerCase()}`}>{t.status}</span>
-                                </div>
-                                <div className="kd-ticket-sub">
-                                    <span className="kd-order-no">{t.order_number}</span>
-                                    <span className="kd-time">{timeAgo(t.created_at)}</span>
-                                </div>
-                                <ul className="kd-items">
-                                    {t.items.map((it, i) => (
-                                        <li key={i}>
-                                            <span className="kd-qty">{Number(it.quantity)}×</span>
-                                            <span className="kd-item-name">{it.item_name}</span>
-                                            {it.notes && <span className="kd-note">— {it.notes}</span>}
-                                        </li>
-                                    ))}
-                                </ul>
-                                {next && (
-                                    <button className="kd-advance" onClick={() => advance(t)}>
-                                        {next.label}
-                                    </button>
-                                )}
+                    {tickets.map((t) => (
+                        <div key={t.id} className={`kd-ticket status-${t.status.toLowerCase()}`}>
+                            <div className="kd-ticket-head">
+                                <span className="kd-table">{t.table_name || "—"}</span>
+                                <span className={`kd-status status-${t.status.toLowerCase()}`}>{t.status}</span>
                             </div>
-                        );
-                    })}
+                            <div className="kd-ticket-sub">
+                                <span className="kd-order-no">{t.order_number}</span>
+                                <span className="kd-time">{timeAgo(t.created_at)}</span>
+                            </div>
+                            <ul className="kd-items">
+                                {t.items.map((it, i) => (
+                                    <li key={i}>
+                                        <span className="kd-qty">{Number(it.quantity)}×</span>
+                                        <span className="kd-item-name">{it.item_name}</span>
+                                        {it.notes && <span className="kd-note">— {it.notes}</span>}
+                                    </li>
+                                ))}
+                            </ul>
+                            <button className="kd-advance" onClick={() => markServed(t)}>
+                                ✓ Mark Served
+                            </button>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>
