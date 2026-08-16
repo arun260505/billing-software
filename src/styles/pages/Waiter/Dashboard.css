@@ -543,10 +543,10 @@
 /* selected ring */
 .waiter-app .tsc-selected { border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,.25); }
 
-/* ── Workspace: stack vertically (order panel on top, menu below) ─────── */
+/* ── Workspace: back bar, static "already sent", then the menu ────────── */
 .waiter-app .main-workspace { display: flex; flex-direction: column; gap: 0; padding: 0; }
-.waiter-app .workspace-cart { order: 1; width: 100%; flex: none; border: none; }
-.waiter-app .workspace-menu { order: 2; width: 100%; flex: none; border: none; border-top: 8px solid #eef1f5; }
+.waiter-app .ws-sent { order: 1; width: 100%; }
+.waiter-app .workspace-menu { order: 2; width: 100%; flex: none; border: none; }
 
 /* ── Menu top bar / search ──────────────────────────────────────────── */
 .waiter-app .menu-top-bar { padding: 12px; gap: 10px; }
@@ -768,9 +768,70 @@
     width: 100%; margin: 0; display: flex; align-items: center; justify-content: center;
     gap: 8px; padding: 14px; font-size: 15px;
 }
-.waiter-app .wc-send-meta {
-    margin-left: 8px; padding-left: 10px; border-left: 1px solid rgba(255,255,255,.4);
-    font-weight: 800; font-size: 13px;
+.waiter-app .wc-send-count {
+    margin-left: 6px; min-width: 22px; height: 22px; padding: 0 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.25); border-radius: 999px; font-size: 13px; font-weight: 800;
 }
 /* reserve space so the fixed bar never hides the last menu row */
 .waiter-app .wc-send-spacer { order: 4; height: 78px; width: 100%; }
+
+/* ── Back-bar Bill chip ─────────────────────────────────────────────── */
+.waiter-app .ws-backbar { justify-content: flex-start; }
+.waiter-app .ws-bill-chip {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+    background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;
+    border-radius: 9px; padding: 7px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
+    white-space: nowrap;
+}
+.waiter-app .ws-bill-chip:active { background: #ddd6fe; }
+
+/* ── "Already sent to kitchen" — static strip above the menu ─────────── */
+.waiter-app .ws-sent { background: #f5f8ff; border-bottom: 8px solid #eef1f5; padding: 12px 14px; }
+.waiter-app .ws-sent-label { font-size: 12px; font-weight: 700; color: #4f46e5; margin-bottom: 8px; }
+.waiter-app .ws-sent-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px; color: #0f172a; gap: 10px;
+}
+.waiter-app .ws-sent-row:last-child { border-bottom: none; }
+.waiter-app .ws-sent-row.served span:first-child { text-decoration: line-through; color: #9ca3af; }
+
+/* ── Order review sheet (bottom sheet) ──────────────────────────────── */
+.waiter-app .cs-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 210;
+    display: flex; align-items: flex-end; justify-content: center;
+}
+.waiter-app .cs-sheet {
+    width: 100%; max-width: 440px; max-height: 88vh; background: #fff;
+    border-radius: 20px 20px 0 0; display: flex; flex-direction: column;
+    box-shadow: 0 -8px 30px rgba(0,0,0,.25); animation: billUp .2s ease;
+}
+.waiter-app .cs-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 18px 18px 12px; border-bottom: 1px solid #eef1f5;
+}
+.waiter-app .cs-head h3 { margin: 0; font-size: 18px; font-weight: 800; color: #0f172a; }
+.waiter-app .cs-sub { font-size: 12px; color: #94a3b8; }
+.waiter-app .cs-close {
+    background: #f1f3f7; border: none; width: 32px; height: 32px; border-radius: 50%;
+    font-size: 15px; color: #475569; cursor: pointer; flex: 0 0 32px;
+}
+.waiter-app .cs-body { overflow-y: auto; padding: 10px 14px; flex: 1; }
+.waiter-app .cs-empty { text-align: center; color: #94a3b8; padding: 24px 0; }
+
+.waiter-app .cs-footer { padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid #eef1f5; background: #f8fafc; }
+.waiter-app .cs-total { display: flex; justify-content: space-between; font-size: 17px; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
+.waiter-app .cs-actions { display: flex; gap: 10px; }
+.waiter-app .cs-addmore {
+    flex: 0 0 auto; padding: 14px 16px; border-radius: 12px; border: 1.5px solid #e2e8f0;
+    background: #fff; color: #475569; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.waiter-app .cs-send {
+    flex: 1; padding: 14px; border-radius: 12px; border: none;
+    background: #0d9488; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer;
+}
+.waiter-app .cs-send:disabled { background: #94a3b8; cursor: default; }
+.waiter-app .cs-clear, .waiter-app .cs-cancel {
+    width: 100%; margin-top: 10px; padding: 10px; border-radius: 10px; cursor: pointer;
+    background: #fff; border: 1px solid #fecaca; color: #dc2626; font-size: 13px; font-weight: 700;
+}

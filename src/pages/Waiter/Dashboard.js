@@ -8,6 +8,7 @@ import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
 import CartItem from "../../components/Waiter/CartItem";
+import CartSheet from "../../components/Waiter/CartSheet";
 import BillModal from "../../components/Waiter/BillModal";
 
 function Dashboard() {
@@ -25,10 +26,10 @@ function Dashboard() {
     const [showRunningOrders, setShowRunningOrders] = useState(false);
     const [showBill, setShowBill] = useState(false);   // bill preview/edit modal
     const [billBusy, setBillBusy] = useState(false);
+    const [showCart, setShowCart] = useState(false);   // new-order review sheet
     // The selected table's already-sent items, shown read-only for reference.
     const [previousItems, setPreviousItems] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [orderNumber, setOrderNumber] = useState(1001);
     const [waiterName] = useState("John");
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
@@ -105,7 +106,6 @@ function Dashboard() {
     );
 
     const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity), 0);
-    const cartTotal = cart.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
 
     const normalizeQuantity = (value) => {
         const parsed = Number(value);
@@ -209,6 +209,7 @@ function Dashboard() {
         await loadCategories();
         // Fresh cart for the NEW batch (each send = a separate kitchen ticket).
         setCart([]);
+        setShowCart(false);
         setEditingOrder(null);
         // Show the table's already-ordered items (all unpaid orders) read-only.
         if (table.status === "OCCUPIED") {
@@ -415,9 +416,9 @@ function Dashboard() {
                     await loadTables();
                 }
                 alert(selectedTable?.isParcel ? "Parcel Order Sent To Kitchen" : "Order Sent To Kitchen");
-                setOrderNumber((prev) => prev + 1);
             }
             setCart([]);
+            setShowCart(false);
             setSelectedTable(null);
             setEditingOrder(null);
             setPreviousItems([]);
@@ -633,7 +634,7 @@ function Dashboard() {
             {selectedTable && (
             <div className="main-workspace">
 
-                {/* Back bar — return to the tables screen */}
+                {/* Back bar — return to the tables screen (+ Bill for sent items) */}
                 <div className="ws-backbar">
                     <button className="ws-back" onClick={handleChangeTable}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><polyline points="15 18 9 12 15 6"/></svg>
@@ -642,92 +643,30 @@ function Dashboard() {
                     <span className="ws-back-table">
                         {selectedTable.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`}
                     </span>
-                </div>
-
-                {/* ── Active Cart ── */}
-                <div className="workspace-cart">
-                    <div className="wc-header">
-                        <div className="wc-title">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                            <div className="wc-title-text">
-                                <span>
-                                    {selectedTable
-                                        ? (selectedTable.isParcel ? "Active Order – Parcel" : `Active Order – ${selectedTable.table_number}`)
-                                        : "Active Order"}
-                                </span>
-                                <span className="wc-order-meta">
-                                    {editingOrder ? editingOrder.order_number : `ORD-${orderNumber}`}
-                                    {totalItems > 0 && <span className="wc-item-badge">{totalItems}</span>}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="wc-header-actions">
-                            {previousItems.length > 0 && (
-                                <button className="wc-bill-icon" onClick={() => setShowBill(true)} title="Generate bill">
-                                    🧾 Bill
-                                </button>
-                            )}
-                            {cart.length > 0 && (
-                                <button className="wc-clear-btn" onClick={clearCart} title="Clear new items">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="wc-items">
-                        {previousItems.length > 0 && (
-                            <div className="wc-previous">
-                                <div className="wc-previous-label">🍽 Already sent to kitchen</div>
-                                {previousItems.map((it) => (
-                                    <div key={it.id} className={`wc-previous-row${it.served ? " served" : ""}`}>
-                                        <span>{it.quantity}× {it.item_name}</span>
-                                        {it.served ? (
-                                            <span className="wc-served-tag">✓ Served</span>
-                                        ) : (
-                                            <button className="wc-item-serve" onClick={() => handleServeItem(it)}>
-                                                Serve
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                <div className="wc-previous-divider">＋ New items (sent as a new ticket)</div>
-                            </div>
-                        )}
-                        {cart.length === 0 && previousItems.length === 0 ? (
-                            <div className="wc-hint">Add items from the menu below ↓</div>
-                        ) : (
-                            cart.map((item) => (
-                                <CartItem
-                                    key={item.lineId}
-                                    item={item}
-                                    increaseQuantity={increaseQuantity}
-                                    decreaseQuantity={decreaseQuantity}
-                                    removeItem={removeItem}
-                                />
-                            ))
-                        )}
-                    </div>
-
-                    {/* Only show the send footer once there are new items to send. */}
-                    {cart.length > 0 && (
-                        <div className="wc-footer">
-                            <div className="wc-instructions-row">
-                                <input type="text" className="wc-instructions-input" placeholder="Special Instructions..." />
-                                <button className="wc-copy-btn" title="Copy">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                </button>
-                            </div>
-                            {editingOrder && (
-                                <button className="wc-cancel-btn" onClick={handleCancelOrder}>
-                                    ✕ Cancel Order
-                                </button>
-                            )}
-                        </div>
+                    {previousItems.length > 0 && (
+                        <button className="ws-bill-chip" onClick={() => setShowBill(true)}>🧾 Bill</button>
                     )}
                 </div>
 
-                {/* ── MIDDLE: Menu ── */}
+                {/* Already sent to kitchen — static (doesn't grow when adding new
+                    items, so the menu below never shifts). Serve items here. */}
+                {previousItems.length > 0 && (
+                    <div className="ws-sent">
+                        <div className="ws-sent-label">🍽 Already sent to kitchen</div>
+                        {previousItems.map((it) => (
+                            <div key={it.id} className={`ws-sent-row${it.served ? " served" : ""}`}>
+                                <span>{it.quantity}× {it.item_name}</span>
+                                {it.served ? (
+                                    <span className="wc-served-tag">✓ Served</span>
+                                ) : (
+                                    <button className="wc-item-serve" onClick={() => handleServeItem(it)}>Serve</button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* ── Menu (the main, stable scroll area) ── */}
                 <div className="workspace-menu">
                     <div className="menu-top-bar">
                         <h2 className="menu-title">Menu</h2>
@@ -778,15 +717,31 @@ function Dashboard() {
             </div>
             )}
 
-            {/* Always-visible Send to Kitchen bar while there are new items */}
+            {/* Always-visible bar — opens the order sheet to review before sending */}
             {selectedTable && cart.length > 0 && (
                 <div className="wc-sticky-send">
-                    <button className="wc-send-btn" onClick={placeOrder}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                        {editingOrder ? "Update Order" : "Send to Kitchen"}
-                        <span className="wc-send-meta">{totalItems} · ₹{cartTotal.toFixed(0)}</span>
+                    <button className="wc-send-btn" onClick={() => setShowCart(true)}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                        {editingOrder ? "Review & Update" : "Review & Send"}
+                        <span className="wc-send-count">{totalItems}</span>
                     </button>
                 </div>
+            )}
+
+            {/* Order review sheet (opened from the bottom bar) */}
+            {showCart && selectedTable && (
+                <CartSheet
+                    tableLabel={selectedTable.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`}
+                    items={cart}
+                    editing={!!editingOrder}
+                    increaseQuantity={increaseQuantity}
+                    decreaseQuantity={decreaseQuantity}
+                    removeItem={removeItem}
+                    onClear={() => { clearCart(); setShowCart(false); }}
+                    onSend={placeOrder}
+                    onCancelOrder={handleCancelOrder}
+                    onClose={() => setShowCart(false)}
+                />
             )}
 
             {/* ══════════════ BOTTOM STATUS BAR ══════════════ */}
