@@ -19,6 +19,7 @@ router.put("/item/:itemId/serve", staff, orderController.markItemServed);
 router.put("/item/:itemId/qty", staff, orderController.setItemQuantity);   // edit bill quantity
 router.delete("/item/:itemId", staff, orderController.removeItem);   // cancel one bill item
 router.post("/table/:tableId/settle", roleMiddleware(["admin", "cashier"]), orderController.settleTable);
+router.post("/table/:tableId/item", staff, orderController.addBillItem);   // add an item to the bill
 router.get("/today-count", staff, orderController.getTodaysOrderCount);
 router.get("/:id/items", staff, orderController.getOrderDetails);
 router.get("/:id", staff, orderController.getOrderById);

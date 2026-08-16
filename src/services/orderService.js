@@ -33,6 +33,9 @@ export const cancelItem = (itemId) =>
 export const setItemQuantity = (itemId, quantity) =>
   api.put(`/orders/item/${itemId}/qty`, { quantity });
 
+export const addBillItem = (tableId, menuItemId, quantity = 1) =>
+  api.post(`/orders/table/${tableId}/item`, { menu_item_id: menuItemId, quantity });
+
 export const updateOrder = (id, data) =>
   api.put(`/orders/${id}`, data);
 

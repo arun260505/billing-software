@@ -432,6 +432,84 @@ const removeOrderItem = (itemId, restaurantId, callback) => {
 
 };
 
+// Recompute one order's subtotal/tax/grand_total from its remaining items.
+const recomputeOrderTotals = (orderId, restaurantId, callback) => {
+    db.query(
+        `SELECT COALESCE(SUM(oi.total), 0) AS subtotal
+         FROM order_items oi WHERE oi.order_id = ?`,
+        [orderId],
+        (err, rows) => {
+            if (err) return callback(err);
+            const subtotal = Number(rows[0].subtotal) || 0;
+            const tax = Math.round(subtotal * 0.05 * 100) / 100;
+            const grand = Math.round((subtotal + tax) * 100) / 100;
+            db.query(
+                `UPDATE orders SET subtotal=?, tax=?, grand_total=? WHERE id=? AND restaurant_id=?`,
+                [subtotal, tax, grand, orderId, restaurantId],
+                (err) => callback(err, { orderId, subtotal, tax, grand })
+            );
+        }
+    );
+};
+
+// Add an item to a table's bill (item was served but not recorded). Inserted as
+// already-served so it never hits the kitchen. Appends to the table's most
+// recent active order, or creates a served order if none is open. Tenant-scoped.
+const addBillItem = (tableId, restaurantId, menuItemId, quantity, employeeId, callback) => {
+
+    const qty = Math.max(1, Number(quantity) || 1);
+
+    db.query(
+        "SELECT price FROM menu_items WHERE id=? AND restaurant_id=?",
+        [menuItemId, restaurantId],
+        (err, mrows) => {
+            if (err) return callback(err);
+            if (!mrows.length) return callback(new Error("Menu item not found."));
+            const price = Number(mrows[0].price);
+            const total = Math.round(price * qty * 100) / 100;
+
+            const insertItem = (orderId) => {
+                db.query(
+                    `INSERT INTO order_items (order_id, menu_item_id, quantity, price, total, served)
+                     VALUES (?, ?, ?, ?, ?, 1)`,
+                    [orderId, menuItemId, qty, price, total],
+                    (err) => {
+                        if (err) return callback(err);
+                        recomputeOrderTotals(orderId, restaurantId, callback);
+                    }
+                );
+            };
+
+            db.query(
+                `SELECT id FROM orders
+                 WHERE table_id=? AND restaurant_id=?
+                   AND order_status IN ('Pending','Preparing','Ready','Served')
+                 ORDER BY id DESC LIMIT 1`,
+                [tableId, restaurantId],
+                (err, orows) => {
+                    if (err) return callback(err);
+                    if (orows.length) return insertItem(orows[0].id);
+
+                    // No open order — create a served one (won't reach the kitchen).
+                    db.query(
+                        `INSERT INTO orders
+                         (restaurant_id, customer_id, table_id, employee_id, order_number,
+                          order_type, order_status, subtotal, discount, tax, grand_total,
+                          payment_status, notes)
+                         VALUES (?, NULL, ?, ?, ?, 'Dine-In', 'Served', 0, 0, 0, 0, 'Pending', NULL)`,
+                        [restaurantId, tableId, employeeId, `ORD-${Date.now()}`],
+                        (err, res) => {
+                            if (err) return callback(err);
+                            insertItem(res.insertId);
+                        }
+                    );
+                }
+            );
+        }
+    );
+
+};
+
 // Set one order-item's quantity while editing the bill (does NOT touch order
 // status, so it never creates a new kitchen ticket). Recomputes the order's
 // totals. A quantity of 0 or less removes the item. Tenant-scoped.
@@ -523,5 +601,6 @@ module.exports = {
     markTableServed,
     markItemServed,
     removeOrderItem,
-    setItemQuantity
+    setItemQuantity,
+    addBillItem
 };

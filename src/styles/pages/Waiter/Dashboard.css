@@ -779,12 +779,12 @@
 /* ── Back-bar Bill chip ─────────────────────────────────────────────── */
 .waiter-app .ws-backbar { justify-content: flex-start; }
 .waiter-app .ws-bill-chip {
-    margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
-    background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;
-    border-radius: 9px; padding: 7px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
-    white-space: nowrap;
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+    background: #7c3aed; color: #fff; border: none;
+    border-radius: 11px; padding: 11px 20px; font-size: 15px; font-weight: 800; cursor: pointer;
+    white-space: nowrap; box-shadow: 0 2px 8px rgba(124,58,237,.35);
 }
-.waiter-app .ws-bill-chip:active { background: #ddd6fe; }
+.waiter-app .ws-bill-chip:active { background: #6d28d9; }
 
 /* ── "Already sent to kitchen" — static strip above the menu ─────────── */
 .waiter-app .ws-sent { background: #f5f8ff; border-bottom: 8px solid #eef1f5; padding: 12px 14px; }
@@ -834,4 +834,35 @@
 .waiter-app .cs-clear, .waiter-app .cs-cancel {
     width: 100%; margin-top: 10px; padding: 10px; border-radius: 10px; cursor: pointer;
     background: #fff; border: 1px solid #fecaca; color: #dc2626; font-size: 13px; font-weight: 700;
+}
+
+/* ── Bill modal: add-an-item control ────────────────────────────────── */
+.waiter-app .bill-add-toggle {
+    width: 100%; margin-top: 10px; padding: 12px; border-radius: 12px; cursor: pointer;
+    background: #f0fdfa; border: 1.5px dashed #5eead4; color: #0d9488;
+    font-size: 14px; font-weight: 700;
+}
+.waiter-app .bill-add-toggle:disabled { opacity: .6; cursor: default; }
+.waiter-app .bill-add { margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; background: #f8fafc; }
+.waiter-app .bill-add-search {
+    width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid #e2e8f0;
+    font-size: 14px; outline: none; background: #fff;
+}
+.waiter-app .bill-add-search:focus { border-color: #0d9488; }
+.waiter-app .bill-add-list { max-height: 190px; overflow-y: auto; margin: 8px 0; }
+.waiter-app .bill-add-row {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 11px 10px; border: none; border-bottom: 1px solid #eef1f5;
+    background: #fff; cursor: pointer; text-align: left;
+}
+.waiter-app .bill-add-row:disabled { opacity: .5; cursor: default; }
+.waiter-app .bill-add-name { flex: 1; font-size: 14px; font-weight: 600; color: #0f172a; }
+.waiter-app .bill-add-price { font-size: 13px; font-weight: 700; color: #475569; }
+.waiter-app .bill-add-plus {
+    width: 26px; height: 26px; border-radius: 8px; background: #0d9488; color: #fff;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800;
+}
+.waiter-app .bill-add-cancel {
+    width: 100%; padding: 9px; border-radius: 9px; border: 1px solid #e2e8f0;
+    background: #fff; color: #475569; font-size: 13px; font-weight: 700; cursor: pointer;
 }

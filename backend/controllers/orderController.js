@@ -191,6 +191,24 @@ exports.setItemQuantity = (req, res) => {
 
 };
 
+// POST /api/orders/table/:tableId/item — add an item to the bill (served but not
+// recorded). Body: { menu_item_id, quantity }.
+exports.addBillItem = (req, res) => {
+
+    orderModel.addBillItem(
+        req.params.tableId,
+        req.user.restaurant_id,
+        req.body.menu_item_id,
+        req.body.quantity,
+        req.user.id,
+        (err, result) => {
+            if (err) return error(res, err.message, 500);
+            return success(res, "Item added to the bill.", result);
+        }
+    );
+
+};
+
 // DELETE /api/orders/item/:itemId — cancel one item from the bill (waiter edit)
 exports.removeItem = (req, res) => {
 

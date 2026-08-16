@@ -1,8 +1,24 @@
+import { useState } from "react";
+
 // Bill preview the waiter reviews BEFORE sending to the cashier. Identical items
 // are merged into one line with a  −  qty  +  stepper, and can be adjusted or
-// removed here. Adjusting quantity only edits the existing order (it never
-// creates a new kitchen ticket). Only "Confirm & Send" actually sends the bill.
-function BillModal({ tableLabel, items, busy, onSetQty, onRemoveGroup, onConfirm, onClose }) {
+// removed here. The waiter can also ADD an item that was served but not recorded.
+// None of this touches the kitchen. Only "Confirm & Send" actually sends the bill.
+function BillModal({ tableLabel, items, menuItems, busy, onSetQty, onRemoveGroup, onAddItem, onConfirm, onClose }) {
+
+    const [adding, setAdding] = useState(false);
+    const [search, setSearch] = useState("");
+
+    const pick = (mi) => {
+        onAddItem(mi);
+        setSearch("");
+        setAdding(false);
+    };
+
+    const addable = (menuItems || []).filter(
+        (mi) => Number(mi.available_quantity) !== 0 &&
+                mi.item_name.toLowerCase().includes(search.trim().toLowerCase())
+    );
 
     // Merge the raw per-order-item rows into display groups by item.
     const groups = [];
@@ -68,6 +84,37 @@ function BillModal({ tableLabel, items, busy, onSetQty, onRemoveGroup, onConfirm
                                 </div>
                             </div>
                         ))
+                    )}
+
+                    {/* Add an item that was served but not on the bill */}
+                    {adding ? (
+                        <div className="bill-add">
+                            <input
+                                className="bill-add-search"
+                                placeholder="Search item to add…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                autoFocus
+                            />
+                            <div className="bill-add-list">
+                                {addable.length === 0 ? (
+                                    <p className="bill-empty">No matching items.</p>
+                                ) : (
+                                    addable.slice(0, 30).map((mi) => (
+                                        <button key={mi.id} className="bill-add-row" disabled={busy} onClick={() => pick(mi)}>
+                                            <span className="bill-add-name">{mi.item_name}</span>
+                                            <span className="bill-add-price">₹{Number(mi.price).toFixed(0)}</span>
+                                            <span className="bill-add-plus">＋</span>
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                            <button className="bill-add-cancel" onClick={() => { setAdding(false); setSearch(""); }}>Done</button>
+                        </div>
+                    ) : (
+                        <button className="bill-add-toggle" disabled={busy} onClick={() => setAdding(true)}>
+                            ＋ Add an item
+                        </button>
                     )}
                 </div>
 

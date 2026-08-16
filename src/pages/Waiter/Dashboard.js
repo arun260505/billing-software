@@ -3,7 +3,7 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Waiter/Dashboard.css";
 import { getCategories, getItemsByCategory, getAllItems } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markItemServed, cancelItem, setItemQuantity, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markItemServed, cancelItem, setItemQuantity, addBillItem, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -345,6 +345,20 @@ function Dashboard() {
             await loadRunningOrders();
         } catch (e) {
             alert("Could not update the quantity.");
+        } finally {
+            setBillBusy(false);
+        }
+    };
+
+    // Add an item to the bill that was served but not recorded (no kitchen ticket).
+    const handleAddBillItem = async (menuItem) => {
+        setBillBusy(true);
+        try {
+            await addBillItem(selectedTable.id, menuItem.id, 1);
+            await refreshTableItems(selectedTable.id);
+            await loadRunningOrders();
+        } catch (e) {
+            alert("Could not add the item to the bill.");
         } finally {
             setBillBusy(false);
         }
@@ -779,9 +793,11 @@ function Dashboard() {
                 <BillModal
                     tableLabel={selectedTable.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`}
                     items={previousItems}
+                    menuItems={allItems}
                     busy={billBusy}
                     onSetQty={handleSetBillQty}
                     onRemoveGroup={handleRemoveBillGroup}
+                    onAddItem={handleAddBillItem}
                     onConfirm={requestBill}
                     onClose={() => setShowBill(false)}
                 />
