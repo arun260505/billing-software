@@ -91,23 +91,20 @@ function Dashboard() {
             alert("Please select a table first.");
             return;
         }
-        const existingItem = cart.find((c) => c.id === item.id);
+        // Each add is its OWN line while building the order. Same items are
+        // merged into quantities only when the order is sent to the kitchen.
         const limit = getItemQuantityLimit(item);
-        if (existingItem && normalizeQuantity(existingItem.quantity) >= limit) {
+        const currentTotal = cart
+            .filter((c) => c.id === item.id)
+            .reduce((s, c) => s + normalizeQuantity(c.quantity), 0);
+        if (currentTotal >= limit) {
             alert(`Only ${limit} items available.`);
             return;
         }
-        setCart((prev) => {
-            const cur = prev.find((c) => c.id === item.id);
-            if (cur) {
-                return prev.map((c) =>
-                    c.id === item.id
-                        ? { ...c, quantity: normalizeQuantity(c.quantity) + 1, available_quantity: item.available_quantity }
-                        : c
-                );
-            }
-            return [...prev, { ...item, quantity: 1, isNew: true }];
-        });
+        setCart((prev) => [
+            ...prev,
+            { ...item, quantity: 1, isNew: true, lineId: `${Date.now()}-${Math.random()}` },
+        ]);
     };
 
     const newOrder = () => {
@@ -174,7 +171,7 @@ function Dashboard() {
     const openOrder = async (order) => {
         try {
             const res = await getOrderDetails(order.id);
-            const items = res.data.data.map((item) => ({
+            const items = res.data.data.map((item, idx) => ({
                 id: item.menu_item_id,
                 menu_item_id: item.menu_item_id,
                 item_name: item.item_name,
@@ -184,6 +181,7 @@ function Dashboard() {
                 gst: 5,
                 available_quantity: 999,
                 isNew: false,
+                lineId: `existing-${item.menu_item_id}-${idx}`,
             }));
             setCart(items);
             setEditingOrder(order);
@@ -194,33 +192,26 @@ function Dashboard() {
         }
     };
 
-    const increaseQuantity = (id) => {
-        const cartItem = cart.find((item) => item.id === id);
-        if (!cartItem) return;
-        const limit = getItemQuantityLimit(cartItem);
-        if (normalizeQuantity(cartItem.quantity) >= limit) {
-            alert(`Only ${limit} items available.`);
-            return;
-        }
+    const increaseQuantity = (lineId) => {
         setCart((prev) =>
             prev.map((item) =>
-                item.id === id ? { ...item, quantity: normalizeQuantity(item.quantity) + 1 } : item
+                item.lineId === lineId ? { ...item, quantity: normalizeQuantity(item.quantity) + 1 } : item
             )
         );
     };
 
-    const decreaseQuantity = (id) => {
+    const decreaseQuantity = (lineId) => {
         setCart((prev) =>
             prev
                 .map((item) =>
-                    item.id === id ? { ...item, quantity: normalizeQuantity(item.quantity) - 1 } : item
+                    item.lineId === lineId ? { ...item, quantity: normalizeQuantity(item.quantity) - 1 } : item
                 )
                 .filter((item) => item.quantity > 0)
         );
     };
 
-    const removeItem = (id) => {
-        setCart((prev) => prev.filter((item) => item.id !== id));
+    const removeItem = (lineId) => {
+        setCart((prev) => prev.filter((item) => item.lineId !== lineId));
     };
 
     const clearCart = () => setCart([]);
@@ -239,16 +230,20 @@ function Dashboard() {
     const placeOrder = async () => {
         if (cart.length === 0) { alert("Please add items."); return; }
         if (!selectedTable) { alert("Please select a table first."); return; }
+        // Merge the separate cart lines into one entry per menu item on send.
+        const mergedItems = Object.values(
+            cart.reduce((acc, item) => {
+                const k = item.id;
+                if (!acc[k]) acc[k] = { menu_item_id: item.id, quantity: 0, price: item.price, gst: item.gst };
+                acc[k].quantity += normalizeQuantity(item.quantity);
+                return acc;
+            }, {})
+        );
         const orderData = {
             order_number: `ORD-${Date.now()}`,
             waiter_id: 1,
             table_id: selectedTable?.id || null,
-            items: cart.map((item) => ({
-                menu_item_id: item.id,
-                quantity: item.quantity,
-                price: item.price,
-                gst: item.gst,
-            })),
+            items: mergedItems,
         };
         try {
             if (editingOrder) {
@@ -516,7 +511,7 @@ function Dashboard() {
                         ) : (
                             cart.map((item) => (
                                 <CartItem
-                                    key={item.id}
+                                    key={item.lineId}
                                     item={item}
                                     increaseQuantity={increaseQuantity}
                                     decreaseQuantity={decreaseQuantity}

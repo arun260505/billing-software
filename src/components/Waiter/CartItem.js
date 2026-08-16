@@ -52,10 +52,10 @@ function CartItem({ item, increaseQuantity, decreaseQuantity, removeItem }) {
 
             {/* Controls */}
             <div className="cir-controls">
-                <button className="cir-btn" onClick={() => decreaseQuantity(item.id)}>−</button>
+                <button className="cir-btn" onClick={() => decreaseQuantity(item.lineId)}>−</button>
                 <span className="cir-qty">{quantity}</span>
-                <button className="cir-btn" onClick={() => increaseQuantity(item.id)}>+</button>
-                <button className="cir-remove" onClick={() => removeItem(item.id)}>✕</button>
+                <button className="cir-btn" onClick={() => increaseQuantity(item.lineId)}>+</button>
+                <button className="cir-remove" onClick={() => removeItem(item.lineId)}>✕</button>
             </div>
         </div>
     );

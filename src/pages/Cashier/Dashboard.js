@@ -97,23 +97,19 @@ function Dashboard() {
             alert("Please select a table first.");
             return;
         }
-        const existingItem = cart.find((c) => c.id === item.id);
+        // Each add is its own line; same items merge into quantities on send.
         const limit = getItemQuantityLimit(item);
-        if (existingItem && normalizeQuantity(existingItem.quantity) >= limit) {
+        const currentTotal = cart
+            .filter((c) => c.id === item.id)
+            .reduce((s, c) => s + normalizeQuantity(c.quantity), 0);
+        if (currentTotal >= limit) {
             alert(`Only ${limit} items available.`);
             return;
         }
-        setCart((prev) => {
-            const cur = prev.find((c) => c.id === item.id);
-            if (cur) {
-                return prev.map((c) =>
-                    c.id === item.id
-                        ? { ...c, quantity: normalizeQuantity(c.quantity) + 1, available_quantity: item.available_quantity }
-                        : c
-                );
-            }
-            return [...prev, { ...item, quantity: 1, isNew: true }];
-        });
+        setCart((prev) => [
+            ...prev,
+            { ...item, quantity: 1, isNew: true, lineId: `${Date.now()}-${Math.random()}` },
+        ]);
     };
 
     const newOrder = () => {
@@ -202,7 +198,7 @@ function Dashboard() {
     const openOrder = async (order) => {
         try {
             const res = await getOrderDetails(order.id);
-            const items = res.data.data.map((item) => ({
+            const items = res.data.data.map((item, idx) => ({
                 id: item.menu_item_id,
                 menu_item_id: item.menu_item_id,
                 item_name: item.item_name,
@@ -212,6 +208,7 @@ function Dashboard() {
                 gst: 5,
                 available_quantity: 999,
                 isNew: false,
+                lineId: `existing-${item.menu_item_id}-${idx}`,
             }));
             setCart(items);
             setEditingOrder(order);
@@ -222,34 +219,47 @@ function Dashboard() {
         }
     };
 
-    const increaseQuantity = (id) => {
-        const cartItem = cart.find((item) => item.id === id);
-        if (!cartItem) return;
-        const limit = getItemQuantityLimit(cartItem);
-        if (normalizeQuantity(cartItem.quantity) >= limit) {
-            alert(`Only ${limit} items available.`);
-            return;
-        }
+    const increaseQuantity = (lineId) => {
         setCart((prev) =>
             prev.map((item) =>
-                item.id === id ? { ...item, quantity: normalizeQuantity(item.quantity) + 1 } : item
+                item.lineId === lineId ? { ...item, quantity: normalizeQuantity(item.quantity) + 1 } : item
             )
         );
     };
 
-    const decreaseQuantity = (id) => {
+    const decreaseQuantity = (lineId) => {
         setCart((prev) =>
             prev
                 .map((item) =>
-                    item.id === id ? { ...item, quantity: normalizeQuantity(item.quantity) - 1 } : item
+                    item.lineId === lineId ? { ...item, quantity: normalizeQuantity(item.quantity) - 1 } : item
                 )
                 .filter((item) => item.quantity > 0)
         );
     };
 
-    const removeItem = (id) => {
-        setCart((prev) => prev.filter((item) => item.id !== id));
+    const removeItem = (lineId) => {
+        setCart((prev) => prev.filter((item) => item.lineId !== lineId));
     };
+
+    // Merge the separate cart lines into one entry per menu item (used when
+    // sending the order and when building the bill).
+    const mergeCartItems = (list) =>
+        Object.values(
+            list.reduce((acc, it) => {
+                const k = it.id;
+                if (!acc[k]) {
+                    acc[k] = {
+                        menu_item_id: it.id,
+                        item_name: it.item_name || it.name,
+                        quantity: 0,
+                        price: it.price,
+                        gst: it.gst,
+                    };
+                }
+                acc[k].quantity += normalizeQuantity(it.quantity);
+                return acc;
+            }, {})
+        );
 
     const clearCart = () => {
         if (blockIfParcelLocked()) return;
@@ -275,12 +285,7 @@ function Dashboard() {
             order_number: `ORD-${Date.now()}`,
             waiter_id: 1,
             table_id: selectedTable?.id || null,
-            items: cart.map((item) => ({
-                menu_item_id: item.id,
-                quantity: item.quantity,
-                price: item.price,
-                gst: item.gst,
-            })),
+            items: mergeCartItems(cart),
         };
         try {
             if (editingOrder) {
@@ -352,12 +357,7 @@ function Dashboard() {
                 waiter_id: 1,
                 table_id: selectedTable?.id || null,
                 order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
-                items: cart.map((item) => ({
-                    menu_item_id: item.id,
-                    quantity: item.quantity,
-                    price: item.price,
-                    gst: item.gst,
-                })),
+                items: mergeCartItems(cart),
             };
             try {
                 const res = await createOrder(orderData);
@@ -376,11 +376,7 @@ function Dashboard() {
             order_number: editingOrder ? editingOrder.order_number : `ORD-${orderNumber}`,
             tableName: selectedTable?.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`,
             isParcel: !!selectedTable?.isParcel,
-            items: cart.map((item) => ({
-                item_name: item.item_name || item.name,
-                quantity: item.quantity,
-                price: item.price,
-            })),
+            items: mergeCartItems(cart),
             subtotal: Number(subtotal.toFixed(2)),
             gst: Number(gst.toFixed(2)),
             serviceCharge: Number(serviceCharge.toFixed(2)),
@@ -604,7 +600,7 @@ function Dashboard() {
                             </div>
                         ) : (
                             cart.map((item) => (
-                                <CartItem key={item.id} item={item} increaseQuantity={increaseQuantity} decreaseQuantity={decreaseQuantity} removeItem={removeItem} />
+                                <CartItem key={item.lineId} item={item} increaseQuantity={increaseQuantity} decreaseQuantity={decreaseQuantity} removeItem={removeItem} />
                             ))
                         )}
                     </div>
@@ -663,7 +659,7 @@ function Dashboard() {
                             <div className="ws-empty">No items added</div>
                         ) : (
                             cart.map((item) => (
-                                <div key={item.id} className="ws-line">
+                                <div key={item.lineId} className="ws-line">
                                     <span className="ws-item-name">{item.item_name}</span>
                                     <span className="ws-item-calc">₹{item.price} × {item.quantity}</span>
                                     <span className="ws-item-total">₹{(item.price * item.quantity).toFixed(0)}</span>
