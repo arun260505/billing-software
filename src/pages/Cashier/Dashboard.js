@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
 import { getCategories, getItemsByCategory } from "../../services/menuService";
@@ -48,11 +49,22 @@ function Dashboard() {
         loadTodaysOrderCount();
 
         const statsTimer = setInterval(() => {
+            loadTables();
             loadRunningOrders();
             loadTodaysOrderCount();
-        }, 30000);
+        }, 10000);
 
-        return () => clearInterval(statsTimer);
+        const refreshOnFocus = () => {
+            loadTables();
+            loadRunningOrders();
+            loadTodaysOrderCount();
+        };
+        window.addEventListener("focus", refreshOnFocus);
+
+        return () => {
+            clearInterval(statsTimer);
+            window.removeEventListener("focus", refreshOnFocus);
+        };
     }, []);
 
     useEffect(() => {
@@ -110,6 +122,11 @@ function Dashboard() {
         setEditingOrder(null);
         setOrderNumber((prev) => prev + 1);
         updateDateTime();
+    };
+
+    const handleLogout = () => {
+        authService.logout();
+        window.location.href = "/";
     };
 
     const openRunningOrders = () => {
@@ -447,6 +464,14 @@ function Dashboard() {
                             <span className="nav-user-id">Cashier ID: C101</span>
                         </div>
                     </div>
+                    <button className="nav-logout" onClick={handleLogout} title="Logout">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        Logout
+                    </button>
                 </div>
             </nav>
 

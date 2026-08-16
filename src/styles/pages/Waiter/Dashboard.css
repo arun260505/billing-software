@@ -87,6 +87,19 @@
 .nav-user-name { display: block; font-size: 13px; font-weight: 600; color: #1a1a2e; }
 .nav-user-id   { display: block; font-size: 11px; color: #8a94a6; }
 
+.nav-logout {
+    display: flex; align-items: center; gap: 6px;
+    background: #f8f9fb; color: #4a5568;
+    border: 1.5px solid #e0e4ea; border-radius: 8px;
+    padding: 7px 12px; margin-left: 4px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: all 0.18s;
+}
+.nav-logout svg { width: 15px; height: 15px; }
+.nav-logout:hover {
+    background: #fef0f0; border-color: #e74c3c; color: #e74c3c;
+}
+
 /* ============================================================
    STATS ROW
    ============================================================ */
