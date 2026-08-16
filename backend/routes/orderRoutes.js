@@ -15,6 +15,7 @@ router.get("/", staff, orderController.getAllOrders);
 router.get("/running", staff, orderController.getRunningOrders);
 router.get("/table/:tableId/items", staff, orderController.getTableActiveItems);
 router.put("/table/:tableId/serve", staff, orderController.markTableServed);
+router.put("/item/:itemId/serve", staff, orderController.markItemServed);
 router.post("/table/:tableId/settle", roleMiddleware(["admin", "cashier"]), orderController.settleTable);
 router.get("/today-count", staff, orderController.getTodaysOrderCount);
 router.get("/:id/items", staff, orderController.getOrderDetails);

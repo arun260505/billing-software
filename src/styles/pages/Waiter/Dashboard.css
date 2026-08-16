@@ -446,3 +446,12 @@
     cursor: pointer;
 }
 .waiter-app .wc-served-btn:hover { background: #15803d; }
+
+/* Per-item serve controls in the read-only order section */
+.waiter-app .wc-item-serve {
+    background: #16a34a; color: #fff; border: none; border-radius: 6px;
+    padding: 3px 12px; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.waiter-app .wc-item-serve:hover { background: #15803d; }
+.waiter-app .wc-served-tag { color: #16a34a; font-size: 11px; font-weight: 700; }
+.waiter-app .wc-previous-row.served span:first-child { text-decoration: line-through; color: #9ca3af; }

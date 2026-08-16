@@ -164,6 +164,19 @@ exports.markServed = (req, res) => {
 
 };
 
+// PUT /api/orders/item/:itemId/serve — mark one order-item served (waiter/cashier)
+exports.markItemServed = (req, res) => {
+
+    orderModel.markItemServed(req.params.itemId, req.user.restaurant_id, (err) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Item marked as served.");
+
+    });
+
+};
+
 // PUT /api/orders/table/:tableId/serve — mark all the table's orders served
 exports.markTableServed = (req, res) => {
 

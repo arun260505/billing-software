@@ -81,10 +81,12 @@ const getKitchenTickets = (restaurantId, callback) => {
 
         const itemsSql = `
             SELECT
+                oi.id,
                 oi.order_id,
                 mi.item_name,
                 oi.quantity,
-                oi.notes
+                oi.notes,
+                oi.served
             FROM order_items oi
             INNER JOIN menu_items mi ON oi.menu_item_id = mi.id
             INNER JOIN orders o ON oi.order_id = o.id
@@ -99,9 +101,11 @@ const getKitchenTickets = (restaurantId, callback) => {
             const byOrder = {};
             items.forEach((it) => {
                 (byOrder[it.order_id] = byOrder[it.order_id] || []).push({
+                    id: it.id,
                     item_name: it.item_name,
                     quantity: it.quantity,
-                    notes: it.notes
+                    notes: it.notes,
+                    served: it.served
                 });
             });
 

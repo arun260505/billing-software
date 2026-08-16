@@ -24,6 +24,9 @@ export const markOrderServed = (id) =>
 export const markTableServed = (tableId) =>
   api.put(`/orders/table/${tableId}/serve`);
 
+export const markItemServed = (itemId) =>
+  api.put(`/orders/item/${itemId}/serve`);
+
 export const updateOrder = (id, data) =>
   api.put(`/orders/${id}`, data);
 

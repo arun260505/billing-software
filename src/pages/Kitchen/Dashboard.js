@@ -87,9 +87,10 @@ function Dashboard() {
                             </div>
                             <ul className="kd-items">
                                 {t.items.map((it, i) => (
-                                    <li key={i}>
+                                    <li key={i} className={Number(it.served) ? "kd-item-served" : ""}>
                                         <span className="kd-qty">{Number(it.quantity)}×</span>
                                         <span className="kd-item-name">{it.item_name}</span>
+                                        {Number(it.served) ? <span className="kd-served">✓ served</span> : null}
                                         {it.notes && <span className="kd-note">— {it.notes}</span>}
                                     </li>
                                 ))}

@@ -268,18 +268,21 @@ const cancelOrder = (orderId, restaurantId, callback) => {
 // excluding Completed/Cancelled. Merged by item for a read-only summary.
 const getTableActiveItems = (tableId, restaurantId, callback) => {
 
+    // Per order-item rows (each has its own served flag) so items can be
+    // marked served individually.
     const sql = `
         SELECT
+            oi.id,
             mi.item_name,
-            SUM(oi.quantity) AS quantity,
-            oi.price
+            oi.quantity,
+            oi.price,
+            oi.served
         FROM order_items oi
         INNER JOIN orders o ON oi.order_id = o.id
         INNER JOIN menu_items mi ON oi.menu_item_id = mi.id
         WHERE o.table_id = ? AND o.restaurant_id = ?
           AND o.order_status IN ('Pending','Preparing','Ready','Served')
-        GROUP BY oi.menu_item_id, mi.item_name, oi.price
-        ORDER BY mi.item_name ASC
+        ORDER BY oi.id ASC
     `;
 
     db.query(sql, [tableId, restaurantId], callback);
@@ -295,6 +298,50 @@ const markServed = (orderId, restaurantId, callback) => {
            AND order_status IN ('Pending','Preparing','Ready')`,
         [orderId, restaurantId],
         callback
+    );
+
+};
+
+// Mark a single order-item served; if all items in its order are then served,
+// the order itself becomes Served (and drops off the kitchen display).
+const markItemServed = (itemId, restaurantId, callback) => {
+
+    db.query(
+        `UPDATE order_items oi
+         INNER JOIN orders o ON oi.order_id = o.id
+         SET oi.served = 1
+         WHERE oi.id = ? AND o.restaurant_id = ?`,
+        [itemId, restaurantId],
+        (err) => {
+            if (err) return callback(err);
+
+            db.query(
+                `SELECT o.id AS orderId,
+                        SUM(oi2.served = 0) AS unserved
+                 FROM order_items oi
+                 INNER JOIN orders o ON oi.order_id = o.id
+                 INNER JOIN order_items oi2 ON oi2.order_id = o.id
+                 WHERE oi.id = ? AND o.restaurant_id = ?
+                 GROUP BY o.id`,
+                [itemId, restaurantId],
+                (err, rows) => {
+                    if (err) return callback(err);
+                    if (!rows.length) return callback(null);
+
+                    if (Number(rows[0].unserved) === 0) {
+                        db.query(
+                            `UPDATE orders SET order_status='Served'
+                             WHERE id=? AND restaurant_id=?
+                               AND order_status IN ('Pending','Preparing','Ready')`,
+                            [rows[0].orderId, restaurantId],
+                            callback
+                        );
+                    } else {
+                        callback(null);
+                    }
+                }
+            );
+        }
     );
 
 };
@@ -365,5 +412,6 @@ module.exports = {
     getTableActiveItems,
     settleTable,
     markServed,
-    markTableServed
+    markTableServed,
+    markItemServed
 };

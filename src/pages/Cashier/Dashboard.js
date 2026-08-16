@@ -3,7 +3,7 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
 import { getCategories, getItemsByCategory } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, markItemServed, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -181,9 +181,11 @@ function Dashboard() {
                 const res = await getTableItems(table.id);
                 setPreviousItems(
                     (res.data.data || []).map((it) => ({
+                        id: it.id,
                         item_name: it.item_name,
                         quantity: Number(it.quantity),
                         price: Number(it.price),
+                        served: Number(it.served),
                     }))
                 );
             } catch (e) {
@@ -206,6 +208,22 @@ function Dashboard() {
             const res = await getItemsByCategory(categoryId);
             setMenuItems(res.data.data);
         } catch (e) { console.error(e); }
+    };
+
+    // Cashier marks one item (order-item) served.
+    const handleServeItem = async (item) => {
+        setPreviousItems((prev) =>
+            prev.map((it) => (it.id === item.id ? { ...it, served: 1 } : it))
+        );
+        try {
+            await markItemServed(item.id);
+            await loadRunningOrders();
+        } catch (e) {
+            setPreviousItems((prev) =>
+                prev.map((it) => (it.id === item.id ? { ...it, served: 0 } : it))
+            );
+            alert("Could not mark the item as served.");
+        }
     };
 
     const loadRunningOrders = async () => {
@@ -674,10 +692,16 @@ function Dashboard() {
                         {previousItems.length > 0 && (
                             <div className="wc-previous">
                                 <div className="wc-previous-label">🍽 Current order (unpaid)</div>
-                                {previousItems.map((it, i) => (
-                                    <div key={i} className="wc-previous-row">
-                                        <span>{it.item_name}</span>
-                                        <span>{it.quantity}×</span>
+                                {previousItems.map((it) => (
+                                    <div key={it.id} className={`wc-previous-row${it.served ? " served" : ""}`}>
+                                        <span>{it.quantity}× {it.item_name}</span>
+                                        {it.served ? (
+                                            <span className="wc-served-tag">✓ Served</span>
+                                        ) : (
+                                            <button className="wc-item-serve" onClick={() => handleServeItem(it)}>
+                                                Serve
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                                 <button className="wc-bill-btn" onClick={() => printBill(selectedTable)}>

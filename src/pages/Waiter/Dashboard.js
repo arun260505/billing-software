@@ -3,7 +3,7 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Waiter/Dashboard.css";
 import { getCategories, getItemsByCategory } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markTableServed, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markItemServed, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -154,9 +154,11 @@ function Dashboard() {
                 const res = await getTableItems(table.id);
                 setPreviousItems(
                     (res.data.data || []).map((it) => ({
+                        id: it.id,
                         item_name: it.item_name,
                         quantity: Number(it.quantity),
                         price: Number(it.price),
+                        served: Number(it.served),
                     }))
                 );
             } catch (e) {
@@ -259,15 +261,19 @@ function Dashboard() {
         }
     };
 
-    // Mark the whole selected table's food as served (delivered).
-    const handleServeTable = async () => {
-        if (!selectedTable) return;
+    // Mark one item (order-item) served.
+    const handleServeItem = async (item) => {
+        setPreviousItems((prev) =>
+            prev.map((it) => (it.id === item.id ? { ...it, served: 1 } : it))
+        );
         try {
-            await markTableServed(selectedTable.id);
-            alert(`${selectedTable.table_number} marked as served.`);
+            await markItemServed(item.id);
             await loadRunningOrders();
         } catch (e) {
-            alert("Could not mark the table as served.");
+            setPreviousItems((prev) =>
+                prev.map((it) => (it.id === item.id ? { ...it, served: 0 } : it))
+            );
+            alert("Could not mark the item as served.");
         }
     };
 
@@ -565,15 +571,18 @@ function Dashboard() {
                         {previousItems.length > 0 && (
                             <div className="wc-previous">
                                 <div className="wc-previous-label">🍽 Already sent to kitchen</div>
-                                {previousItems.map((it, i) => (
-                                    <div key={i} className="wc-previous-row">
-                                        <span>{it.item_name}</span>
-                                        <span>{it.quantity}×</span>
+                                {previousItems.map((it) => (
+                                    <div key={it.id} className={`wc-previous-row${it.served ? " served" : ""}`}>
+                                        <span>{it.quantity}× {it.item_name}</span>
+                                        {it.served ? (
+                                            <span className="wc-served-tag">✓ Served</span>
+                                        ) : (
+                                            <button className="wc-item-serve" onClick={() => handleServeItem(it)}>
+                                                Serve
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
-                                <button className="wc-served-btn" onClick={handleServeTable}>
-                                    ✓ Mark Served
-                                </button>
                                 <button className="wc-bill-btn" onClick={requestBill}>
                                     🧾 Send Bill to Cashier
                                 </button>

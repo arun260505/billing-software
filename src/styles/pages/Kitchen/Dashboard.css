@@ -168,3 +168,8 @@
 .kitchen-app .kd-ticket.status-pending   .kd-advance { background: #d97706; }
 .kitchen-app .kd-ticket.status-preparing .kd-advance { background: #2563eb; }
 .kitchen-app .kd-ticket.status-ready     .kd-advance { background: #16a34a; }
+
+/* Served items on a still-active kitchen ticket */
+.kitchen-app .kd-items li.kd-item-served .kd-item-name { text-decoration: line-through; color: #64748b; }
+.kitchen-app .kd-items li.kd-item-served .kd-qty { color: #64748b; }
+.kitchen-app .kd-served { color: #22c55e; font-size: 11px; font-weight: 700; margin-left: 6px; }
