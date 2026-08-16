@@ -105,6 +105,7 @@ function Dashboard() {
     );
 
     const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity), 0);
+    const cartTotal = cart.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
 
     const normalizeQuantity = (value) => {
         const parsed = Number(value);
@@ -717,10 +718,6 @@ function Dashboard() {
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                                 </button>
                             </div>
-                            <button className="wc-send-btn" onClick={placeOrder}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                                {editingOrder ? "Update Order" : "Send to Kitchen"}
-                            </button>
                             {editingOrder && (
                                 <button className="wc-cancel-btn" onClick={handleCancelOrder}>
                                     ✕ Cancel Order
@@ -776,7 +773,20 @@ function Dashboard() {
                     </div>
                 </div>
 
+                {/* keeps the last menu items clear of the fixed Send bar */}
+                {cart.length > 0 && <div className="wc-send-spacer" aria-hidden="true" />}
             </div>
+            )}
+
+            {/* Always-visible Send to Kitchen bar while there are new items */}
+            {selectedTable && cart.length > 0 && (
+                <div className="wc-sticky-send">
+                    <button className="wc-send-btn" onClick={placeOrder}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        {editingOrder ? "Update Order" : "Send to Kitchen"}
+                        <span className="wc-send-meta">{totalItems} · ₹{cartTotal.toFixed(0)}</span>
+                    </button>
+                </div>
             )}
 
             {/* ══════════════ BOTTOM STATUS BAR ══════════════ */}

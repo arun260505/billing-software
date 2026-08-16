@@ -755,3 +755,22 @@
     white-space: nowrap;
 }
 .waiter-app .wc-bill-icon:active { background: #ddd6fe; }
+
+/* ── Always-visible Send to Kitchen bar (fixed to the phone column bottom) ── */
+.waiter-app .wc-sticky-send {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 440px; z-index: 60;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: #ffffff; border-top: 1px solid #e5e7eb;
+    box-shadow: 0 -6px 20px rgba(0,0,0,.12);
+}
+.waiter-app .wc-sticky-send .wc-send-btn {
+    width: 100%; margin: 0; display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 14px; font-size: 15px;
+}
+.waiter-app .wc-send-meta {
+    margin-left: 8px; padding-left: 10px; border-left: 1px solid rgba(255,255,255,.4);
+    font-weight: 800; font-size: 13px;
+}
+/* reserve space so the fixed bar never hides the last menu row */
+.waiter-app .wc-send-spacer { order: 4; height: 78px; width: 100%; }
