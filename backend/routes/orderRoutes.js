@@ -13,6 +13,7 @@ const takers = roleMiddleware(["cashier", "waiter"]);
 // Reads. NOTE: static/more-specific paths must be registered before "/:id".
 router.get("/", staff, orderController.getAllOrders);
 router.get("/running", staff, orderController.getRunningOrders);
+router.get("/table/:tableId/items", staff, orderController.getTableActiveItems);
 router.get("/today-count", staff, orderController.getTodaysOrderCount);
 router.get("/:id/items", staff, orderController.getOrderDetails);
 router.get("/:id", staff, orderController.getOrderById);

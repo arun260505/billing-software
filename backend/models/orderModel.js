@@ -264,6 +264,28 @@ const cancelOrder = (orderId, restaurantId, callback) => {
 
 };
 
+// A table's items across ALL its active (unpaid) orders — Pending..Served,
+// excluding Completed/Cancelled. Merged by item for a read-only summary.
+const getTableActiveItems = (tableId, restaurantId, callback) => {
+
+    const sql = `
+        SELECT
+            mi.item_name,
+            SUM(oi.quantity) AS quantity,
+            oi.price
+        FROM order_items oi
+        INNER JOIN orders o ON oi.order_id = o.id
+        INNER JOIN menu_items mi ON oi.menu_item_id = mi.id
+        WHERE o.table_id = ? AND o.restaurant_id = ?
+          AND o.order_status IN ('Pending','Preparing','Ready','Served')
+        GROUP BY oi.menu_item_id, mi.item_name, oi.price
+        ORDER BY mi.item_name ASC
+    `;
+
+    db.query(sql, [tableId, restaurantId], callback);
+
+};
+
 // Count of orders created today (tenant-scoped)
 const getTodaysOrderCount = (restaurantId, callback) => {
 
@@ -292,5 +314,6 @@ module.exports = {
     updateOrderTotals,
     deleteOrderItems,
     cancelOrder,
-    getTodaysOrderCount
+    getTodaysOrderCount,
+    getTableActiveItems
 };

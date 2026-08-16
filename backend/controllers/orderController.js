@@ -150,6 +150,19 @@ exports.getTodaysOrderCount = (req, res) => {
 
 };
 
+// GET /api/orders/table/:tableId/items — a table's active (unpaid) items, merged
+exports.getTableActiveItems = (req, res) => {
+
+    orderModel.getTableActiveItems(req.params.tableId, req.user.restaurant_id, (err, results) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Table items fetched.", results);
+
+    });
+
+};
+
 // GET /api/orders/:id/items
 exports.getOrderDetails = (req, res) => {
 

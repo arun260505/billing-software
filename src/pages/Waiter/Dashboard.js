@@ -3,7 +3,7 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Waiter/Dashboard.css";
 import { getCategories, getItemsByCategory } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -143,21 +143,20 @@ function Dashboard() {
         // Fresh cart for the NEW batch (each send = a separate kitchen ticket).
         setCart([]);
         setEditingOrder(null);
-        // Show the table's already-sent items as read-only reference.
+        // Show the table's already-ordered items (all unpaid orders) read-only.
         if (table.status === "OCCUPIED") {
-            const tableOrders = runningOrders.filter((o) => o.table_id === table.id);
-            const merged = {};
-            for (const o of tableOrders) {
-                try {
-                    const res = await getOrderDetails(o.id);
-                    (res.data.data || []).forEach((it) => {
-                        const k = it.item_name;
-                        if (!merged[k]) merged[k] = { item_name: it.item_name, quantity: 0, price: Number(it.price) };
-                        merged[k].quantity += Number(it.quantity);
-                    });
-                } catch (e) { /* ignore */ }
+            try {
+                const res = await getTableItems(table.id);
+                setPreviousItems(
+                    (res.data.data || []).map((it) => ({
+                        item_name: it.item_name,
+                        quantity: Number(it.quantity),
+                        price: Number(it.price),
+                    }))
+                );
+            } catch (e) {
+                setPreviousItems([]);
             }
-            setPreviousItems(Object.values(merged));
         } else {
             setPreviousItems([]);
         }

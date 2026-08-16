@@ -12,6 +12,9 @@ export const getTodaysOrderCount = () =>
 export const getOrderDetails = (id) =>
   api.get(`/orders/${id}/items`);
 
+export const getTableItems = (tableId) =>
+  api.get(`/orders/table/${tableId}/items`);
+
 export const updateOrder = (id, data) =>
   api.put(`/orders/${id}`, data);
 
