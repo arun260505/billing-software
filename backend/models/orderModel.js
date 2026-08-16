@@ -432,6 +432,62 @@ const removeOrderItem = (itemId, restaurantId, callback) => {
 
 };
 
+// Set one order-item's quantity while editing the bill (does NOT touch order
+// status, so it never creates a new kitchen ticket). Recomputes the order's
+// totals. A quantity of 0 or less removes the item. Tenant-scoped.
+const setItemQuantity = (itemId, restaurantId, quantity, callback) => {
+
+    const qty = Number(quantity);
+    if (!Number.isFinite(qty) || qty <= 0) {
+        return removeOrderItem(itemId, restaurantId, callback);
+    }
+
+    db.query(
+        `SELECT o.id AS orderId, oi.price
+         FROM order_items oi
+         INNER JOIN orders o ON oi.order_id = o.id
+         WHERE oi.id = ? AND o.restaurant_id = ?`,
+        [itemId, restaurantId],
+        (err, rows) => {
+            if (err) return callback(err);
+            if (!rows.length) return callback(null, { affectedRows: 0 });
+            const orderId = rows[0].orderId;
+            const total = Math.round(Number(rows[0].price) * qty * 100) / 100;
+
+            db.query(
+                `UPDATE order_items oi
+                 INNER JOIN orders o ON oi.order_id = o.id
+                 SET oi.quantity = ?, oi.total = ?
+                 WHERE oi.id = ? AND o.restaurant_id = ?`,
+                [qty, total, itemId, restaurantId],
+                (err) => {
+                    if (err) return callback(err);
+
+                    db.query(
+                        `SELECT COALESCE(SUM(oi.total), 0) AS subtotal
+                         FROM order_items oi WHERE oi.order_id = ?`,
+                        [orderId],
+                        (err, sumRows) => {
+                            if (err) return callback(err);
+                            const subtotal = Number(sumRows[0].subtotal) || 0;
+                            const tax = Math.round(subtotal * 0.05 * 100) / 100;
+                            const grand = Math.round((subtotal + tax) * 100) / 100;
+
+                            db.query(
+                                `UPDATE orders SET subtotal=?, tax=?, grand_total=?
+                                 WHERE id=? AND restaurant_id=?`,
+                                [subtotal, tax, grand, orderId, restaurantId],
+                                (err) => callback(err, { orderId, quantity: qty })
+                            );
+                        }
+                    );
+                }
+            );
+        }
+    );
+
+};
+
 // Count of orders created today (tenant-scoped)
 const getTodaysOrderCount = (restaurantId, callback) => {
 
@@ -466,5 +522,6 @@ module.exports = {
     markServed,
     markTableServed,
     markItemServed,
-    removeOrderItem
+    removeOrderItem,
+    setItemQuantity
 };

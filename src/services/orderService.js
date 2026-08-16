@@ -30,6 +30,9 @@ export const markItemServed = (itemId) =>
 export const cancelItem = (itemId) =>
   api.delete(`/orders/item/${itemId}`);
 
+export const setItemQuantity = (itemId, quantity) =>
+  api.put(`/orders/item/${itemId}/qty`, { quantity });
+
 export const updateOrder = (id, data) =>
   api.put(`/orders/${id}`, data);
 

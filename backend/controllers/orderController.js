@@ -177,6 +177,20 @@ exports.markItemServed = (req, res) => {
 
 };
 
+// PUT /api/orders/item/:itemId/qty — set an item's quantity while editing the
+// bill (no kitchen ticket created). Body: { quantity }.
+exports.setItemQuantity = (req, res) => {
+
+    orderModel.setItemQuantity(req.params.itemId, req.user.restaurant_id, req.body.quantity, (err, result) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Quantity updated.", result);
+
+    });
+
+};
+
 // DELETE /api/orders/item/:itemId — cancel one item from the bill (waiter edit)
 exports.removeItem = (req, res) => {
 

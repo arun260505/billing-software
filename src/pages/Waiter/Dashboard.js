@@ -3,7 +3,7 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Waiter/Dashboard.css";
 import { getCategories, getItemsByCategory } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markItemServed, cancelItem, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markItemServed, cancelItem, setItemQuantity, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -308,17 +308,32 @@ function Dashboard() {
         }
     };
 
-    // Cancel one item from the bill (customer changed their mind). Removes it
-    // server-side, then refreshes the list so the modal + total update live.
-    const handleCancelBillItem = async (item) => {
-        if (!window.confirm(`Cancel ${item.quantity}× ${item.item_name}?`)) return;
+    // Adjust a bill line's quantity (− / +). Only edits the existing order — it
+    // never creates a new kitchen ticket — and totals are recomputed server-side.
+    const handleSetBillQty = async (rowId, qty) => {
         setBillBusy(true);
         try {
-            await cancelItem(item.id);
+            await setItemQuantity(rowId, qty);
             await refreshTableItems(selectedTable.id);
             await loadRunningOrders();
         } catch (e) {
-            alert("Could not cancel the item.");
+            alert("Could not update the quantity.");
+        } finally {
+            setBillBusy(false);
+        }
+    };
+
+    // Remove a whole item line from the bill (customer changed their mind).
+    const handleRemoveBillGroup = async (rows) => {
+        const label = rows[0]?.item_name || "this item";
+        if (!window.confirm(`Remove ${label} from the bill?`)) return;
+        setBillBusy(true);
+        try {
+            for (const r of rows) await cancelItem(r.id);
+            await refreshTableItems(selectedTable.id);
+            await loadRunningOrders();
+        } catch (e) {
+            alert("Could not remove the item.");
         } finally {
             setBillBusy(false);
         }
@@ -646,12 +661,8 @@ function Dashboard() {
                                 <div className="wc-previous-divider">＋ New items (sent as a new ticket)</div>
                             </div>
                         )}
-                        {cart.length === 0 ? (
-                            <div className="wc-empty">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                                <p>No items yet</p>
-                                <span>Select a table &amp; add items from the menu</span>
-                            </div>
+                        {cart.length === 0 && previousItems.length === 0 ? (
+                            <div className="wc-hint">Add items from the menu below ↓</div>
                         ) : (
                             cart.map((item) => (
                                 <CartItem
@@ -665,23 +676,26 @@ function Dashboard() {
                         )}
                     </div>
 
-                    <div className="wc-footer">
-                        <div className="wc-instructions-row">
-                            <input type="text" className="wc-instructions-input" placeholder="Special Instructions..." />
-                            <button className="wc-copy-btn" title="Copy">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    {/* Only show the send footer once there are new items to send. */}
+                    {cart.length > 0 && (
+                        <div className="wc-footer">
+                            <div className="wc-instructions-row">
+                                <input type="text" className="wc-instructions-input" placeholder="Special Instructions..." />
+                                <button className="wc-copy-btn" title="Copy">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                </button>
+                            </div>
+                            <button className="wc-send-btn" onClick={placeOrder}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                                {editingOrder ? "Update Order" : "Send to Kitchen"}
                             </button>
+                            {editingOrder && (
+                                <button className="wc-cancel-btn" onClick={handleCancelOrder}>
+                                    ✕ Cancel Order
+                                </button>
+                            )}
                         </div>
-                        <button className="wc-send-btn" onClick={placeOrder}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                            {editingOrder ? "Update Order" : "Send to Kitchen"}
-                        </button>
-                        {editingOrder && (
-                            <button className="wc-cancel-btn" onClick={handleCancelOrder}>
-                                ✕ Cancel Order
-                            </button>
-                        )}
-                    </div>
+                    )}
                 </div>
 
                 {/* ── MIDDLE: Menu ── */}
@@ -778,7 +792,8 @@ function Dashboard() {
                     tableLabel={selectedTable.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`}
                     items={previousItems}
                     busy={billBusy}
-                    onCancelItem={handleCancelBillItem}
+                    onSetQty={handleSetBillQty}
+                    onRemoveGroup={handleRemoveBillGroup}
                     onConfirm={requestBill}
                     onClose={() => setShowBill(false)}
                 />
