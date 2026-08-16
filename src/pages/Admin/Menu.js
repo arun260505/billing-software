@@ -18,6 +18,13 @@ function Menu() {
     const [summary, setSummary] = useState({});
     const [categories, setCategories] = useState([]);
 
+    // Which category sections are expanded on the menu (click to open/close).
+    const [openCats, setOpenCats] = useState([]);
+    const toggleCat = (name) =>
+        setOpenCats((prev) =>
+            prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+        );
+
     const [loading, setLoading] = useState(false);
 
     const [search, setSearch] = useState("");
@@ -406,7 +413,7 @@ function Menu() {
 
                     {/* ================= Menu Table ================= */}
 
-<div className="table-card">
+<div className="menu-table-card">
 
     <table className="menu-table">
 
@@ -479,7 +486,32 @@ function Menu() {
 
             ) : (
 
-                currentItems.map(item => (
+                Object.entries(
+                    filteredItems.reduce((groups, item) => {
+                        const key = item.category_name || "Uncategorized";
+                        (groups[key] = groups[key] || []).push(item);
+                        return groups;
+                    }, {})
+                ).map(([catName, catItems]) => (
+
+                    <React.Fragment key={catName}>
+
+                        <tr
+                            className="cat-header-row"
+                            onClick={() => toggleCat(catName)}
+                        >
+                            <td colSpan="7">
+                                <span className="cat-toggle">
+                                    {openCats.includes(catName) ? "▾" : "▸"}
+                                </span>
+                                <span className="cat-name">{catName}</span>
+                                <span className="cat-count">
+                                    {catItems.length} item{catItems.length !== 1 ? "s" : ""}
+                                </span>
+                            </td>
+                        </tr>
+
+                        {openCats.includes(catName) && catItems.map(item => (
 
                     <tr key={item.id}>
 
@@ -620,6 +652,10 @@ function Menu() {
                         </td>
 
                     </tr>
+
+                        ))}
+
+                    </React.Fragment>
 
                 ))
 
