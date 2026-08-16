@@ -170,6 +170,8 @@ exports.getWaiterItems = (restaurantId, callback) => {
             m.item_name,
             m.price,
             m.gst,
+            m.food_type,
+            m.description,
             m.available AS available_quantity,
             c.category_name
         FROM menu_items m
@@ -202,6 +204,8 @@ exports.getWaiterItemsByCategory = (categoryId, restaurantId, callback) => {
             m.item_name,
             m.price,
             m.gst,
+            m.food_type,
+            m.description,
             m.available AS available_quantity,
             c.category_name
         FROM menu_items m

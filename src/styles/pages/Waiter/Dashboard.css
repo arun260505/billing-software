@@ -455,3 +455,157 @@
 .waiter-app .wc-item-serve:hover { background: #15803d; }
 .waiter-app .wc-served-tag { color: #16a34a; font-size: 11px; font-weight: 700; }
 .waiter-app .wc-previous-row.served span:first-child { text-decoration: line-through; color: #9ca3af; }
+
+/* ============================================================================
+   MOBILE-FIRST REDESIGN  (waiter is a phone-only app)
+   Everything below is scoped to .waiter-app and, being last in the file,
+   overrides the desktop rules above. The whole app is locked to a phone-width
+   column and centred, so it looks like a phone even on a desktop browser.
+   ============================================================================ */
+
+.waiter-app {
+    max-width: 440px;
+    margin: 0 auto;
+    width: 100%;
+    background: #f4f6f9;
+    border-left: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    box-shadow: 0 0 50px rgba(16, 24, 40, 0.08);
+    font-size: 14px;
+}
+
+/* ── Compact app header ─────────────────────────────────────────────── */
+.waiter-app .app-navbar { padding: 0 14px; height: 54px; }
+.waiter-app .nav-hamburger,
+.waiter-app .nav-time-block,
+.waiter-app .nav-user-info { display: none; }
+.waiter-app .nav-right { gap: 12px; }
+.waiter-app .nav-brand-name { font-size: 15px; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.waiter-app .nav-logout { padding: 6px 10px; font-size: 12px; gap: 4px; }
+.waiter-app .nav-avatar { width: 32px; height: 32px; font-size: 14px; }
+
+/* ── Stats: compact single scroll row ───────────────────────────────── */
+.waiter-app .app-stats {
+    display: flex; gap: 8px; padding: 12px; margin: 0;
+    overflow-x: auto; scrollbar-width: none;
+}
+.waiter-app .app-stats::-webkit-scrollbar { display: none; }
+.waiter-app .stat-card { flex: 1 1 0; min-width: 0; padding: 10px; gap: 8px; }
+.waiter-app .stat-icon-wrap { width: 32px; height: 32px; flex: 0 0 32px; }
+.waiter-app .stat-label { font-size: 10px; }
+.waiter-app .stat-value { font-size: 18px; }
+
+/* ── Table status section ───────────────────────────────────────────── */
+.waiter-app .table-status-section { padding: 0; }
+.waiter-app .tss-header { padding: 4px 12px 10px; }
+.waiter-app .tss-title { font-size: 15px; }
+.waiter-app .table-filter-tabs {
+    display: flex; gap: 8px; padding: 0 12px 12px; margin: 0;
+    overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap;
+}
+.waiter-app .table-filter-tabs::-webkit-scrollbar { display: none; }
+.waiter-app .tft-btn { flex: 0 0 auto; border-radius: 20px; padding: 7px 14px; font-size: 12px; white-space: nowrap; }
+
+.waiter-app .table-status-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    padding: 0 12px 12px; margin: 0;
+}
+
+/* Table cards — tinted background + coloured border + status pill (image 1) */
+.waiter-app .tsc {
+    display: block; position: relative;
+    border: 2px solid #d1d5db; border-radius: 16px;
+    padding: 14px; min-height: 0; height: auto; cursor: pointer;
+    background: #ffffff; box-shadow: none; transition: transform .1s;
+}
+.waiter-app .tsc:active { transform: scale(.98); }
+.waiter-app .tsc-body { display: none; }            /* hide the table-icon drawing */
+.waiter-app .tsc-head { display: block; margin-bottom: 12px; }
+.waiter-app .tsc-num { display: block; font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.1; }
+.waiter-app .tsc-cap { display: block; font-size: 12px; color: #64748b; margin-top: 4px; }
+.waiter-app .tsc-cap::before { content: "\1F465\00A0"; }   /* people glyph */
+
+.waiter-app .tsc-status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px;
+    position: static;
+}
+.waiter-app .tsc-status-badge::before {
+    content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+}
+
+/* free / available */
+.waiter-app .tsc-free { border-color: #86efac; background: #f0fdf4; }
+.waiter-app .tsc-free .badge-free { background: #dcfce7; color: #16a34a; }
+/* occupied */
+.waiter-app .tsc-occupied { border-color: #93c5fd; background: #eff6ff; }
+.waiter-app .tsc-occupied .badge-occupied { background: #dbeafe; color: #2563eb; }
+/* selected ring */
+.waiter-app .tsc-selected { border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,.25); }
+
+/* ── Workspace: stack vertically (menu first, cart below) ────────────── */
+.waiter-app .main-workspace { display: flex; flex-direction: column; gap: 0; padding: 0; }
+.waiter-app .workspace-menu { order: 1; width: 100%; flex: none; border: none; }
+.waiter-app .workspace-cart { order: 2; width: 100%; flex: none; border: none; border-top: 8px solid #eef1f5; }
+
+/* ── Menu top bar / search ──────────────────────────────────────────── */
+.waiter-app .menu-top-bar { padding: 12px; gap: 10px; }
+.waiter-app .menu-title { display: none; }
+.waiter-app .menu-filter-btn { display: none; }
+.waiter-app .menu-search-wrap { flex: 1; }
+.waiter-app .menu-search-input {
+    width: 100%; border-radius: 12px; background: #f1f3f7; border: 1px solid #e5e7eb;
+    padding: 12px 14px 12px 40px; font-size: 14px;
+}
+
+/* ── Category chips ─────────────────────────────────────────────────── */
+.waiter-app .category-tabs {
+    display: flex; gap: 8px; padding: 0 12px 12px; margin: 0;
+    overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; border: none;
+}
+.waiter-app .category-tabs::-webkit-scrollbar { display: none; }
+.waiter-app .category-tabs button {
+    flex: 0 0 auto; border: none; background: #eef1f5; color: #475569;
+    padding: 9px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+}
+.waiter-app .category-tabs .active-category { background: #0d9488; color: #ffffff; }
+.waiter-app .category-tabs .tab-star { display: none; }
+
+/* ── Menu grid + clean cards (image 2) ──────────────────────────────── */
+.waiter-app .menu-items {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    padding: 4px 12px 20px; margin: 0;
+}
+.waiter-app .menu-card {
+    position: relative; display: flex; flex-direction: column;
+    background: #ffffff; border: 1px solid #eceff3; border-radius: 16px;
+    padding: 14px; cursor: pointer; box-shadow: 0 1px 3px rgba(16,24,40,.05);
+    transition: transform .1s, box-shadow .15s; min-height: 0; width: auto;
+}
+.waiter-app .menu-card:active { transform: scale(.97); }
+
+.waiter-app .veg-dot {
+    width: 18px; height: 18px; border: 2px solid; border-radius: 5px;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 10px; flex: 0 0 auto;
+}
+.waiter-app .veg-dot i { width: 8px; height: 8px; border-radius: 50%; display: block; }
+.waiter-app .veg-dot-veg    { border-color: #16a34a; } .waiter-app .veg-dot-veg i    { background: #16a34a; }
+.waiter-app .veg-dot-nonveg { border-color: #dc2626; } .waiter-app .veg-dot-nonveg i { background: #dc2626; }
+.waiter-app .veg-dot-egg    { border-color: #d97706; } .waiter-app .veg-dot-egg i    { background: #d97706; }
+
+.waiter-app .menu-card .menu-details { display: flex; flex-direction: column; flex: 1; padding: 0; }
+.waiter-app .menu-name  { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 5px; line-height: 1.25; }
+.waiter-app .menu-desc  { font-size: 12px; color: #94a3b8; margin: 0 0 12px; line-height: 1.35; }
+.waiter-app .menu-price { font-size: 15px; font-weight: 800; color: #0d9488; margin-top: auto; }
+
+.waiter-app .menu-unavailable-tag {
+    position: absolute; top: 10px; right: 10px; font-size: 10px; font-weight: 700;
+    color: #b91c1c; background: #fee2e2; padding: 3px 8px; border-radius: 20px;
+}
+.waiter-app .out-of-stock-card { opacity: .55; }
+.waiter-app .out-of-stock-card .menu-price { color: #94a3b8; }
+
+/* ── Hide desktop-only bottom status bar ────────────────────────────── */
+.waiter-app .app-status-bar { display: none; }
