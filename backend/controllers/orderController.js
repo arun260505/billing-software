@@ -177,6 +177,19 @@ exports.markItemServed = (req, res) => {
 
 };
 
+// DELETE /api/orders/item/:itemId — cancel one item from the bill (waiter edit)
+exports.removeItem = (req, res) => {
+
+    orderModel.removeOrderItem(req.params.itemId, req.user.restaurant_id, (err, result) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Item cancelled.", result);
+
+    });
+
+};
+
 // PUT /api/orders/table/:tableId/serve — mark all the table's orders served
 exports.markTableServed = (req, res) => {
 

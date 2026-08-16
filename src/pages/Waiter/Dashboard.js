@@ -3,11 +3,12 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Waiter/Dashboard.css";
 import { getCategories, getItemsByCategory } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markItemServed, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markItemServed, cancelItem, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
 import CartItem from "../../components/Waiter/CartItem";
+import BillModal from "../../components/Waiter/BillModal";
 
 function Dashboard() {
     // ── Existing state (unchanged) ──────────────────────────────────
@@ -21,6 +22,8 @@ function Dashboard() {
     const [todayOrders, setTodayOrders] = useState(0);
     const [editingOrder, setEditingOrder] = useState(null);
     const [showRunningOrders, setShowRunningOrders] = useState(false);
+    const [showBill, setShowBill] = useState(false);   // bill preview/edit modal
+    const [billBusy, setBillBusy] = useState(false);
     // The selected table's already-sent items, shown read-only for reference.
     const [previousItems, setPreviousItems] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -144,14 +147,6 @@ function Dashboard() {
     // How many of a given menu item are currently in the NEW cart (for the card stepper).
     const cartQtyFor = (itemId) =>
         cart.filter((c) => c.id === itemId).reduce((s, c) => s + normalizeQuantity(c.quantity), 0);
-
-    const newOrder = () => {
-        setCart([]);
-        setEditingOrder(null);
-        setPreviousItems([]);
-        setOrderNumber((prev) => prev + 1);
-        updateDateTime();
-    };
 
     const handleLogout = () => {
         authService.logout();
@@ -313,18 +308,38 @@ function Dashboard() {
         }
     };
 
-    // Send the table's bill to the cashier for printing (marks it "Billing").
+    // Cancel one item from the bill (customer changed their mind). Removes it
+    // server-side, then refreshes the list so the modal + total update live.
+    const handleCancelBillItem = async (item) => {
+        if (!window.confirm(`Cancel ${item.quantity}× ${item.item_name}?`)) return;
+        setBillBusy(true);
+        try {
+            await cancelItem(item.id);
+            await refreshTableItems(selectedTable.id);
+            await loadRunningOrders();
+        } catch (e) {
+            alert("Could not cancel the item.");
+        } finally {
+            setBillBusy(false);
+        }
+    };
+
+    // Confirm the (possibly edited) bill and send it to the cashier for printing.
     const requestBill = async () => {
         if (!selectedTable) return;
+        setBillBusy(true);
         try {
             await updateTableStatus(selectedTable.id, "BILLING");
             alert(`Bill for ${selectedTable.table_number} sent to the cashier for printing.`);
+            setShowBill(false);
             setSelectedTable(null);
             setPreviousItems([]);
             setCart([]);
             await loadTables();
         } catch (e) {
             alert("Could not send the bill to the cashier.");
+        } finally {
+            setBillBusy(false);
         }
     };
 
@@ -596,7 +611,7 @@ function Dashboard() {
                             <div className="wc-title-text">
                                 <span>
                                     {selectedTable
-                                        ? (selectedTable.isParcel ? "Active Order – Parcel" : `Active Order – T${selectedTable.table_number}`)
+                                        ? (selectedTable.isParcel ? "Active Order – Parcel" : `Active Order – ${selectedTable.table_number}`)
                                         : "Active Order"}
                                 </span>
                                 <span className="wc-order-meta">
@@ -605,19 +620,11 @@ function Dashboard() {
                                 </span>
                             </div>
                         </div>
-                        <div className="wc-header-actions">
-                            {selectedTable && (
-                                <button className="wc-change-btn" onClick={handleChangeTable} title="Change table">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-                                </button>
-                            )}
-                            <button className="wc-new-btn" onClick={newOrder} title="New order">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        {cart.length > 0 && (
+                            <button className="wc-clear-btn" onClick={clearCart} title="Clear new items">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                             </button>
-                        </div>
-                        <button className="wc-clear-btn" onClick={clearCart} title="Clear cart">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                        </button>
+                        )}
                     </div>
 
                     <div className="wc-items">
@@ -727,8 +734,8 @@ function Dashboard() {
                     buttons, so it can't be tapped by accident. */}
                 {previousItems.length > 0 && (
                     <div className="ws-billbar">
-                        <button className="ws-bill-btn" onClick={requestBill}>
-                            🧾 Send Bill to Cashier
+                        <button className="ws-bill-btn" onClick={() => setShowBill(true)}>
+                            🧾 Generate Bill
                         </button>
                     </div>
                 )}
@@ -762,6 +769,18 @@ function Dashboard() {
                     closeOrders={() => setShowRunningOrders(false)}
                     openOrder={openOrder}
                     onMarkServed={handleMarkServed}
+                />
+            )}
+
+            {/* Bill preview / edit before sending to the cashier */}
+            {showBill && selectedTable && (
+                <BillModal
+                    tableLabel={selectedTable.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`}
+                    items={previousItems}
+                    busy={billBusy}
+                    onCancelItem={handleCancelBillItem}
+                    onConfirm={requestBill}
+                    onClose={() => setShowBill(false)}
                 />
             )}
         </div>

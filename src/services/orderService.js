@@ -27,6 +27,9 @@ export const markTableServed = (tableId) =>
 export const markItemServed = (itemId) =>
   api.put(`/orders/item/${itemId}/serve`);
 
+export const cancelItem = (itemId) =>
+  api.delete(`/orders/item/${itemId}`);
+
 export const updateOrder = (id, data) =>
   api.put(`/orders/${id}`, data);
 

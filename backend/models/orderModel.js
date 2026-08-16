@@ -380,6 +380,58 @@ const settleTable = (tableId, restaurantId, callback) => {
 
 };
 
+// Cancel a single order-item before billing (waiter edits the bill). Deletes the
+// item, recomputes its order's totals from the remaining items, and cancels the
+// whole order if nothing is left. Tenant-scoped throughout.
+const removeOrderItem = (itemId, restaurantId, callback) => {
+
+    db.query(
+        `SELECT o.id AS orderId
+         FROM order_items oi
+         INNER JOIN orders o ON oi.order_id = o.id
+         WHERE oi.id = ? AND o.restaurant_id = ?`,
+        [itemId, restaurantId],
+        (err, rows) => {
+            if (err) return callback(err);
+            if (!rows.length) return callback(null, { affectedRows: 0 });
+            const orderId = rows[0].orderId;
+
+            db.query(
+                `DELETE oi FROM order_items oi
+                 INNER JOIN orders o ON oi.order_id = o.id
+                 WHERE oi.id = ? AND o.restaurant_id = ?`,
+                [itemId, restaurantId],
+                (err) => {
+                    if (err) return callback(err);
+
+                    db.query(
+                        `SELECT COALESCE(SUM(oi.total), 0) AS subtotal, COUNT(*) AS cnt
+                         FROM order_items oi WHERE oi.order_id = ?`,
+                        [orderId],
+                        (err, sumRows) => {
+                            if (err) return callback(err);
+                            const subtotal = Number(sumRows[0].subtotal) || 0;
+                            const cnt = Number(sumRows[0].cnt) || 0;
+                            const tax = Math.round(subtotal * 0.05 * 100) / 100;
+                            const grand = Math.round((subtotal + tax) * 100) / 100;
+                            const cancelClause = cnt === 0 ? ", order_status='Cancelled'" : "";
+
+                            db.query(
+                                `UPDATE orders
+                                 SET subtotal=?, tax=?, grand_total=?${cancelClause}
+                                 WHERE id=? AND restaurant_id=?`,
+                                [subtotal, tax, grand, orderId, restaurantId],
+                                (err) => callback(err, { orderId, remaining: cnt })
+                            );
+                        }
+                    );
+                }
+            );
+        }
+    );
+
+};
+
 // Count of orders created today (tenant-scoped)
 const getTodaysOrderCount = (restaurantId, callback) => {
 
@@ -413,5 +465,6 @@ module.exports = {
     settleTable,
     markServed,
     markTableServed,
-    markItemServed
+    markItemServed,
+    removeOrderItem
 };
