@@ -453,6 +453,9 @@ function Dashboard() {
                 </div>
             </nav>
 
+            {/* ═══════ SCREEN 1: pick a table (shown until one is selected) ═══════ */}
+            {!selectedTable && (
+            <>
             {/* ══════════════ STATS ROW ══════════════ */}
             <div className="app-stats">
                 <div className="stat-card">
@@ -545,11 +548,25 @@ function Dashboard() {
                     })}
                 </div>
             </div>
+            </>
+            )}
 
-            {/* ══════════════ 2-COLUMN WORKSPACE ══════════════ */}
+            {/* ═══════ SCREEN 2: the selected table's menu + order ═══════ */}
+            {selectedTable && (
             <div className="main-workspace">
 
-                {/* ── LEFT: Active Cart ── */}
+                {/* Back bar — return to the tables screen */}
+                <div className="ws-backbar">
+                    <button className="ws-back" onClick={handleChangeTable}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><polyline points="15 18 9 12 15 6"/></svg>
+                        Tables
+                    </button>
+                    <span className="ws-back-table">
+                        {selectedTable.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`}
+                    </span>
+                </div>
+
+                {/* ── Active Cart ── */}
                 <div className="workspace-cart">
                     <div className="wc-header">
                         <div className="wc-title">
@@ -681,6 +698,7 @@ function Dashboard() {
                     </div>
                 </div>
             </div>
+            )}
 
             {/* ══════════════ BOTTOM STATUS BAR ══════════════ */}
             <div className="app-status-bar">

@@ -609,3 +609,18 @@
 
 /* ── Hide desktop-only bottom status bar ────────────────────────────── */
 .waiter-app .app-status-bar { display: none; }
+
+/* ── Order-screen back bar (return to the tables screen) ─────────────── */
+.waiter-app .ws-backbar {
+    order: 0; display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; background: #ffffff; border-bottom: 1px solid #eaecf0;
+    position: sticky; top: 54px; z-index: 40;
+}
+.waiter-app .ws-back {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #eef1f5; color: #0f172a; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 700; padding: 8px 14px 8px 10px; border-radius: 20px;
+}
+.waiter-app .ws-back:active { background: #e2e6ec; }
+.waiter-app .ws-back svg { width: 16px; height: 16px; }
+.waiter-app .ws-back-table { font-size: 15px; font-weight: 800; color: #0d9488; }
