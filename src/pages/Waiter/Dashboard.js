@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Waiter/Dashboard.css";
-import { getCategories, getItemsByCategory } from "../../services/menuService";
+import { getCategories, getItemsByCategory, getAllItems } from "../../services/menuService";
 import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markItemServed, cancelItem, setItemQuantity, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
@@ -16,6 +16,7 @@ function Dashboard() {
     const [selectedTable, setSelectedTable] = useState(null);
     const [categories, setCategories] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
+    const [allItems, setAllItems] = useState([]);   // whole menu (for search across categories)
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [cart, setCart] = useState([]);
     const [runningOrders, setRunningOrders] = useState([]);
@@ -48,6 +49,7 @@ function Dashboard() {
         loadTables();
         loadRunningOrders();
         loadCategories();
+        loadAllItems();
         loadTodaysOrderCount();
 
         const statsTimer = setInterval(() => {
@@ -78,6 +80,14 @@ function Dashboard() {
         return () => clearInterval(t);
     }, [selectedCategory]);
 
+    // While searching, keep the whole-menu list fresh (for live availability).
+    useEffect(() => {
+        if (!searchTerm.trim()) return;
+        loadAllItems();
+        const t = setInterval(loadAllItems, 4000);
+        return () => clearInterval(t);
+    }, [searchTerm]);
+
     // Keep the "already sent" list in sync so items the kitchen (or cashier)
     // marks served flip to served here within a few seconds, no refresh needed.
     useEffect(() => {
@@ -87,8 +97,11 @@ function Dashboard() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedTable]);
 
-    const filteredItems = menuItems.filter((item) =>
-        item.item_name.toLowerCase().includes(searchTerm.toLowerCase())
+    // When searching, look across the WHOLE menu (all categories); otherwise show
+    // just the selected category's items.
+    const term = searchTerm.trim().toLowerCase();
+    const filteredItems = (term ? allItems : menuItems).filter((item) =>
+        item.item_name.toLowerCase().includes(term)
     );
 
     const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity), 0);
@@ -120,27 +133,31 @@ function Dashboard() {
             alert(`Only ${limit} items available.`);
             return;
         }
-        setCart((prev) => [
-            ...prev,
-            { ...item, quantity: 1, isNew: true, lineId: `${Date.now()}-${Math.random()}` },
-        ]);
+        // Merge into the existing NEW line for this item (one line per item,
+        // showing its quantity) instead of stacking separate 1× rows.
+        setCart((prev) => {
+            const idx = prev.findIndex((c) => c.id === item.id && c.isNew);
+            if (idx !== -1) {
+                const copy = [...prev];
+                copy[idx] = { ...copy[idx], quantity: normalizeQuantity(copy[idx].quantity) + 1 };
+                return copy;
+            }
+            return [...prev, { ...item, quantity: 1, isNew: true, lineId: `${Date.now()}-${Math.random()}` }];
+        });
     };
 
-    // "−" on a menu card: drop one unit of this item from the NEW cart lines.
+    // "−" on a menu card: drop one unit of this item from the NEW cart line.
     const removeOneFromCart = (item) => {
         setCart((prev) => {
-            for (let i = prev.length - 1; i >= 0; i--) {
-                if (prev[i].id === item.id) {
-                    const line = prev[i];
-                    if (normalizeQuantity(line.quantity) > 1) {
-                        const copy = [...prev];
-                        copy[i] = { ...line, quantity: normalizeQuantity(line.quantity) - 1 };
-                        return copy;
-                    }
-                    return prev.filter((_, idx) => idx !== i);
-                }
+            const idx = prev.findIndex((c) => c.id === item.id && c.isNew);
+            if (idx === -1) return prev;
+            const line = prev[idx];
+            if (normalizeQuantity(line.quantity) > 1) {
+                const copy = [...prev];
+                copy[idx] = { ...line, quantity: normalizeQuantity(line.quantity) - 1 };
+                return copy;
             }
-            return prev;
+            return prev.filter((_, i) => i !== idx);
         });
     };
 
@@ -204,6 +221,14 @@ function Dashboard() {
         try {
             const res = await getItemsByCategory(categoryId);
             setMenuItems(res.data.data);
+        } catch (e) { console.error(e); }
+    };
+
+    // Whole menu, used when searching across all categories.
+    const loadAllItems = async () => {
+        try {
+            const res = await getAllItems();
+            setAllItems(res.data.data || []);
         } catch (e) { console.error(e); }
     };
 
