@@ -36,7 +36,6 @@ function Dashboard() {
     const [showBill, setShowBill] = useState(false);
     const [billData, setBillData] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [notes, setNotes] = useState("");          // cooking instructions → kitchen
     const [orderNumber, setOrderNumber] = useState(1001);
     const [cashierName] = useState("Cashier");
     const [currentDate, setCurrentDate] = useState("");
@@ -122,22 +121,22 @@ function Dashboard() {
             alert(`Only ${limit} items available.`);
             return;
         }
-        // Merge into the existing NEW line for this item (one line per item).
+        // Merge into the NEW line with NO note (noted lines stay separate).
         setCart((prev) => {
-            const idx = prev.findIndex((c) => c.id === item.id && c.isNew);
+            const idx = prev.findIndex((c) => c.id === item.id && c.isNew && !c.note);
             if (idx !== -1) {
                 const copy = [...prev];
                 copy[idx] = { ...copy[idx], quantity: normalizeQuantity(copy[idx].quantity) + 1 };
                 return copy;
             }
-            return [...prev, { ...item, quantity: 1, isNew: true, lineId: `${Date.now()}-${Math.random()}` }];
+            return [...prev, { ...item, quantity: 1, note: "", isNew: true, lineId: `${Date.now()}-${Math.random()}` }];
         });
     };
 
-    // "−" on a menu card removes one unit of that item from the NEW cart line.
+    // "−" on a menu card removes one unit from the no-note line for that item.
     const removeOneFromCart = (item) => {
         setCart((prev) => {
-            const idx = prev.findIndex((c) => c.id === item.id && c.isNew);
+            const idx = prev.findIndex((c) => c.id === item.id && c.isNew && !c.note);
             if (idx === -1) return prev;
             const line = prev[idx];
             if (normalizeQuantity(line.quantity) > 1) {
@@ -147,6 +146,11 @@ function Dashboard() {
             }
             return prev.filter((_, i) => i !== idx);
         });
+    };
+
+    // Set a per-line cooking note.
+    const setLineNote = (lineId, note) => {
+        setCart((prev) => prev.map((c) => (c.lineId === lineId ? { ...c, note } : c)));
     };
 
     const cartQtyFor = (itemId) =>
@@ -306,7 +310,8 @@ function Dashboard() {
     const mergeCartItems = (list) =>
         Object.values(
             list.reduce((acc, it) => {
-                const k = it.id;
+                const note = (it.note || "").trim();
+                const k = `${it.id}|${note}`;   // same item + same note merges; different notes stay separate
                 if (!acc[k]) {
                     acc[k] = {
                         menu_item_id: it.id,
@@ -314,7 +319,7 @@ function Dashboard() {
                         quantity: 0,
                         price: it.price,
                         gst: it.gst,
-                        notes: notes.trim() || null,   // cooking instructions → kitchen
+                        notes: note || null,
                     };
                 }
                 acc[k].quantity += normalizeQuantity(it.quantity);
@@ -370,7 +375,6 @@ function Dashboard() {
             }
             if (!selectedTable?.isParcel) {
                 setCart([]);
-                setNotes("");
                 setSelectedTable(null);
                 setEditingOrder(null);
             }
@@ -453,7 +457,6 @@ function Dashboard() {
         setShowBill(false);
         setBillData(null);
         setCart([]);
-        setNotes("");
         setSelectedTable(null);
         setEditingOrder(null);
         alert("Bill Generated Successfully");
@@ -644,20 +647,13 @@ function Dashboard() {
                             </div>
                         ) : (
                             cart.map((item) => (
-                                <CartItem key={item.lineId} item={item} increaseQuantity={increaseQuantity} decreaseQuantity={decreaseQuantity} removeItem={removeItem} />
+                                <CartItem key={item.lineId} item={item} increaseQuantity={increaseQuantity} decreaseQuantity={decreaseQuantity} removeItem={removeItem} setNote={setLineNote} />
                             ))
                         )}
                     </div>
 
                     {/* Totals + actions (always docked at the bottom) */}
                     <div className="pos-bill-foot">
-                        <input
-                            type="text"
-                            className="pos-notes"
-                            placeholder="🍳 Cooking instructions (sent to kitchen)…"
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                        />
                         <div className="pos-tot-row"><span>Subtotal</span><span>₹{subtotal.toFixed(0)}</span></div>
                         <div className="pos-tot-row"><span>GST (5%)</span><span>₹{gst.toFixed(0)}</span></div>
                         <div className="pos-tot-row"><span>Service (2%)</span><span>₹{serviceCharge.toFixed(0)}</span></div>

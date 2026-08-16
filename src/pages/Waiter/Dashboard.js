@@ -29,7 +29,6 @@ function Dashboard() {
     // The selected table's already-sent items, shown read-only for reference.
     const [previousItems, setPreviousItems] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [notes, setNotes] = useState("");          // cooking instructions → kitchen
     const [waiterName] = useState("John");
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
@@ -137,23 +136,23 @@ function Dashboard() {
             alert(`Only ${limit} items available.`);
             return;
         }
-        // Merge into the existing NEW line for this item (one line per item,
-        // showing its quantity) instead of stacking separate 1× rows.
+        // Merge into the NEW line that has NO note yet (so noted lines like
+        // "juice — no ice" stay separate). Same item + same (empty) note = merge.
         setCart((prev) => {
-            const idx = prev.findIndex((c) => c.id === item.id && c.isNew);
+            const idx = prev.findIndex((c) => c.id === item.id && c.isNew && !c.note);
             if (idx !== -1) {
                 const copy = [...prev];
                 copy[idx] = { ...copy[idx], quantity: normalizeQuantity(copy[idx].quantity) + 1 };
                 return copy;
             }
-            return [...prev, { ...item, quantity: 1, isNew: true, lineId: `${Date.now()}-${Math.random()}` }];
+            return [...prev, { ...item, quantity: 1, note: "", isNew: true, lineId: `${Date.now()}-${Math.random()}` }];
         });
     };
 
-    // "−" on a menu card: drop one unit of this item from the NEW cart line.
+    // "−" on a menu card: drop one unit from the no-note line for this item.
     const removeOneFromCart = (item) => {
         setCart((prev) => {
-            const idx = prev.findIndex((c) => c.id === item.id && c.isNew);
+            const idx = prev.findIndex((c) => c.id === item.id && c.isNew && !c.note);
             if (idx === -1) return prev;
             const line = prev[idx];
             if (normalizeQuantity(line.quantity) > 1) {
@@ -163,6 +162,11 @@ function Dashboard() {
             }
             return prev.filter((_, i) => i !== idx);
         });
+    };
+
+    // Set a per-line cooking note.
+    const setLineNote = (lineId, note) => {
+        setCart((prev) => prev.map((c) => (c.lineId === lineId ? { ...c, note } : c)));
     };
 
     // How many of a given menu item are currently in the NEW cart (for the card stepper).
@@ -410,11 +414,13 @@ function Dashboard() {
     const placeOrder = async () => {
         if (cart.length === 0) { alert("Please add items."); return; }
         if (!selectedTable) { alert("Please select a table first."); return; }
-        // Merge the separate cart lines into one entry per menu item on send.
+        // Merge lines that share the same item AND the same note; different notes
+        // stay as separate order-items (e.g. juice "no ice" vs juice "with ice").
         const mergedItems = Object.values(
             cart.reduce((acc, item) => {
-                const k = item.id;
-                if (!acc[k]) acc[k] = { menu_item_id: item.id, quantity: 0, price: item.price, gst: item.gst, notes: notes.trim() || null };
+                const note = (item.note || "").trim();
+                const k = `${item.id}|${note}`;
+                if (!acc[k]) acc[k] = { menu_item_id: item.id, quantity: 0, price: item.price, gst: item.gst, notes: note || null };
                 acc[k].quantity += normalizeQuantity(item.quantity);
                 return acc;
             }, {})
@@ -443,7 +449,6 @@ function Dashboard() {
                 alert(selectedTable?.isParcel ? "Parcel Order Sent To Kitchen" : "Order Sent To Kitchen");
             }
             setCart([]);
-            setNotes("");
             setShowCart(false);
             setSelectedTable(null);
             setEditingOrder(null);
@@ -770,11 +775,10 @@ function Dashboard() {
                     tableLabel={selectedTable.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`}
                     items={cart}
                     editing={!!editingOrder}
-                    notes={notes}
-                    onNotesChange={setNotes}
                     increaseQuantity={increaseQuantity}
                     decreaseQuantity={decreaseQuantity}
                     removeItem={removeItem}
+                    setNote={setLineNote}
                     onClear={() => { clearCart(); setShowCart(false); }}
                     onSend={placeOrder}
                     onCancelOrder={handleCancelOrder}

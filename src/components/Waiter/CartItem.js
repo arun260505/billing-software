@@ -8,7 +8,7 @@ import juicesImage from "../../assets/juicesImage.jpg";
 import iceCreamImage from "../../assets/iceCreamImage.jpg";
 import comboImage from "../../assets/comboImage.jpg";
 
-function CartItem({ item, increaseQuantity, decreaseQuantity, removeItem }) {
+function CartItem({ item, increaseQuantity, decreaseQuantity, removeItem, setNote }) {
     const quantity         = Number(item.quantity) || 0;
     const originalQuantity = Number(item.originalQuantity) || 0;
     const price            = Number(item.price) || 0;
@@ -48,6 +48,15 @@ function CartItem({ item, increaseQuantity, decreaseQuantity, removeItem }) {
                     {quantityDecreased   && <span className="cir-badge cir-badge-cancelled">−{cancelledCount} Cancelled</span>}
                 </div>
                 <span className="cir-price">₹{price} × {quantity} = <strong>₹{lineTotal}</strong></span>
+                {setNote && (
+                    <input
+                        type="text"
+                        className="cir-note"
+                        placeholder="🍳 Note (e.g. no ice)…"
+                        value={item.note || ""}
+                        onChange={(e) => setNote(item.lineId, e.target.value)}
+                    />
+                )}
             </div>
 
             {/* Controls */}
