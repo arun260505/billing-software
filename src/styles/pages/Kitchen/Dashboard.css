@@ -228,3 +228,6 @@
 }
 /* served items visibly recede to the bottom */
 .kitchen-app .kd-items li.kd-item-served { opacity: .6; }
+
+/* order number sub-label (counter/takeaway cards) */
+.kitchen-app .kd-ordno { display: block; font-size: 11px; font-weight: 600; color: #94a3b8; margin-top: 2px; }

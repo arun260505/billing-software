@@ -99,7 +99,10 @@ function Dashboard() {
                         return (
                             <div key={t.table_id} id={`tbl-${t.table_id}`} className={`kd-table${allDone ? " all-served" : ""}`}>
                                 <div className="kd-table-head">
-                                    <span className="kd-table-name">{String(t.table_name).toUpperCase()}</span>
+                                    <span className="kd-table-name">
+                                        {String(t.table_name).toUpperCase()}
+                                        {t.order_number && <small className="kd-ordno">{t.order_number}</small>}
+                                    </span>
                                     <span className="kd-table-count">{served}/{t.items.length} served</span>
                                 </div>
                                 <ul className="kd-items">

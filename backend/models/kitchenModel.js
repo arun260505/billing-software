@@ -137,12 +137,13 @@ const getKitchenTickets = (restaurantId, callback) => {
 
 };
 
-// Active kitchen items grouped by TABLE. Only tables currently 'Occupied' are
-// included — once a table is billed ('Billing') it drops off (resets). Served
-// items are still returned (struck through) until the table is billed/settled.
+// Active kitchen items grouped by TABLE, plus table-less COUNTER/takeaway orders.
+// Dine-in: tables currently 'Occupied' (drops off once billed). Counter orders
+// (no table, often paid upfront) show until every item is served — so payment
+// marking them 'Completed' does NOT hide them from the kitchen.
 const getKitchenByTable = (restaurantId, callback) => {
 
-    const sql = `
+    const dineInSql = `
         SELECT
             dt.id           AS table_id,
             dt.table_name,
@@ -163,28 +164,63 @@ const getKitchenByTable = (restaurantId, callback) => {
         ORDER BY dt.table_name ASC, oi.id ASC
     `;
 
-    db.query(sql, [restaurantId], (err, rows) => {
+    // Counter orders: no table, created today, not cancelled, still have unserved
+    // items. Return ALL their items so served ones show struck through.
+    const counterSql = `
+        SELECT
+            o.id            AS order_id,
+            o.order_number,
+            oi.id           AS item_id,
+            mi.item_name,
+            oi.quantity,
+            oi.notes,
+            oi.served,
+            o.created_at
+        FROM orders o
+        INNER JOIN order_items oi  ON oi.order_id = o.id
+        INNER JOIN menu_items mi   ON oi.menu_item_id = mi.id
+        WHERE o.restaurant_id = ?
+          AND o.table_id IS NULL
+          AND o.order_status <> 'Cancelled'
+          AND DATE(o.created_at) = CURDATE()
+          AND EXISTS (SELECT 1 FROM order_items x WHERE x.order_id = o.id AND x.served = 0)
+        ORDER BY o.created_at DESC, oi.id ASC
+    `;
+
+    db.query(dineInSql, [restaurantId], (err, rows) => {
         if (err) return callback(err);
 
+        const groups = [];
         const byTable = {};
-        const tables = [];
         rows.forEach((r) => {
             if (!byTable[r.table_id]) {
                 byTable[r.table_id] = { table_id: r.table_id, table_name: r.table_name, items: [] };
-                tables.push(byTable[r.table_id]);
+                groups.push(byTable[r.table_id]);
             }
             byTable[r.table_id].items.push({
-                id: r.item_id,
-                item_name: r.item_name,
-                quantity: r.quantity,
-                notes: r.notes,
-                served: r.served,
-                order_number: r.order_number,
-                created_at: r.created_at
+                id: r.item_id, item_name: r.item_name, quantity: r.quantity,
+                notes: r.notes, served: r.served, order_number: r.order_number, created_at: r.created_at
             });
         });
 
-        callback(null, tables);
+        db.query(counterSql, [restaurantId], (err, crows) => {
+            if (err) return callback(err);
+
+            const byOrder = {};
+            crows.forEach((r) => {
+                const key = `c${r.order_id}`;
+                if (!byOrder[key]) {
+                    byOrder[key] = { table_id: key, table_name: "Counter", order_number: r.order_number, items: [] };
+                    groups.push(byOrder[key]);
+                }
+                byOrder[key].items.push({
+                    id: r.item_id, item_name: r.item_name, quantity: r.quantity,
+                    notes: r.notes, served: r.served, order_number: r.order_number, created_at: r.created_at
+                });
+            });
+
+            callback(null, groups);
+        });
     });
 
 };
