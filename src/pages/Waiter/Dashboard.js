@@ -635,11 +635,18 @@ function Dashboard() {
                                 </span>
                             </div>
                         </div>
-                        {cart.length > 0 && (
-                            <button className="wc-clear-btn" onClick={clearCart} title="Clear new items">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                            </button>
-                        )}
+                        <div className="wc-header-actions">
+                            {previousItems.length > 0 && (
+                                <button className="wc-bill-icon" onClick={() => setShowBill(true)} title="Generate bill">
+                                    🧾 Bill
+                                </button>
+                            )}
+                            {cart.length > 0 && (
+                                <button className="wc-clear-btn" onClick={clearCart} title="Clear new items">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="wc-items">
@@ -744,15 +751,6 @@ function Dashboard() {
                     </div>
                 </div>
 
-                {/* Send Bill sits at the very bottom, away from the ordering
-                    buttons, so it can't be tapped by accident. */}
-                {previousItems.length > 0 && (
-                    <div className="ws-billbar">
-                        <button className="ws-bill-btn" onClick={() => setShowBill(true)}>
-                            🧾 Generate Bill
-                        </button>
-                    </div>
-                )}
             </div>
             )}
 

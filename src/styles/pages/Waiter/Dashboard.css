@@ -745,3 +745,13 @@
 .waiter-app .bill-step:disabled { opacity: .5; cursor: default; }
 .waiter-app .bill-qty { min-width: 18px; text-align: center; font-size: 14px; font-weight: 800; color: #0f172a; }
 .waiter-app .bill-amt { min-width: 44px; text-align: right; }
+
+/* ── Header actions: Bill button sits beside the clear/delete button ─── */
+.waiter-app .wc-header-actions { display: flex; align-items: center; gap: 8px; }
+.waiter-app .wc-bill-icon {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;
+    border-radius: 9px; padding: 7px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
+    white-space: nowrap;
+}
+.waiter-app .wc-bill-icon:active { background: #ddd6fe; }
