@@ -49,7 +49,22 @@ const updateKitchenStatus = (orderId, restaurantId, status, callback) => {
     db.query(
         "UPDATE orders SET order_status=? WHERE id=? AND restaurant_id=?",
         [status, orderId, restaurantId],
-        callback
+        (err, result) => {
+            if (err) return callback(err);
+            // When the kitchen marks the whole order Served, flip every item's
+            // served flag too, so the waiter/cashier per-item views stay in sync.
+            if (status === "Served") {
+                return db.query(
+                    `UPDATE order_items oi
+                       INNER JOIN orders o ON oi.order_id = o.id
+                        SET oi.served = 1
+                      WHERE oi.order_id = ? AND o.restaurant_id = ?`,
+                    [orderId, restaurantId],
+                    (err2) => callback(err2, result)
+                );
+            }
+            callback(null, result);
+        }
     );
 
 };

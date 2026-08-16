@@ -75,6 +75,15 @@ function Dashboard() {
         return () => clearInterval(t);
     }, [selectedCategory]);
 
+    // Keep the "already sent" list in sync so items the kitchen (or cashier)
+    // marks served flip to served here within a few seconds, no refresh needed.
+    useEffect(() => {
+        if (!selectedTable || selectedTable.status !== "OCCUPIED") return;
+        const t = setInterval(() => refreshTableItems(selectedTable.id), 4000);
+        return () => clearInterval(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedTable]);
+
     const filteredItems = menuItems.filter((item) =>
         item.item_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -142,6 +151,24 @@ function Dashboard() {
         } catch (e) { console.error(e); }
     };
 
+    // Pull a table's already-sent items (with their served flags) from the server.
+    const refreshTableItems = async (tableId) => {
+        try {
+            const res = await getTableItems(tableId);
+            setPreviousItems(
+                (res.data.data || []).map((it) => ({
+                    id: it.id,
+                    item_name: it.item_name,
+                    quantity: Number(it.quantity),
+                    price: Number(it.price),
+                    served: Number(it.served),
+                }))
+            );
+        } catch (e) {
+            setPreviousItems([]);
+        }
+    };
+
     const handleSelectTable = async (table) => {
         setSelectedTable(table);
         await loadCategories();
@@ -150,20 +177,7 @@ function Dashboard() {
         setEditingOrder(null);
         // Show the table's already-ordered items (all unpaid orders) read-only.
         if (table.status === "OCCUPIED") {
-            try {
-                const res = await getTableItems(table.id);
-                setPreviousItems(
-                    (res.data.data || []).map((it) => ({
-                        id: it.id,
-                        item_name: it.item_name,
-                        quantity: Number(it.quantity),
-                        price: Number(it.price),
-                        served: Number(it.served),
-                    }))
-                );
-            } catch (e) {
-                setPreviousItems([]);
-            }
+            await refreshTableItems(table.id);
         } else {
             setPreviousItems([]);
         }
