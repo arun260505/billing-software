@@ -1,0 +1,170 @@
+/* ============================================================
+   KITCHEN DISPLAY — all rules scoped under .kitchen-app so they
+   can never affect the admin or waiter pages.
+   ============================================================ */
+
+.kitchen-app {
+    min-height: 100vh;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 20px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    box-sizing: border-box;
+}
+
+.kitchen-app * { box-sizing: border-box; }
+
+.kitchen-app .kd-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 14px;
+}
+
+.kitchen-app .kd-title {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+}
+
+.kitchen-app .kd-title h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.kitchen-app .kd-count {
+    background: #1e293b;
+    color: #93c5fd;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.kitchen-app .kd-logout {
+    background: #334155;
+    color: #e2e8f0;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.kitchen-app .kd-logout:hover { background: #475569; }
+
+.kitchen-app .kd-error {
+    background: #7f1d1d;
+    color: #fecaca;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.kitchen-app .kd-empty {
+    text-align: center;
+    color: #94a3b8;
+    padding: 80px 20px;
+    font-size: 18px;
+}
+
+.kitchen-app .kd-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 18px;
+}
+
+.kitchen-app .kd-ticket {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 16px;
+    border-top: 5px solid #64748b;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, .35);
+}
+
+/* status accent colors */
+.kitchen-app .kd-ticket.status-pending   { border-top-color: #f59e0b; }
+.kitchen-app .kd-ticket.status-preparing { border-top-color: #3b82f6; }
+.kitchen-app .kd-ticket.status-ready     { border-top-color: #22c55e; }
+
+.kitchen-app .kd-ticket-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.kitchen-app .kd-table {
+    font-size: 20px;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.kitchen-app .kd-status {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+.kitchen-app .kd-status.status-pending   { background: #78350f; color: #fcd34d; }
+.kitchen-app .kd-status.status-preparing { background: #1e3a8a; color: #93c5fd; }
+.kitchen-app .kd-status.status-ready     { background: #14532d; color: #86efac; }
+
+.kitchen-app .kd-ticket-sub {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 12px;
+}
+
+.kitchen-app .kd-items {
+    list-style: none;
+    margin: 0 0 14px 0;
+    padding: 0;
+    flex: 1;
+}
+
+.kitchen-app .kd-items li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px dashed #334155;
+    font-size: 16px;
+}
+.kitchen-app .kd-items li:last-child { border-bottom: none; }
+
+.kitchen-app .kd-qty {
+    font-weight: 800;
+    color: #fbbf24;
+    min-width: 32px;
+}
+
+.kitchen-app .kd-item-name { color: #f1f5f9; font-weight: 600; }
+
+.kitchen-app .kd-note { color: #94a3b8; font-size: 13px; font-style: italic; }
+
+.kitchen-app .kd-advance {
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    background: #2563eb;
+    transition: filter .15s;
+}
+.kitchen-app .kd-advance:hover { filter: brightness(1.1); }
+
+.kitchen-app .kd-ticket.status-pending   .kd-advance { background: #d97706; }
+.kitchen-app .kd-ticket.status-preparing .kd-advance { background: #2563eb; }
+.kitchen-app .kd-ticket.status-ready     .kd-advance { background: #16a34a; }

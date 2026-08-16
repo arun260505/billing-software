@@ -9,6 +9,7 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 router.use(authMiddleware);
 router.use(roleMiddleware(["kitchen", "admin"]));
 
+router.get("/tickets", kitchenController.getKitchenTickets);
 router.get("/orders", kitchenController.getKitchenOrders);
 router.get("/orders/:id", kitchenController.getKitchenOrderItems);
 router.put("/orders/:id", kitchenController.updateKitchenStatus);

@@ -27,6 +27,19 @@ exports.getKitchenOrderItems = (req, res) => {
 
 };
 
+// Get active tickets with their items (one call)
+exports.getKitchenTickets = (req, res) => {
+
+    kitchenModel.getKitchenTickets(req.user.restaurant_id, (err, tickets) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Kitchen tickets fetched.", tickets);
+
+    });
+
+};
+
 // Update kitchen status
 exports.updateKitchenStatus = (req, res) => {
 
