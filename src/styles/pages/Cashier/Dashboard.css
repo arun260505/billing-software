@@ -505,3 +505,29 @@
     cursor: pointer;
 }
 .cashier-app .cpa-btn:hover { background: #15803d; }
+
+/* Read-only "current order" section in the cashier cart */
+.cashier-app .wc-previous {
+    background: #f4f7ff;
+    border: 1px dashed #c7d2fe;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+.cashier-app .wc-previous-label {
+    font-size: 11px; font-weight: 700; color: #4f46e5;
+    text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px;
+}
+.cashier-app .wc-previous-row {
+    display: flex; justify-content: space-between;
+    font-size: 13px; color: #475569; padding: 3px 0;
+}
+.cashier-app .wc-previous-divider {
+    margin-top: 8px; padding-top: 6px; border-top: 1px solid #e0e7ff;
+    font-size: 11px; font-weight: 700; color: #16a34a; text-align: center;
+}
+.cashier-app .wc-bill-btn {
+    width: 100%; margin-top: 8px; padding: 8px; border: none; border-radius: 8px;
+    background: #16a34a; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.cashier-app .wc-bill-btn:hover { background: #15803d; }

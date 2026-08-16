@@ -22,6 +22,13 @@ function Dashboard() {
     const [todayOrders, setTodayOrders] = useState(0);
     const [editingOrder, setEditingOrder] = useState(null);
     const [showRunningOrders, setShowRunningOrders] = useState(false);
+    // The selected table's already-ordered items, shown read-only for reference.
+    const [previousItems, setPreviousItems] = useState([]);
+
+    // Clear the read-only order view whenever no table is selected.
+    useEffect(() => {
+        if (!selectedTable) setPreviousItems([]);
+    }, [selectedTable]);
     const [showBill, setShowBill] = useState(false);
     const [billData, setBillData] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -157,10 +164,26 @@ function Dashboard() {
         if (blockIfParcelLocked()) return;
         setSelectedTable(table);
         await loadCategories();
-        // Always start a fresh batch, so each send is a new order = a separate
-        // kitchen ticket. Existing orders can be corrected from Running Orders.
+        // Fresh cart for new items (each send = a new kitchen ticket).
         setCart([]);
         setEditingOrder(null);
+        // Show the table's current (unpaid) order read-only.
+        if (table.status === "OCCUPIED") {
+            try {
+                const res = await getTableItems(table.id);
+                setPreviousItems(
+                    (res.data.data || []).map((it) => ({
+                        item_name: it.item_name,
+                        quantity: Number(it.quantity),
+                        price: Number(it.price),
+                    }))
+                );
+            } catch (e) {
+                setPreviousItems([]);
+            }
+        } else {
+            setPreviousItems([]);
+        }
     };
 
     const handleParcelSelect = () => {
@@ -424,6 +447,9 @@ function Dashboard() {
             }
             await settleTable(table.id);
             alert(`Table ${table.table_number} printed & settled — now Available.`);
+            setSelectedTable(null);
+            setPreviousItems([]);
+            setCart([]);
             await loadTables();
         } catch (e) {
             alert("Could not print / settle the bill.");
@@ -634,6 +660,21 @@ function Dashboard() {
                     </div>
 
                     <div className="wc-items">
+                        {previousItems.length > 0 && (
+                            <div className="wc-previous">
+                                <div className="wc-previous-label">🍽 Current order (unpaid)</div>
+                                {previousItems.map((it, i) => (
+                                    <div key={i} className="wc-previous-row">
+                                        <span>{it.item_name}</span>
+                                        <span>{it.quantity}×</span>
+                                    </div>
+                                ))}
+                                <button className="wc-bill-btn" onClick={() => printBill(selectedTable)}>
+                                    🖨 Print &amp; Settle
+                                </button>
+                                <div className="wc-previous-divider">＋ New items (sent as a new ticket)</div>
+                            </div>
+                        )}
                         {cart.length === 0 ? (
                             <div className="wc-empty">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
