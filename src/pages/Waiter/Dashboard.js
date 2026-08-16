@@ -123,12 +123,14 @@ function Dashboard() {
     const handleSelectTable = async (table) => {
         setSelectedTable(table);
         await loadCategories();
-        // Each table selection starts a FRESH batch, so every "Send to Kitchen"
-        // creates a new order = a separate kitchen ticket (never merged into the
-        // table's previous batch). Corrections to a specific order are still
-        // possible via the Running Orders panel.
-        setCart([]);
-        setEditingOrder(null);
+        if (table.status === "OCCUPIED") {
+            const running = runningOrders.find((o) => o.table_id === table.id);
+            if (running) await openOrder(running);
+            else alert("No running order found for this table.");
+        } else {
+            setCart([]);
+            setEditingOrder(null);
+        }
     };
 
     const loadMenuItems = async (categoryId) => {
