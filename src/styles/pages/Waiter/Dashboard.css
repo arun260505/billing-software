@@ -431,3 +431,18 @@
     cursor: pointer;
 }
 .waiter-app .running-served-btn:hover { background: #15803d; }
+
+/* Mark-served button in the waiter read-only section */
+.waiter-app .wc-served-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    border: none;
+    border-radius: 8px;
+    background: #16a34a;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.waiter-app .wc-served-btn:hover { background: #15803d; }

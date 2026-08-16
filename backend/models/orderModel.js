@@ -299,6 +299,19 @@ const markServed = (orderId, restaurantId, callback) => {
 
 };
 
+// Mark all of a table's active orders Served (waiter delivered the table's food).
+const markTableServed = (tableId, restaurantId, callback) => {
+
+    db.query(
+        `UPDATE orders SET order_status='Served'
+         WHERE table_id=? AND restaurant_id=?
+           AND order_status IN ('Pending','Preparing','Ready')`,
+        [tableId, restaurantId],
+        callback
+    );
+
+};
+
 // Settle a table: mark all its active orders Completed/Paid and free the table.
 const settleTable = (tableId, restaurantId, callback) => {
 
@@ -351,5 +364,6 @@ module.exports = {
     getTodaysOrderCount,
     getTableActiveItems,
     settleTable,
-    markServed
+    markServed,
+    markTableServed
 };

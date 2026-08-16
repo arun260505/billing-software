@@ -21,6 +21,9 @@ export const settleTable = (tableId) =>
 export const markOrderServed = (id) =>
   api.put(`/orders/${id}/serve`);
 
+export const markTableServed = (tableId) =>
+  api.put(`/orders/table/${tableId}/serve`);
+
 export const updateOrder = (id, data) =>
   api.put(`/orders/${id}`, data);
 

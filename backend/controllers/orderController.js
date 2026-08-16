@@ -164,6 +164,19 @@ exports.markServed = (req, res) => {
 
 };
 
+// PUT /api/orders/table/:tableId/serve — mark all the table's orders served
+exports.markTableServed = (req, res) => {
+
+    orderModel.markTableServed(req.params.tableId, req.user.restaurant_id, (err) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Table orders marked as served.");
+
+    });
+
+};
+
 // POST /api/orders/table/:tableId/settle — complete the table's orders + free it
 exports.settleTable = (req, res) => {
 

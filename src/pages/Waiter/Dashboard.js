@@ -3,7 +3,7 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Waiter/Dashboard.css";
 import { getCategories, getItemsByCategory } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markTableServed, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -256,6 +256,18 @@ function Dashboard() {
             await loadTables();
         } catch (e) {
             alert("Could not mark the order as served.");
+        }
+    };
+
+    // Mark the whole selected table's food as served (delivered).
+    const handleServeTable = async () => {
+        if (!selectedTable) return;
+        try {
+            await markTableServed(selectedTable.id);
+            alert(`${selectedTable.table_number} marked as served.`);
+            await loadRunningOrders();
+        } catch (e) {
+            alert("Could not mark the table as served.");
         }
     };
 
@@ -559,6 +571,9 @@ function Dashboard() {
                                         <span>{it.quantity}×</span>
                                     </div>
                                 ))}
+                                <button className="wc-served-btn" onClick={handleServeTable}>
+                                    ✓ Mark Served
+                                </button>
                                 <button className="wc-bill-btn" onClick={requestBill}>
                                     🧾 Send Bill to Cashier
                                 </button>
