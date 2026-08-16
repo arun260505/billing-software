@@ -1,8 +1,8 @@
 // Clean mobile menu card: veg / non-veg dot, name, description, price.
-// Tapping the card adds the item to the cart (no separate "+" button).
+// A "+" button adds the item; once in the cart it becomes a  − qty +  stepper.
 // onToggleAvailability is optional — only the cashier passes it, which shows the
 // "Mark Available / Unavailable" toggle on each card.
-function MenuCard({ item, addToCart, onToggleAvailability }) {
+function MenuCard({ item, addToCart, removeOneFromCart, quantity = 0, onToggleAvailability }) {
 
     const isUnavailable = Number(item.available_quantity) === 0;
 
@@ -10,16 +10,8 @@ function MenuCard({ item, addToCart, onToggleAvailability }) {
     const ft = String(item.food_type || "Veg").toLowerCase();
     const foodClass = ft.includes("non") ? "nonveg" : ft.includes("egg") ? "egg" : "veg";
 
-    const handleAdd = () => {
-        if (!isUnavailable) addToCart(item);
-    };
-
     return (
-        <div
-            className={`menu-card food-${foodClass}${isUnavailable ? " out-of-stock-card" : ""}`}
-            onClick={handleAdd}
-            role="button"
-        >
+        <div className={`menu-card food-${foodClass}${isUnavailable ? " out-of-stock-card" : ""}`}>
             <span className={`veg-dot veg-dot-${foodClass}`} aria-hidden="true">
                 <i />
             </span>
@@ -27,10 +19,23 @@ function MenuCard({ item, addToCart, onToggleAvailability }) {
             <div className="menu-details">
                 <h3 className="menu-name">{item.item_name}</h3>
                 {item.description && <p className="menu-desc">{item.description}</p>}
-                <span className="menu-price">₹{Number(item.price).toFixed(0)}</span>
-            </div>
 
-            {isUnavailable && <span className="menu-unavailable-tag">Unavailable</span>}
+                <div className="menu-card-bottom">
+                    <span className="menu-price">₹{Number(item.price).toFixed(0)}</span>
+
+                    {isUnavailable ? (
+                        <span className="menu-unavailable-tag">Unavailable</span>
+                    ) : quantity > 0 ? (
+                        <div className="mc-stepper">
+                            <button className="mc-step" onClick={() => removeOneFromCart && removeOneFromCart(item)}>−</button>
+                            <span className="mc-qty">{quantity}</span>
+                            <button className="mc-step mc-step-add" onClick={() => addToCart(item)}>+</button>
+                        </div>
+                    ) : (
+                        <button className="mc-add" onClick={() => addToCart(item)} title="Add to order">+</button>
+                    )}
+                </div>
+            </div>
 
             {/* Cashier-only availability toggle */}
             {onToggleAvailability && (

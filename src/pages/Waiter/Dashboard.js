@@ -123,6 +123,28 @@ function Dashboard() {
         ]);
     };
 
+    // "−" on a menu card: drop one unit of this item from the NEW cart lines.
+    const removeOneFromCart = (item) => {
+        setCart((prev) => {
+            for (let i = prev.length - 1; i >= 0; i--) {
+                if (prev[i].id === item.id) {
+                    const line = prev[i];
+                    if (normalizeQuantity(line.quantity) > 1) {
+                        const copy = [...prev];
+                        copy[i] = { ...line, quantity: normalizeQuantity(line.quantity) - 1 };
+                        return copy;
+                    }
+                    return prev.filter((_, idx) => idx !== i);
+                }
+            }
+            return prev;
+        });
+    };
+
+    // How many of a given menu item are currently in the NEW cart (for the card stepper).
+    const cartQtyFor = (itemId) =>
+        cart.filter((c) => c.id === itemId).reduce((s, c) => s + normalizeQuantity(c.quantity), 0);
+
     const newOrder = () => {
         setCart([]);
         setEditingOrder(null);
@@ -614,9 +636,6 @@ function Dashboard() {
                                         )}
                                     </div>
                                 ))}
-                                <button className="wc-bill-btn" onClick={requestBill}>
-                                    🧾 Send Bill to Cashier
-                                </button>
                                 <div className="wc-previous-divider">＋ New items (sent as a new ticket)</div>
                             </div>
                         )}
@@ -692,11 +711,27 @@ function Dashboard() {
                             <p className="no-items-msg">No items available</p>
                         ) : (
                             filteredItems.map((item) => (
-                                <MenuCard key={item.id} item={item} addToCart={addToCart} />
+                                <MenuCard
+                                    key={item.id}
+                                    item={item}
+                                    quantity={cartQtyFor(item.id)}
+                                    addToCart={addToCart}
+                                    removeOneFromCart={removeOneFromCart}
+                                />
                             ))
                         )}
                     </div>
                 </div>
+
+                {/* Send Bill sits at the very bottom, away from the ordering
+                    buttons, so it can't be tapped by accident. */}
+                {previousItems.length > 0 && (
+                    <div className="ws-billbar">
+                        <button className="ws-bill-btn" onClick={requestBill}>
+                            🧾 Send Bill to Cashier
+                        </button>
+                    </div>
+                )}
             </div>
             )}
 

@@ -543,10 +543,10 @@
 /* selected ring */
 .waiter-app .tsc-selected { border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,.25); }
 
-/* ── Workspace: stack vertically (menu first, cart below) ────────────── */
+/* ── Workspace: stack vertically (order panel on top, menu below) ─────── */
 .waiter-app .main-workspace { display: flex; flex-direction: column; gap: 0; padding: 0; }
-.waiter-app .workspace-menu { order: 1; width: 100%; flex: none; border: none; }
-.waiter-app .workspace-cart { order: 2; width: 100%; flex: none; border: none; border-top: 8px solid #eef1f5; }
+.waiter-app .workspace-cart { order: 1; width: 100%; flex: none; border: none; }
+.waiter-app .workspace-menu { order: 2; width: 100%; flex: none; border: none; border-top: 8px solid #eef1f5; }
 
 /* ── Menu top bar / search ──────────────────────────────────────────── */
 .waiter-app .menu-top-bar { padding: 12px; gap: 10px; }
@@ -624,3 +624,40 @@
 .waiter-app .ws-back:active { background: #e2e6ec; }
 .waiter-app .ws-back svg { width: 16px; height: 16px; }
 .waiter-app .ws-back-table { font-size: 15px; font-weight: 800; color: #0d9488; }
+
+/* ── Menu card: price + add/stepper row ─────────────────────────────── */
+.waiter-app .menu-card-bottom {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; margin-top: auto;
+}
+.waiter-app .menu-card .menu-price { margin-top: 0; }
+
+.waiter-app .mc-add {
+    width: 34px; height: 34px; flex: 0 0 34px; border: none; border-radius: 10px;
+    background: #0d9488; color: #fff; font-size: 22px; font-weight: 700;
+    line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.waiter-app .mc-add:active { background: #0b7d72; }
+
+.waiter-app .mc-stepper {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 10px; padding: 2px;
+}
+.waiter-app .mc-step {
+    width: 28px; height: 28px; border: none; border-radius: 8px; background: #ffffff;
+    color: #0d9488; font-size: 18px; font-weight: 800; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,.08);
+}
+.waiter-app .mc-step-add { background: #0d9488; color: #fff; }
+.waiter-app .mc-step:active { filter: brightness(.95); }
+.waiter-app .mc-qty { min-width: 20px; text-align: center; font-size: 15px; font-weight: 800; color: #0f172a; }
+
+/* ── Send Bill: pinned to the very bottom, understated so it isn't hit by
+      accident (it's a de-emphasised outline button, not a big filled one). ── */
+.waiter-app .ws-billbar { order: 3; width: 100%; padding: 14px 12px 22px; border-top: 8px solid #eef1f5; }
+.waiter-app .ws-bill-btn {
+    width: 100%; padding: 12px; border-radius: 12px; cursor: pointer;
+    background: #ffffff; color: #7c3aed; border: 1.5px solid #ddd6fe;
+    font-size: 14px; font-weight: 700;
+}
+.waiter-app .ws-bill-btn:active { background: #f5f3ff; }
