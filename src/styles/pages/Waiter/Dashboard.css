@@ -873,3 +873,11 @@
 .waiter-app .tsc-billed { border-color: #fca5a5; background: #fef2f2; }
 .waiter-app .tsc-billed .tsc-num { color: #dc2626; }
 .waiter-app .tsc-billed .badge-billed { background: #fee2e2; color: #dc2626; }
+
+/* ── Per-table served progress (X/Y served) ─────────────────────────── */
+.waiter-app .tsc-served {
+    font-size: 11px; font-weight: 700; color: #475569;
+    background: #eef2f7; border-radius: 999px; padding: 2px 10px;
+}
+.waiter-app .tsc-occupied .tsc-served { background: #fdeccf; color: #b45309; }
+.waiter-app .tsc-billed .tsc-served { background: #fee2e2; color: #b91c1c; }

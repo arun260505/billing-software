@@ -643,6 +643,11 @@ function Dashboard() {
                                 <div className="tsc-body">
                                     <TableIcon seats={table.capacity} />
                                 </div>
+                                {!isFree && Number(table.total_items) > 0 && (
+                                    <div className="tsc-served">
+                                        {Number(table.served_items)}/{Number(table.total_items)} served
+                                    </div>
+                                )}
                                 <div className={`tsc-status-badge ${badgeCls}`}>
                                     {badgeText}
                                 </div>

@@ -1,12 +1,23 @@
 const db = require("../config/db");
 
-// Get all tables (tenant-scoped)
+// Get all tables (tenant-scoped) with served/total item counts for active orders
 const getAllTables = (restaurantId, callback) => {
     const sql = `
-        SELECT *
-        FROM dining_tables
-        WHERE restaurant_id = ?
-        ORDER BY table_name ASC
+        SELECT dt.*,
+            (SELECT COUNT(*)
+               FROM order_items oi
+               INNER JOIN orders o ON oi.order_id = o.id
+              WHERE o.table_id = dt.id AND o.restaurant_id = dt.restaurant_id
+                AND o.order_status IN ('Pending','Preparing','Ready','Served')) AS total_items,
+            (SELECT COUNT(*)
+               FROM order_items oi
+               INNER JOIN orders o ON oi.order_id = o.id
+              WHERE o.table_id = dt.id AND o.restaurant_id = dt.restaurant_id
+                AND o.order_status IN ('Pending','Preparing','Ready','Served')
+                AND oi.served = 1) AS served_items
+        FROM dining_tables dt
+        WHERE dt.restaurant_id = ?
+        ORDER BY dt.table_name ASC
     `;
 
     db.query(sql, [restaurantId], callback);
