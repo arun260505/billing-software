@@ -79,7 +79,7 @@ function Dashboard() {
                         const pending = t.items.filter((it) => !Number(it.served)).length;
                         return (
                             <a key={t.table_id} href={`#tbl-${t.table_id}`} className={`kd-tab${pending === 0 ? " done" : ""}`}>
-                                T{t.table_name}
+                                {String(t.table_name).toUpperCase()}
                                 {pending > 0 && <span className="kd-tab-badge">{pending}</span>}
                             </a>
                         );
@@ -99,25 +99,36 @@ function Dashboard() {
                     {tables.map((t) => {
                         const served = t.items.filter((it) => Number(it.served)).length;
                         const allDone = served === t.items.length;
+                        // Unserved on top (newest first); served items sink to the bottom.
+                        const sortedItems = [...t.items].sort((a, b) => {
+                            const sa = Number(a.served), sb = Number(b.served);
+                            if (sa !== sb) return sa - sb;
+                            return (new Date(b.created_at) - new Date(a.created_at)) || (b.id - a.id);
+                        });
                         return (
                             <div key={t.table_id} id={`tbl-${t.table_id}`} className={`kd-table${allDone ? " all-served" : ""}`}>
                                 <div className="kd-table-head">
-                                    <span className="kd-table-name">T{t.table_name}</span>
+                                    <span className="kd-table-name">{String(t.table_name).toUpperCase()}</span>
                                     <span className="kd-table-count">{served}/{t.items.length} served</span>
                                 </div>
                                 <ul className="kd-items">
-                                    {t.items.map((it) => (
-                                        <li key={it.id} className={Number(it.served) ? "kd-item-served" : ""}>
-                                            <span className="kd-qty">{Number(it.quantity)}×</span>
-                                            <span className="kd-item-name">{it.item_name}</span>
-                                            {it.notes && <span className="kd-note">— {it.notes}</span>}
-                                            {Number(it.served) ? (
-                                                <span className="kd-served">✓ served</span>
-                                            ) : (
-                                                <button className="kd-serve" onClick={() => serve(t.table_id, it)}>Serve</button>
-                                            )}
-                                        </li>
-                                    ))}
+                                    {sortedItems.map((it) => {
+                                        const isNew = !Number(it.served) &&
+                                            (Date.now() - new Date(it.created_at).getTime()) < 90000;
+                                        return (
+                                            <li key={it.id} className={Number(it.served) ? "kd-item-served" : ""}>
+                                                <span className="kd-qty">{Number(it.quantity)}×</span>
+                                                <span className="kd-item-name">{it.item_name}</span>
+                                                {isNew && <span className="kd-new">NEW</span>}
+                                                {it.notes && <span className="kd-note">— {it.notes}</span>}
+                                                {Number(it.served) ? (
+                                                    <span className="kd-served">✓ served</span>
+                                                ) : (
+                                                    <button className="kd-serve" onClick={() => serve(t.table_id, it)}>Serve</button>
+                                                )}
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             </div>
                         );
