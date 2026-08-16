@@ -94,6 +94,12 @@ function BillModal({ tableLabel, items, menuItems, busy, onSetQty, onRemoveGroup
                                 placeholder="Search item to add…"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
+                                onFocus={(e) => {
+                                    const el = e.target;
+                                    // let the on-screen keyboard start opening, then bring
+                                    // the search box + list into view above it
+                                    setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 250);
+                                }}
                                 autoFocus
                             />
                             <div className="bill-add-list">

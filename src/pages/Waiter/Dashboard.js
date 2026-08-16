@@ -92,10 +92,13 @@ function Dashboard() {
     // marks served flip to served here within a few seconds, no refresh needed.
     useEffect(() => {
         if (!selectedTable || selectedTable.status !== "OCCUPIED") return;
+        // Pause the auto-refresh while a sheet is open, otherwise the 4s re-render
+        // makes the bill / add-item list blink (and can steal input focus).
+        if (showBill || showCart) return;
         const t = setInterval(() => refreshTableItems(selectedTable.id), 4000);
         return () => clearInterval(t);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedTable]);
+    }, [selectedTable, showBill, showCart]);
 
     // When searching, look across the WHOLE menu (all categories); otherwise show
     // just the selected category's items.
@@ -705,7 +708,7 @@ function Dashboard() {
                     <CategoryTabs
                         categories={categories}
                         selectedCategory={selectedCategory}
-                        onSelectCategory={setSelectedCategory}
+                        onSelectCategory={(id) => { setSearchTerm(""); setSelectedCategory(id); }}
                     />
 
                     <div className="menu-items">
