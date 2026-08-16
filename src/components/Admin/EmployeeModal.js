@@ -26,7 +26,13 @@ function EmployeeModal({ show, onClose, onSave }) {
 
     const generateUsername = () => {
 
-        const restaurant = "inwallz";
+        // Username suffix = the logged-in admin's restaurant name slug
+        // (e.g. "NPK Kitchen" -> "npkkitchen"), matching the backend.
+        const loggedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const restaurant =
+            (loggedUser.restaurant_name || "restaurant")
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, "") || "restaurant";
 
         const cleanName = form.full_name
             .trim()

@@ -49,7 +49,21 @@ const bcrypt = require("bcrypt");
 
 exports.addEmployee = (data, callback) => {
 
-    const restaurant = "inwallz";
+    // Look up the restaurant so the username suffix is the restaurant's name
+    // slug (e.g. "NPK Kitchen" -> "npkkitchen"), not a hardcoded @inwallz.
+    db.query(
+        "SELECT restaurant_name FROM restaurants WHERE id = ?",
+        [data.restaurant_id],
+        (err, restRows) => {
+
+    if (err) {
+        return callback(err);
+    }
+
+    const restaurant =
+        ((restRows[0] && restRows[0].restaurant_name) || "restaurant")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "") || "restaurant";
 
     const name = data.full_name
         .trim()
@@ -145,6 +159,9 @@ VALUES
                 );
 
             });
+
+        }
+    );
 
         }
     );
