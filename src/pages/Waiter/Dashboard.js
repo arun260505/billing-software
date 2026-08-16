@@ -427,8 +427,11 @@ function Dashboard() {
             } else {
                 await createOrder(orderData);
                 if (selectedTable && selectedTable.id) {
-                    await updateTableStatus(selectedTable.id, "OCCUPIED");
-                    setSelectedTable({ ...selectedTable, status: "OCCUPIED" });
+                    // Keep an already-billed table tagged "Billed" (the cashier
+                    // hasn't settled it yet); otherwise mark it Occupied.
+                    if (selectedTable.db_status !== "Billing") {
+                        await updateTableStatus(selectedTable.id, "OCCUPIED");
+                    }
                     await loadTables();
                 }
                 alert(selectedTable?.isParcel ? "Parcel Order Sent To Kitchen" : "Order Sent To Kitchen");
@@ -473,13 +476,15 @@ function Dashboard() {
 
     // ── UI-only computed values ─────────────────────────────────────
     const availableCount = tables.filter((t) => t.status === "FREE").length;
-    const occupiedCount  = tables.filter((t) => t.status === "OCCUPIED").length;
+    const billedCount    = tables.filter((t) => t.needs_bill).length;
+    const occupiedCount  = tables.filter((t) => t.status === "OCCUPIED" && !t.needs_bill).length;
 
     const visibleTables = tables.filter((t) => {
         const matchFilter =
             tableFilter === "all"      ? true :
             tableFilter === "available" ? t.status === "FREE" :
-            tableFilter === "occupied"  ? t.status === "OCCUPIED" : false;
+            tableFilter === "needs-bill" ? t.needs_bill :
+            tableFilter === "occupied"  ? (t.status === "OCCUPIED" && !t.needs_bill) : false;
         const matchSearch = !tableSearch ||
             `T${t.table_number}`.toLowerCase().includes(tableSearch.toLowerCase());
         return matchFilter && matchSearch;
@@ -604,8 +609,7 @@ function Dashboard() {
                         { key: "all",       label: `All (${tables.length})`,         cls: "tft-all" },
                         { key: "available", label: `Available (${availableCount})`,  cls: "tft-available" },
                         { key: "occupied",  label: `Occupied (${occupiedCount})`,    cls: "tft-occupied" },
-                        { key: "reserved",  label: "Reserved (0)",                   cls: "tft-reserved" },
-                        { key: "needs-bill",label: "Needs Bill (0)",                 cls: "tft-needsbill" },
+                        { key: "needs-bill",label: `Billed (${billedCount})`,        cls: "tft-needsbill" },
                     ].map((f) => (
                         <button
                             key={f.key}
@@ -621,11 +625,15 @@ function Dashboard() {
                 <div className="table-status-grid">
                     {visibleTables.map((table) => {
                         const isFree     = table.status === "FREE";
+                        const isBilled   = table.needs_bill;   // bill sent to cashier
                         const isSelected = selectedTable?.id === table.id;
+                        const stateCls   = isFree ? "tsc-free" : isBilled ? "tsc-billed" : "tsc-occupied";
+                        const badgeCls   = isFree ? "badge-free" : isBilled ? "badge-billed" : "badge-occupied";
+                        const badgeText  = isFree ? "Available" : isBilled ? "Billed" : "Occupied";
                         return (
                             <div
                                 key={table.id}
-                                className={`tsc ${isFree ? "tsc-free" : "tsc-occupied"} ${isSelected ? "tsc-selected" : ""}`}
+                                className={`tsc ${stateCls} ${isSelected ? "tsc-selected" : ""}`}
                                 onClick={() => handleSelectTable(table)}
                             >
                                 <div className="tsc-head">
@@ -635,8 +643,8 @@ function Dashboard() {
                                 <div className="tsc-body">
                                     <TableIcon seats={table.capacity} />
                                 </div>
-                                <div className={`tsc-status-badge ${isFree ? "badge-free" : "badge-occupied"}`}>
-                                    {isFree ? "Available" : "Occupied"}
+                                <div className={`tsc-status-badge ${badgeCls}`}>
+                                    {badgeText}
                                 </div>
                             </div>
                         );
