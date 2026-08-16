@@ -112,11 +112,7 @@ function Dashboard() {
     };
 
     const addToCart = (item) => {
-        if (!selectedTable) {
-            alert("Please select a table first.");
-            return;
-        }
-        // Each add is its own line; same items merge into quantities on send.
+        // No table needed — a cart with no table selected is a counter/walk-in order.
         const limit = getItemQuantityLimit(item);
         const currentTotal = cart
             .filter((c) => c.id === item.id)
@@ -219,13 +215,6 @@ function Dashboard() {
         } else {
             setPreviousItems([]);
         }
-    };
-
-    const handleParcelSelect = () => {
-        if (blockIfParcelLocked()) return;
-        setSelectedTable({ id: null, table_number: "Parcel", isParcel: true, status: "FREE" });
-        setCart([]);
-        setEditingOrder(null);
     };
 
     const loadMenuItems = async (categoryId) => {
@@ -417,21 +406,24 @@ function Dashboard() {
 
     const handleProceedToBilling = async () => {
         if (cart.length === 0) { alert("Please add items."); return; }
-        if (!selectedTable) { alert("Please select a table first."); return; }
 
         let orderId = editingOrder?.id;
 
+        // No existing order yet → create it now (this also sends it to the kitchen).
         if (!orderId) {
             const orderData = {
                 order_number: `ORD-${Date.now()}`,
                 waiter_id: 1,
                 table_id: selectedTable?.id || null,
-                order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
+                order_type: selectedTable ? "Dine-In" : "Takeaway",
                 items: mergeCartItems(cart),
             };
             try {
                 const res = await createOrder(orderData);
                 orderId = res.data.data.order_id;
+                if (selectedTable && selectedTable.id) {
+                    await updateTableStatus(selectedTable.id, "OCCUPIED");
+                }
             } catch (error) {
                 console.error("Order Error:", error);
                 alert(error.response?.data?.message || "Failed to place order.");
@@ -444,8 +436,7 @@ function Dashboard() {
         setBillData({
             order_id: orderId,
             order_number: editingOrder ? editingOrder.order_number : `ORD-${orderNumber}`,
-            tableName: selectedTable?.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`,
-            isParcel: !!selectedTable?.isParcel,
+            tableName: selectedTable ? `Table ${selectedTable.table_number}` : "Counter",
             items: mergeCartItems(cart),
             subtotal: Number(subtotal.toFixed(2)),
             gst: Number(gst.toFixed(2)),
@@ -459,9 +450,7 @@ function Dashboard() {
         setShowBill(false);
         setBillData(null);
         setCart([]);
-        if (!billData?.isParcel) {
-            setSelectedTable(null);
-        }
+        setSelectedTable(null);
         setEditingOrder(null);
         alert("Bill Generated Successfully");
         updateDateTime();
@@ -562,9 +551,9 @@ function Dashboard() {
                             </button>
                         );
                     })}
-                    <button className={`pos-tchip parcel${selectedTable?.isParcel ? " sel" : ""}`} onClick={handleParcelSelect}>
-                        <span className="pos-tchip-name">📦</span>
-                        <span className="pos-tchip-state">Parcel</span>
+                    <button className={`pos-tchip counter${!selectedTable ? " sel" : ""}`} onClick={handleChangeTable} title="Order without a table">
+                        <span className="pos-tchip-name">🧾</span>
+                        <span className="pos-tchip-state">Counter</span>
                     </button>
                 </div>
             </div>
@@ -615,9 +604,9 @@ function Dashboard() {
                     <div className="pos-bill-head">
                         <div className="pos-bill-headtext">
                             <span className="pos-bill-title">
-                                {selectedTable ? (selectedTable.isParcel ? "📦 Parcel" : `Table ${selectedTable.table_number}`) : "No table selected"}
+                                {selectedTable ? `Table ${selectedTable.table_number}` : "🧾 Counter Order"}
                             </span>
-                            <span className="pos-bill-sub">{editingOrder ? editingOrder.order_number : (selectedTable ? "New order" : "Pick a table above")}</span>
+                            <span className="pos-bill-sub">{editingOrder ? editingOrder.order_number : (selectedTable ? "New order" : "Walk-in — no table")}</span>
                         </div>
                         <div className="pos-bill-headbtns">
                             {selectedTable && <button className="pos-bill-change" onClick={handleChangeTable} title="Change table">Change</button>}
@@ -647,7 +636,7 @@ function Dashboard() {
                         {cart.length === 0 ? (
                             <div className="pos-bill-empty">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                                <p>{selectedTable ? "Add items from the menu" : "Select a table to start"}</p>
+                                <p>Add items from the menu</p>
                             </div>
                         ) : (
                             cart.map((item) => (
@@ -663,14 +652,16 @@ function Dashboard() {
                         <div className="pos-tot-row"><span>Service (2%)</span><span>₹{serviceCharge.toFixed(0)}</span></div>
                         <div className="pos-tot-row grand"><span>Total</span><span>₹{displayTotal.toFixed(0)}</span></div>
                         <div className="pos-bill-actions">
-                            <button className="pos-send" onClick={placeOrder} disabled={cart.length === 0}>
-                                {editingOrder ? "Update Order" : "Send to Kitchen"}
-                            </button>
+                            {selectedTable && (
+                                <button className="pos-send" onClick={placeOrder} disabled={cart.length === 0}>
+                                    {editingOrder ? "Update Order" : "Send to Kitchen"}
+                                </button>
+                            )}
                             <button className="pos-pay" onClick={handleProceedToBilling} disabled={cart.length === 0}>
-                                Proceed to Billing →
+                                {selectedTable ? "Proceed to Billing →" : "Send & Bill →"}
                             </button>
                         </div>
-                        {editingOrder && <button className="pos-cancel" onClick={handleCancelOrder}>✕ Cancel Order</button>}
+                        {editingOrder && selectedTable && <button className="pos-cancel" onClick={handleCancelOrder}>✕ Cancel Order</button>}
                     </div>
                 </aside>
             </div>

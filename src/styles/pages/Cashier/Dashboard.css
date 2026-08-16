@@ -249,3 +249,42 @@
 .cashier-app .cir-btn { width: 26px; height: 26px; border: 1px solid #e2e8f0; background: #fff; border-radius: 7px; font-size: 15px; font-weight: 800; color: #0d9488; cursor: pointer; }
 .cashier-app .cir-qty { min-width: 18px; text-align: center; font-weight: 800; }
 .cashier-app .cir-remove { width: 26px; height: 26px; border: none; background: #fef2f2; color: #dc2626; border-radius: 7px; cursor: pointer; font-weight: 800; }
+
+/* Counter chip (order without a table) */
+.cashier-app .pos-tchip.counter { border-color: #cbd5e1; background: #f8fafc; }
+.cashier-app .pos-tchip.counter .pos-tchip-state { color: #475569; }
+
+/* ── Bill generation modal (BillModal component) ─────────────────────── */
+.cashier-app .bill-overlay {
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(15, 23, 42, .55);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.cashier-app .bill-modal {
+    width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto;
+    background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,.35);
+    padding: 20px;
+}
+.cashier-app .bill-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cashier-app .bill-header h2 { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; }
+.cashier-app .bill-close { background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 16px; color: #475569; cursor: pointer; }
+.cashier-app .bill-meta { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: #64748b; padding: 6px 0 12px; border-bottom: 1px solid #eef1f5; flex-wrap: wrap; }
+.cashier-app .bill-items { padding: 10px 0; }
+.cashier-app .bill-empty { text-align: center; color: #94a3b8; padding: 16px; }
+.cashier-app .bill-line { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; border-bottom: 1px dashed #eef1f5; }
+.cashier-app .bill-item-name { flex: 1; font-weight: 600; color: #0f172a; }
+.cashier-app .bill-item-calc { color: #64748b; font-size: 12px; }
+.cashier-app .bill-item-total { font-weight: 700; color: #0f172a; min-width: 60px; text-align: right; }
+.cashier-app .bill-totals { padding: 12px 0; border-top: 1px solid #eef1f5; }
+.cashier-app .bill-row { display: flex; justify-content: space-between; font-size: 14px; color: #475569; padding: 3px 0; }
+.cashier-app .bill-total-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+.cashier-app .bill-total-label { font-size: 16px; font-weight: 700; color: #0f172a; }
+.cashier-app .bill-total-value { font-size: 24px; font-weight: 800; color: #0d9488; }
+.cashier-app .bill-payment { padding: 8px 0 16px; }
+.cashier-app .bill-pay-label { display: block; font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 8px; }
+.cashier-app .bill-pay-methods { display: flex; gap: 10px; }
+.cashier-app .bill-pay-btn { flex: 1; padding: 12px; border-radius: 10px; border: 1.5px solid #e2e8f0; background: #fff; font-size: 14px; font-weight: 700; color: #475569; cursor: pointer; }
+.cashier-app .bill-pay-active { border-color: #0d9488; background: #f0fdfa; color: #0d9488; }
+.cashier-app .bill-confirm-btn { width: 100%; padding: 15px; border-radius: 12px; border: none; background: #0d9488; color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; }
+.cashier-app .bill-confirm-btn:hover { background: #0b7d72; }
+.cashier-app .bill-confirm-btn:disabled { background: #94a3b8; cursor: default; }

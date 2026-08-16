@@ -2,15 +2,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { getKitchenTables, markKitchenItemServed } from "../../services/kitchenService";
 import "../../styles/pages/Kitchen/Dashboard.css";
 
-function timeAgo(iso) {
-    const secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-    if (secs < 60) return `${secs}s ago`;
-    const mins = Math.floor(secs / 60);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    return `${hrs}h ${mins % 60}m ago`;
-}
-
 // Kitchen display grouped by table. Each item has a Serve button that strikes it
 // through. Once a table is billed it drops off the board automatically.
 function Dashboard() {
