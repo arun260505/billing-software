@@ -401,3 +401,18 @@
     color: #16a34a;
     text-align: center;
 }
+
+/* Send-bill-to-cashier button in the waiter read-only section */
+.waiter-app .wc-bill-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    border: none;
+    border-radius: 8px;
+    background: #7c3aed;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.waiter-app .wc-bill-btn:hover { background: #6d28d9; }

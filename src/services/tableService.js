@@ -11,6 +11,8 @@ export const getTables = async () => {
     const data = rows.map((t) => ({
         ...t,
         table_number: t.table_name,
+        db_status: t.status,                                    // raw DB status
+        needs_bill: t.status === "Billing",                     // sent to cashier
         status: t.status === "Available" ? "FREE" : "OCCUPIED"
     }));
     return { success: true, data };

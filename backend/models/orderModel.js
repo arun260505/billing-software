@@ -286,6 +286,27 @@ const getTableActiveItems = (tableId, restaurantId, callback) => {
 
 };
 
+// Settle a table: mark all its active orders Completed/Paid and free the table.
+const settleTable = (tableId, restaurantId, callback) => {
+
+    db.query(
+        `UPDATE orders
+         SET order_status='Completed', payment_status='Paid'
+         WHERE table_id=? AND restaurant_id=?
+           AND order_status IN ('Pending','Preparing','Ready','Served')`,
+        [tableId, restaurantId],
+        (err) => {
+            if (err) return callback(err);
+            db.query(
+                "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
+                [tableId, restaurantId],
+                callback
+            );
+        }
+    );
+
+};
+
 // Count of orders created today (tenant-scoped)
 const getTodaysOrderCount = (restaurantId, callback) => {
 
@@ -315,5 +336,6 @@ module.exports = {
     deleteOrderItems,
     cancelOrder,
     getTodaysOrderCount,
-    getTableActiveItems
+    getTableActiveItems,
+    settleTable
 };

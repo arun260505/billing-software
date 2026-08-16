@@ -243,6 +243,21 @@ function Dashboard() {
         await loadTables();
     };
 
+    // Send the table's bill to the cashier for printing (marks it "Billing").
+    const requestBill = async () => {
+        if (!selectedTable) return;
+        try {
+            await updateTableStatus(selectedTable.id, "BILLING");
+            alert(`Bill for ${selectedTable.table_number} sent to the cashier for printing.`);
+            setSelectedTable(null);
+            setPreviousItems([]);
+            setCart([]);
+            await loadTables();
+        } catch (e) {
+            alert("Could not send the bill to the cashier.");
+        }
+    };
+
     const placeOrder = async () => {
         if (cart.length === 0) { alert("Please add items."); return; }
         if (!selectedTable) { alert("Please select a table first."); return; }
@@ -528,6 +543,9 @@ function Dashboard() {
                                         <span>{it.quantity}×</span>
                                     </div>
                                 ))}
+                                <button className="wc-bill-btn" onClick={requestBill}>
+                                    🧾 Send Bill to Cashier
+                                </button>
                                 <div className="wc-previous-divider">＋ New items (sent as a new ticket)</div>
                             </div>
                         )}

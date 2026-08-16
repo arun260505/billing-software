@@ -3,7 +3,7 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
 import { getCategories, getItemsByCategory } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -396,6 +396,40 @@ function Dashboard() {
         loadTodaysOrderCount();
     };
 
+    // Print a table's bill (waiter requested it), then settle: mark the table's
+    // orders paid and free the table.
+    const printBill = async (table) => {
+        try {
+            const res = await getTableItems(table.id);
+            const items = res.data.data || [];
+            const sub = items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0);
+            const gstAmt = sub * 0.05;
+            const total = sub + gstAmt;
+            const w = window.open("", "PrintBill", "width=340,height=560");
+            if (w) {
+                w.document.write(
+                    `<div style="font-family:monospace;padding:12px">
+                       <h3 style="text-align:center;margin:0">InWallz</h3>
+                       <p style="text-align:center;margin:2px 0 10px">Table ${table.table_number}</p><hr>` +
+                    items.map((i) => `<div style="display:flex;justify-content:space-between"><span>${i.item_name} x${i.quantity}</span><span>&#8377;${(Number(i.price) * Number(i.quantity)).toFixed(0)}</span></div>`).join("") +
+                    `<hr>
+                       <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>&#8377;${sub.toFixed(0)}</span></div>
+                       <div style="display:flex;justify-content:space-between"><span>GST 5%</span><span>&#8377;${gstAmt.toFixed(0)}</span></div>
+                       <div style="display:flex;justify-content:space-between;font-weight:bold"><span>TOTAL</span><span>&#8377;${total.toFixed(0)}</span></div>
+                       <p style="text-align:center;margin-top:12px">Thank you!</p></div>`
+                );
+                w.document.close();
+                w.focus();
+                w.print();
+            }
+            await settleTable(table.id);
+            alert(`Table ${table.table_number} printed & settled — now Available.`);
+            await loadTables();
+        } catch (e) {
+            alert("Could not print / settle the bill.");
+        }
+    };
+
     // ── UI computed values ──────────────────────────────────────────
     const availableCount = tables.filter((t) => t.status === "FREE").length;
     const occupiedCount  = tables.filter((t) => t.status === "OCCUPIED").length;
@@ -466,6 +500,18 @@ function Dashboard() {
                     </button>
                 </div>
             </nav>
+
+            {/* ══ BILLS TO PRINT (waiter requests) ══ */}
+            {tables.filter((t) => t.needs_bill).length > 0 && (
+                <div className="cashier-print-alert">
+                    <span className="cpa-title">🔔 Bills to print:</span>
+                    {tables.filter((t) => t.needs_bill).map((t) => (
+                        <button key={t.id} className="cpa-btn" onClick={() => printBill(t)}>
+                            🖨 Print &amp; Settle {t.table_number}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* ══ STATS ══ */}
             <div className="app-stats">

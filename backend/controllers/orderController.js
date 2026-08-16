@@ -150,6 +150,19 @@ exports.getTodaysOrderCount = (req, res) => {
 
 };
 
+// POST /api/orders/table/:tableId/settle — complete the table's orders + free it
+exports.settleTable = (req, res) => {
+
+    orderModel.settleTable(req.params.tableId, req.user.restaurant_id, (err) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Table settled and freed.");
+
+    });
+
+};
+
 // GET /api/orders/table/:tableId/items — a table's active (unpaid) items, merged
 exports.getTableActiveItems = (req, res) => {
 

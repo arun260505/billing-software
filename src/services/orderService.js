@@ -15,6 +15,9 @@ export const getOrderDetails = (id) =>
 export const getTableItems = (tableId) =>
   api.get(`/orders/table/${tableId}/items`);
 
+export const settleTable = (tableId) =>
+  api.post(`/orders/table/${tableId}/settle`);
+
 export const updateOrder = (id, data) =>
   api.put(`/orders/${id}`, data);
 

@@ -1,8 +1,8 @@
 const tableModel = require("../models/tableModel");
 const { success, error } = require("../utils/response");
 
-// Maps the waiter UI's FREE/OCCUPIED to the DB status vocabulary.
-const UI_TO_DB = { FREE: "Available", OCCUPIED: "Occupied" };
+// Maps the UI status keywords to the DB status vocabulary.
+const UI_TO_DB = { FREE: "Available", OCCUPIED: "Occupied", BILLING: "Billing" };
 
 // Get all tables
 exports.getAllTables = (req, res) => {
