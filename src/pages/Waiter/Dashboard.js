@@ -21,6 +21,8 @@ function Dashboard() {
     const [todayOrders, setTodayOrders] = useState(0);
     const [editingOrder, setEditingOrder] = useState(null);
     const [showRunningOrders, setShowRunningOrders] = useState(false);
+    // The selected table's already-sent items, shown read-only for reference.
+    const [previousItems, setPreviousItems] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [orderNumber, setOrderNumber] = useState(1001);
     const [waiterName] = useState("John");
@@ -110,6 +112,7 @@ function Dashboard() {
     const newOrder = () => {
         setCart([]);
         setEditingOrder(null);
+        setPreviousItems([]);
         setOrderNumber((prev) => prev + 1);
         updateDateTime();
     };
@@ -137,12 +140,27 @@ function Dashboard() {
     const handleSelectTable = async (table) => {
         setSelectedTable(table);
         await loadCategories();
-        // ALWAYS start a fresh batch — even for an occupied table. Every
-        // "Send to Kitchen" then creates a NEW order = a separate kitchen ticket
-        // (never merged into the table's previous batch). To correct a specific
-        // existing order, open it from the Running Orders panel.
+        // Fresh cart for the NEW batch (each send = a separate kitchen ticket).
         setCart([]);
         setEditingOrder(null);
+        // Show the table's already-sent items as read-only reference.
+        if (table.status === "OCCUPIED") {
+            const tableOrders = runningOrders.filter((o) => o.table_id === table.id);
+            const merged = {};
+            for (const o of tableOrders) {
+                try {
+                    const res = await getOrderDetails(o.id);
+                    (res.data.data || []).forEach((it) => {
+                        const k = it.item_name;
+                        if (!merged[k]) merged[k] = { item_name: it.item_name, quantity: 0, price: Number(it.price) };
+                        merged[k].quantity += Number(it.quantity);
+                    });
+                } catch (e) { /* ignore */ }
+            }
+            setPreviousItems(Object.values(merged));
+        } else {
+            setPreviousItems([]);
+        }
     };
 
     const loadMenuItems = async (categoryId) => {
@@ -222,6 +240,7 @@ function Dashboard() {
         setSelectedTable(null);
         setCart([]);
         setEditingOrder(null);
+        setPreviousItems([]);
         await loadTables();
     };
 
@@ -261,6 +280,7 @@ function Dashboard() {
             setCart([]);
             setSelectedTable(null);
             setEditingOrder(null);
+            setPreviousItems([]);
             updateDateTime();
             await loadTables();
             await loadRunningOrders();
@@ -500,6 +520,18 @@ function Dashboard() {
                     </div>
 
                     <div className="wc-items">
+                        {previousItems.length > 0 && (
+                            <div className="wc-previous">
+                                <div className="wc-previous-label">🍽 Already sent to kitchen</div>
+                                {previousItems.map((it, i) => (
+                                    <div key={i} className="wc-previous-row">
+                                        <span>{it.item_name}</span>
+                                        <span>{it.quantity}×</span>
+                                    </div>
+                                ))}
+                                <div className="wc-previous-divider">＋ New items (sent as a new ticket)</div>
+                            </div>
+                        )}
                         {cart.length === 0 ? (
                             <div className="wc-empty">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>

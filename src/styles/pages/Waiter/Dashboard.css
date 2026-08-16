@@ -369,3 +369,35 @@
     padding: 14px; margin-bottom: 10px;
     transition: border-color 0.18s;
 }.waiter-app .running-card:hover { border-color: #1a9e8f; }.waiter-app .running-card h3 { margin: 0 0 6px; font-size: 14px; color: #1a1a2e; }.waiter-app .running-card p { margin: 0 0 4px; font-size: 12px; color: #4a5568; }
+/* Read-only "already sent" section in the waiter cart */
+.waiter-app .wc-previous {
+    background: #f4f7ff;
+    border: 1px dashed #c7d2fe;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+.waiter-app .wc-previous-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #4f46e5;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 6px;
+}
+.waiter-app .wc-previous-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #475569;
+    padding: 3px 0;
+}
+.waiter-app .wc-previous-divider {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #e0e7ff;
+    font-size: 11px;
+    font-weight: 700;
+    color: #16a34a;
+    text-align: center;
+}
