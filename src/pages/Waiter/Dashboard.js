@@ -67,7 +67,12 @@ function Dashboard() {
     }, []);
 
     useEffect(() => {
-        if (selectedCategory) loadMenuItems(selectedCategory);
+        if (!selectedCategory) return;
+        loadMenuItems(selectedCategory);
+        // Poll so availability changes (e.g. cashier marks Idli sold out) show
+        // up here within a few seconds without a manual refresh.
+        const t = setInterval(() => loadMenuItems(selectedCategory), 4000);
+        return () => clearInterval(t);
     }, [selectedCategory]);
 
     const filteredItems = menuItems.filter((item) =>

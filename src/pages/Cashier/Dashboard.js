@@ -75,7 +75,11 @@ function Dashboard() {
     }, []);
 
     useEffect(() => {
-        if (selectedCategory) loadMenuItems(selectedCategory);
+        if (!selectedCategory) return;
+        loadMenuItems(selectedCategory);
+        // Poll so availability changes from another cashier/admin appear live.
+        const t = setInterval(() => loadMenuItems(selectedCategory), 4000);
+        return () => clearInterval(t);
     }, [selectedCategory]);
 
     const filteredItems = menuItems.filter((item) =>
