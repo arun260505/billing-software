@@ -549,3 +549,53 @@
 .cashier-app .avail-toggle.is-on:hover  { background: #fecaca; }
 .cashier-app .avail-toggle.is-off { background: #dcfce7; color: #15803d; }
 .cashier-app .avail-toggle.is-off:hover { background: #bbf7d0; }
+
+/* Menu availability button + modal */
+.cashier-app .nav-menu-btn {
+    background: #ede9fe; color: #6d28d9; border: none; border-radius: 8px;
+    padding: 8px 14px; font-size: 14px; font-weight: 700; cursor: pointer; margin-right: 8px;
+}
+.cashier-app .nav-menu-btn:hover { background: #ddd6fe; }
+.menuavail-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,.55);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.menuavail-modal {
+    background: #fff; width: 480px; max-width: 94vw; max-height: 86vh;
+    border-radius: 14px; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+.menuavail-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid #eef2f7;
+}
+.menuavail-head h2 { margin: 0; font-size: 18px; color: #1f2937; }
+.menuavail-close {
+    background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 8px;
+    cursor: pointer; font-size: 15px; color: #475569;
+}
+.menuavail-search {
+    margin: 12px 20px 0; padding: 9px 12px; border: 1px solid #e5e7eb;
+    border-radius: 8px; font-size: 14px;
+}
+.menuavail-body { padding: 12px 20px 20px; overflow-y: auto; }
+.menuavail-empty { text-align: center; color: #94a3b8; padding: 30px; }
+.menuavail-cat-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; color: #6d28d9;
+    margin: 14px 0 6px; letter-spacing: .5px;
+}
+.menuavail-row {
+    display: flex; align-items: center; gap: 10px; padding: 9px 4px;
+    border-bottom: 1px solid #f3f4f6;
+}
+.menuavail-row.off .menuavail-name { color: #9ca3af; text-decoration: line-through; }
+.menuavail-name { flex: 1; font-size: 14px; font-weight: 600; color: #1f2937; }
+.menuavail-price { font-size: 13px; color: #6b7280; }
+.menuavail-toggle {
+    border: none; border-radius: 999px; padding: 5px 14px;
+    font-size: 12px; font-weight: 700; cursor: pointer; min-width: 96px;
+}
+.menuavail-toggle.is-on  { background: #dcfce7; color: #15803d; }
+.menuavail-toggle.is-on:hover  { background: #bbf7d0; }
+.menuavail-toggle.is-off { background: #fee2e2; color: #b91c1c; }
+.menuavail-toggle.is-off:hover { background: #fecaca; }
