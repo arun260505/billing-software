@@ -7,7 +7,6 @@ import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrde
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
-import CartItem from "../../components/Waiter/CartItem";
 import CartSheet from "../../components/Waiter/CartSheet";
 import BillModal from "../../components/Waiter/BillModal";
 
