@@ -303,29 +303,50 @@
 }
 .cashier-app .cir-note:focus { border-color: #0d9488; background: #fff; }
 
-/* ── Menu availability — slide-in right sidebar ──────────────────────── */
-.cashier-app .menuavail-overlay {
-    position: fixed; inset: 0; z-index: 300; background: rgba(15,23,42,.5);
-    display: flex; justify-content: flex-end;
+/* ── Left sidebar drawer + hamburger ─────────────────────────────────── */
+.cashier-app .pos-hamburger {
+    display: flex; flex-direction: column; gap: 4px; background: none; border: none;
+    cursor: pointer; padding: 6px; margin-right: 4px;
 }
-.cashier-app .menuavail-modal {
-    width: 440px; max-width: 92vw; height: 100%; background: #fff;
-    display: flex; flex-direction: column; box-shadow: -10px 0 40px rgba(0,0,0,.28);
-    animation: menuSlide .2s ease;
+.cashier-app .pos-hamburger span { display: block; width: 22px; height: 2px; background: #e2e8f0; border-radius: 2px; }
+
+.cashier-app .pos-scrim { position: fixed; inset: 0; z-index: 340; background: rgba(15,23,42,.5); }
+.cashier-app .pos-drawer {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 260px; z-index: 350;
+    background: #0f172a; color: #e2e8f0; transform: translateX(-100%);
+    transition: transform .2s ease; display: flex; flex-direction: column;
+    box-shadow: 6px 0 30px rgba(0,0,0,.35);
 }
-@keyframes menuSlide { from { transform: translateX(40px); opacity: .6; } to { transform: none; opacity: 1; } }
+.cashier-app .pos-drawer.open { transform: none; }
+.cashier-app .pos-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 18px; border-bottom: 1px solid #1e293b; }
+.cashier-app .pos-drawer-logo { font-size: 17px; font-weight: 800; color: #fff; }
+.cashier-app .pos-drawer-x { background: #1e293b; border: none; color: #cbd5e1; width: 32px; height: 32px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+.cashier-app .pos-nav { display: flex; flex-direction: column; gap: 4px; padding: 12px; }
+.cashier-app .pos-nav-item {
+    display: flex; align-items: center; gap: 10px; text-align: left;
+    background: none; border: none; color: #cbd5e1; cursor: pointer;
+    padding: 13px 14px; border-radius: 10px; font-size: 15px; font-weight: 700;
+}
+.cashier-app .pos-nav-item:hover { background: #1e293b; }
+.cashier-app .pos-nav-item.active { background: #0d9488; color: #fff; }
+
+/* ── Menu availability — full-screen view ────────────────────────────── */
+.cashier-app .menuview { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; background: #fff; }
 .cashier-app .menuavail-head {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 18px 20px; border-bottom: 1px solid #eef1f5;
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 24px; border-bottom: 1px solid #eef1f5;
 }
-.cashier-app .menuavail-head h2 { margin: 0; font-size: 19px; font-weight: 800; color: #0f172a; }
-.cashier-app .menuavail-close { background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 16px; color: #475569; cursor: pointer; }
+.cashier-app .menuavail-head h2 { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; flex: 0 0 auto; }
 .cashier-app .menuavail-search {
-    margin: 14px 20px; padding: 12px 14px; border-radius: 10px;
+    flex: 1; max-width: 420px; padding: 11px 14px; border-radius: 10px;
     border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; outline: none;
 }
 .cashier-app .menuavail-search:focus { border-color: #0d9488; background: #fff; }
-.cashier-app .menuavail-body { flex: 1; overflow-y: auto; padding: 0 20px 20px; }
+.cashier-app .menuavail-body {
+    flex: 1; overflow-y: auto; padding: 18px 24px 24px;
+    column-width: 420px; column-gap: 32px;
+}
+.cashier-app .menuavail-cat { break-inside: avoid; }
 .cashier-app .menuavail-empty { text-align: center; color: #94a3b8; padding: 40px; }
 .cashier-app .menuavail-cat { margin-bottom: 18px; }
 .cashier-app .menuavail-cat-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #94a3b8; margin: 6px 0 8px; }

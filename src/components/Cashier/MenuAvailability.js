@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { getAllItems, setItemAvailability } from "../../services/menuService";
 
-// A dedicated "Menu" screen for the cashier: every item grouped by category
-// with an Available/Unavailable toggle. Changes save immediately.
-function MenuAvailability({ onClose }) {
+// A dedicated full-screen "Menu" view for the cashier: every item grouped by
+// category with an Available/Unavailable toggle. Changes save immediately.
+function MenuAvailability() {
 
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -44,20 +44,17 @@ function MenuAvailability({ onClose }) {
     });
 
     return (
-        <div className="menuavail-overlay" onClick={onClose}>
-            <div className="menuavail-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="menuview">
 
                 <div className="menuavail-head">
                     <h2>🍽 Menu Availability</h2>
-                    <button className="menuavail-close" onClick={onClose}>✕</button>
+                    <input
+                        className="menuavail-search"
+                        placeholder="Search item…"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
                 </div>
-
-                <input
-                    className="menuavail-search"
-                    placeholder="Search item…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
 
                 <div className="menuavail-body">
                     {loading ? (
@@ -88,7 +85,6 @@ function MenuAvailability({ onClose }) {
                     )}
                 </div>
 
-            </div>
         </div>
     );
 }

@@ -33,8 +33,9 @@ function Dashboard() {
         if (!selectedTable) setPreviousItems([]);
     }, [selectedTable]);
 
-    // Dedicated Menu (availability) screen toggle.
-    const [showMenuAvail, setShowMenuAvail] = useState(false);
+    // Left sidebar + which full-screen view is showing.
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [activeView, setActiveView] = useState("dashboard");   // "dashboard" | "menu"
     const [showBill, setShowBill] = useState(false);
     const [billData, setBillData] = useState(null);
     // Table bill (waiter-requested) review + payment
@@ -586,8 +587,34 @@ function Dashboard() {
     return (
         <div className="cashier-app pos">
 
+            {/* ══ LEFT SIDEBAR (drawer) ══ */}
+            {sidebarOpen && <div className="pos-scrim" onClick={() => setSidebarOpen(false)} />}
+            <aside className={`pos-drawer${sidebarOpen ? " open" : ""}`}>
+                <div className="pos-drawer-head">
+                    <span className="pos-drawer-logo">InWallz POS</span>
+                    <button className="pos-drawer-x" onClick={() => setSidebarOpen(false)}>✕</button>
+                </div>
+                <nav className="pos-nav">
+                    <button
+                        className={`pos-nav-item${activeView === "dashboard" ? " active" : ""}`}
+                        onClick={() => { setActiveView("dashboard"); setSidebarOpen(false); }}
+                    >
+                        🧾 Dashboard
+                    </button>
+                    <button
+                        className={`pos-nav-item${activeView === "menu" ? " active" : ""}`}
+                        onClick={() => { setActiveView("menu"); setSidebarOpen(false); }}
+                    >
+                        🍽 Menu
+                    </button>
+                </nav>
+            </aside>
+
             {/* ══ TOP BAR ══ */}
             <header className="pos-topbar">
+                <button className="pos-hamburger" onClick={() => setSidebarOpen((o) => !o)} title="Menu">
+                    <span /><span /><span />
+                </button>
                 <div className="pos-brand">
                     <span className="pos-logo">The InWallz</span>
                     <span className="pos-open">● Open</span>
@@ -598,7 +625,6 @@ function Dashboard() {
                     <span className="pos-stat"><b>{availableCount}</b> Free</span>
                 </div>
                 <div className="pos-topactions">
-                    <button className="pos-menu-btn" onClick={() => setShowMenuAvail(true)} title="Menu availability">🍽 Menu</button>
                     <button className="pos-bell" onClick={openRunningOrders} title="Running orders">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                         {runningOrders.length > 0 && <span className="pos-bell-dot">{runningOrders.length}</span>}
@@ -612,6 +638,8 @@ function Dashboard() {
                 </div>
             </header>
 
+            {activeView === "menu" ? <MenuAvailability /> : (
+            <>
             {/* ══ TABLE BAR ══ */}
             <div className="pos-tablebar">
                 <span className="pos-tablebar-label">Tables</span>
@@ -745,12 +773,13 @@ function Dashboard() {
                     </div>
                 </aside>
             </div>
+            </>
+            )}
 
             {/* Modals */}
             {showRunningOrders && (
                 <RunningOrders runningOrders={runningOrders} closeOrders={() => setShowRunningOrders(false)} openOrder={openOrder} />
             )}
-            {showMenuAvail && <MenuAvailability onClose={() => setShowMenuAvail(false)} />}
             {showTableBill && tableBillTarget && (
                 <TableBillModal
                     table={tableBillTarget}
