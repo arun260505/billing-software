@@ -3,12 +3,13 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
 import { getCategories, getItemsByCategory, getAllItems } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, markItemServed, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, markItemServed, cancelItem, setItemQuantity, addBillItem, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
 import CartItem from "../../components/Waiter/CartItem";
 import BillModal from "../../components/Cashier/BillModal";
+import TableBillModal from "../../components/Cashier/TableBillModal";
 import MenuAvailability from "../../components/Cashier/MenuAvailability";
 
 function Dashboard() {
@@ -36,6 +37,11 @@ function Dashboard() {
     const [showMenuAvail, setShowMenuAvail] = useState(false);
     const [showBill, setShowBill] = useState(false);
     const [billData, setBillData] = useState(null);
+    // Table bill (waiter-requested) review + payment
+    const [showTableBill, setShowTableBill] = useState(false);
+    const [tableBillTarget, setTableBillTarget] = useState(null);
+    const [tableBillItems, setTableBillItems] = useState([]);
+    const [tableBillBusy, setTableBillBusy] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [orderNumber, setOrderNumber] = useState(1001);
     const [cashierName] = useState("Cashier");
@@ -486,16 +492,58 @@ function Dashboard() {
         loadTodaysOrderCount();
     };
 
-    // Print a table's bill (waiter requested it), then settle: mark the table's
-    // orders paid and free the table.
-    const printBill = async (table) => {
+    // ── Table bill (waiter requested) — review / edit / take payment ──────
+    const loadTableBillItems = async (tableId) => {
         try {
-            const res = await getTableItems(table.id);
-            const items = res.data.data || [];
+            const res = await getTableItems(tableId);
+            setTableBillItems(
+                (res.data.data || []).map((it) => ({
+                    id: it.id, item_name: it.item_name,
+                    quantity: Number(it.quantity), price: Number(it.price), served: Number(it.served),
+                }))
+            );
+        } catch (e) { setTableBillItems([]); }
+    };
+
+    const openTableBill = async (table) => {
+        setTableBillTarget(table);
+        setShowTableBill(true);
+        await loadTableBillItems(table.id);
+    };
+
+    const handleTableBillSetQty = async (rowId, qty) => {
+        setTableBillBusy(true);
+        try { await setItemQuantity(rowId, qty); await loadTableBillItems(tableBillTarget.id); }
+        catch (e) { alert("Could not update the quantity."); }
+        finally { setTableBillBusy(false); }
+    };
+
+    const handleTableBillRemove = async (rows) => {
+        if (!window.confirm(`Remove ${rows[0]?.item_name || "this item"} from the bill?`)) return;
+        setTableBillBusy(true);
+        try { for (const r of rows) await cancelItem(r.id); await loadTableBillItems(tableBillTarget.id); }
+        catch (e) { alert("Could not remove the item."); }
+        finally { setTableBillBusy(false); }
+    };
+
+    const handleTableBillAdd = async (menuItem) => {
+        setTableBillBusy(true);
+        try { await addBillItem(tableBillTarget.id, menuItem.id, 1); await loadTableBillItems(tableBillTarget.id); }
+        catch (e) { alert("Could not add the item."); }
+        finally { setTableBillBusy(false); }
+    };
+
+    // Print the receipt (with the chosen method) and settle the table.
+    const generateTableBill = async (method) => {
+        const table = tableBillTarget;
+        setTableBillBusy(true);
+        try {
+            const items = tableBillItems;
             const sub = items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0);
-            const gstAmt = sub * 0.05;
-            const total = sub + gstAmt;
-            const w = window.open("", "PrintBill", "width=340,height=560");
+            const gstAmt = Math.round(sub * 0.05);
+            const svc = Math.round(sub * 0.02);
+            const total = sub + gstAmt + svc;
+            const w = window.open("", "PrintBill", "width=340,height=600");
             if (w) {
                 w.document.write(
                     `<div style="font-family:monospace;padding:12px">
@@ -504,22 +552,27 @@ function Dashboard() {
                     items.map((i) => `<div style="display:flex;justify-content:space-between"><span>${i.item_name} x${i.quantity}</span><span>&#8377;${(Number(i.price) * Number(i.quantity)).toFixed(0)}</span></div>`).join("") +
                     `<hr>
                        <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>&#8377;${sub.toFixed(0)}</span></div>
-                       <div style="display:flex;justify-content:space-between"><span>GST 5%</span><span>&#8377;${gstAmt.toFixed(0)}</span></div>
+                       <div style="display:flex;justify-content:space-between"><span>GST 5%</span><span>&#8377;${gstAmt}</span></div>
+                       <div style="display:flex;justify-content:space-between"><span>Service 2%</span><span>&#8377;${svc}</span></div>
                        <div style="display:flex;justify-content:space-between;font-weight:bold"><span>TOTAL</span><span>&#8377;${total.toFixed(0)}</span></div>
+                       <div style="display:flex;justify-content:space-between;margin-top:6px"><span>Paid via</span><span>${method}</span></div>
                        <p style="text-align:center;margin-top:12px">Thank you!</p></div>`
                 );
-                w.document.close();
-                w.focus();
-                w.print();
+                w.document.close(); w.focus(); w.print();
             }
             await settleTable(table.id);
-            alert(`Table ${table.table_number} printed & settled — now Available.`);
+            alert(`Table ${table.table_number} billed (${method}) & settled — now Available.`);
+            setShowTableBill(false);
+            setTableBillTarget(null);
+            setTableBillItems([]);
             setSelectedTable(null);
-            setPreviousItems([]);
-            setCart([]);
             await loadTables();
+            await loadRunningOrders();
+            await loadTodaysOrderCount();
         } catch (e) {
-            alert("Could not print / settle the bill.");
+            alert("Could not generate the bill.");
+        } finally {
+            setTableBillBusy(false);
         }
     };
 
@@ -590,8 +643,8 @@ function Dashboard() {
                 <div className="pos-printalert">
                     <span className="pos-printalert-title">🔔 Bills to print:</span>
                     {billTables.map((t) => (
-                        <button key={t.id} className="pos-printalert-btn" onClick={() => printBill(t)}>
-                            🖨 Print &amp; Settle T{t.table_number}
+                        <button key={t.id} className="pos-printalert-btn" onClick={() => openTableBill(t)}>
+                            🧾 Bill T{t.table_number}
                         </button>
                     ))}
                 </div>
@@ -654,7 +707,7 @@ function Dashboard() {
                                             : <button className="pos-prev-serve" onClick={() => handleServeItem(it)}>Serve</button>}
                                     </div>
                                 ))}
-                                <button className="pos-print-settle" onClick={() => printBill(selectedTable)}>🖨 Print &amp; Settle</button>
+                                <button className="pos-print-settle" onClick={() => openTableBill(selectedTable)}>🧾 Generate Bill</button>
                                 <div className="pos-prev-divider">＋ New items (new kitchen ticket)</div>
                             </div>
                         )}
@@ -698,6 +751,19 @@ function Dashboard() {
                 <RunningOrders runningOrders={runningOrders} closeOrders={() => setShowRunningOrders(false)} openOrder={openOrder} />
             )}
             {showMenuAvail && <MenuAvailability onClose={() => setShowMenuAvail(false)} />}
+            {showTableBill && tableBillTarget && (
+                <TableBillModal
+                    table={tableBillTarget}
+                    items={tableBillItems}
+                    menuItems={allItems}
+                    busy={tableBillBusy}
+                    onSetQty={handleTableBillSetQty}
+                    onRemoveGroup={handleTableBillRemove}
+                    onAddItem={handleTableBillAdd}
+                    onGenerate={generateTableBill}
+                    onClose={() => { setShowTableBill(false); setTableBillTarget(null); setTableBillItems([]); }}
+                />
+            )}
             {showBill && billData && (
                 <BillModal order={billData} onClose={() => setShowBill(false)} onSuccess={handlePaymentSuccess} />
             )}

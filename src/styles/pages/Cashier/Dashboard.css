@@ -302,3 +302,95 @@
     border: 1px solid #e2e8f0; background: #f8fafc; font-size: 12px; outline: none;
 }
 .cashier-app .cir-note:focus { border-color: #0d9488; background: #fff; }
+
+/* ── Menu availability — slide-in right sidebar ──────────────────────── */
+.cashier-app .menuavail-overlay {
+    position: fixed; inset: 0; z-index: 300; background: rgba(15,23,42,.5);
+    display: flex; justify-content: flex-end;
+}
+.cashier-app .menuavail-modal {
+    width: 440px; max-width: 92vw; height: 100%; background: #fff;
+    display: flex; flex-direction: column; box-shadow: -10px 0 40px rgba(0,0,0,.28);
+    animation: menuSlide .2s ease;
+}
+@keyframes menuSlide { from { transform: translateX(40px); opacity: .6; } to { transform: none; opacity: 1; } }
+.cashier-app .menuavail-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px; border-bottom: 1px solid #eef1f5;
+}
+.cashier-app .menuavail-head h2 { margin: 0; font-size: 19px; font-weight: 800; color: #0f172a; }
+.cashier-app .menuavail-close { background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 16px; color: #475569; cursor: pointer; }
+.cashier-app .menuavail-search {
+    margin: 14px 20px; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; outline: none;
+}
+.cashier-app .menuavail-search:focus { border-color: #0d9488; background: #fff; }
+.cashier-app .menuavail-body { flex: 1; overflow-y: auto; padding: 0 20px 20px; }
+.cashier-app .menuavail-empty { text-align: center; color: #94a3b8; padding: 40px; }
+.cashier-app .menuavail-cat { margin-bottom: 18px; }
+.cashier-app .menuavail-cat-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #94a3b8; margin: 6px 0 8px; }
+.cashier-app .menuavail-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.cashier-app .menuavail-row.off .menuavail-name { color: #94a3b8; text-decoration: line-through; }
+.cashier-app .menuavail-name { flex: 1; font-size: 14px; font-weight: 600; color: #0f172a; }
+.cashier-app .menuavail-price { font-size: 13px; font-weight: 700; color: #64748b; }
+.cashier-app .menuavail-toggle {
+    border: none; border-radius: 999px; padding: 7px 16px; font-size: 12px;
+    font-weight: 800; cursor: pointer; min-width: 108px;
+}
+.cashier-app .menuavail-toggle.is-on  { background: #dcfce7; color: #16a34a; }
+.cashier-app .menuavail-toggle.is-off { background: #fee2e2; color: #dc2626; }
+
+/* ── Table bill review (waiter-requested) — centered modal ───────────── */
+.cashier-app .tbill-overlay {
+    position: fixed; inset: 0; z-index: 320; background: rgba(15,23,42,.55);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.cashier-app .tbill-modal {
+    width: 100%; max-width: 460px; max-height: 92vh; background: #fff;
+    border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,.35);
+    display: flex; flex-direction: column;
+}
+.cashier-app .tbill-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 20px 12px; border-bottom: 1px solid #eef1f5; }
+.cashier-app .tbill-head h2 { margin: 0; font-size: 19px; font-weight: 800; color: #0f172a; }
+.cashier-app .tbill-sub { font-size: 12px; color: #94a3b8; }
+.cashier-app .tbill-close { background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 16px; color: #475569; cursor: pointer; }
+
+.cashier-app .tbill-body { flex: 1; overflow-y: auto; padding: 12px 20px; }
+.cashier-app .tbill-empty { text-align: center; color: #94a3b8; padding: 16px; }
+.cashier-app .tbill-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 0; border-bottom: 1px dashed #eef1f5; }
+.cashier-app .tbill-row-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cashier-app .tbill-name { font-size: 14px; font-weight: 700; color: #0f172a; }
+.cashier-app .tbill-unit { font-size: 11px; color: #94a3b8; }
+.cashier-app .tbill-row-right { display: flex; align-items: center; gap: 10px; }
+.cashier-app .tbill-stepper { display: inline-flex; align-items: center; gap: 3px; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 9px; padding: 2px; }
+.cashier-app .tbill-stepper button { width: 27px; height: 27px; border: none; border-radius: 7px; background: #fff; color: #0d9488; font-size: 17px; font-weight: 800; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.cashier-app .tbill-stepper button.add { background: #0d9488; color: #fff; }
+.cashier-app .tbill-stepper button:disabled { opacity: .5; cursor: default; }
+.cashier-app .tbill-qty { min-width: 18px; text-align: center; font-size: 14px; font-weight: 800; }
+.cashier-app .tbill-amt { min-width: 48px; text-align: right; font-weight: 700; }
+.cashier-app .tbill-del { width: 28px; height: 28px; border: 1px solid #fecaca; background: #fef2f2; color: #dc2626; border-radius: 8px; font-weight: 800; cursor: pointer; }
+
+.cashier-app .tbill-add-toggle { width: 100%; margin-top: 12px; padding: 12px; border-radius: 10px; cursor: pointer; background: #f0fdfa; border: 1.5px dashed #5eead4; color: #0d9488; font-size: 14px; font-weight: 700; }
+.cashier-app .tbill-add { margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; background: #f8fafc; }
+.cashier-app .tbill-add-search { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 14px; outline: none; }
+.cashier-app .tbill-add-list { max-height: 180px; overflow-y: auto; margin: 8px 0; }
+.cashier-app .tbill-add-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px; border: none; border-bottom: 1px solid #eef1f5; background: #fff; cursor: pointer; text-align: left; }
+.cashier-app .tbill-add-row span:first-child { flex: 1; font-size: 14px; font-weight: 600; color: #0f172a; }
+.cashier-app .tbill-add-price { font-size: 13px; font-weight: 700; color: #475569; }
+.cashier-app .tbill-add-plus { width: 26px; height: 26px; border-radius: 8px; background: #0d9488; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; }
+.cashier-app .tbill-add-done { width: 100%; padding: 9px; border-radius: 9px; border: 1px solid #e2e8f0; background: #fff; color: #475569; font-weight: 700; cursor: pointer; }
+
+.cashier-app .tbill-foot { border-top: 1px solid #eef1f5; padding: 14px 20px 18px; background: #f8fafc; }
+.cashier-app .tbill-tot { display: flex; justify-content: space-between; font-size: 14px; color: #475569; padding: 2px 0; }
+.cashier-app .tbill-tot.grand { font-size: 19px; font-weight: 800; color: #0f172a; margin-top: 6px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+.cashier-app .tbill-pay { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+.cashier-app .tbill-pay-label { font-size: 13px; font-weight: 700; color: #475569; }
+.cashier-app .tbill-pay-methods { display: flex; gap: 8px; flex: 1; }
+.cashier-app .tbill-pay-btn { flex: 1; padding: 10px; border-radius: 9px; border: 1.5px solid #e2e8f0; background: #fff; font-size: 14px; font-weight: 700; color: #475569; cursor: pointer; }
+.cashier-app .tbill-pay-btn.active { border-color: #0d9488; background: #f0fdfa; color: #0d9488; }
+.cashier-app .tbill-generate { width: 100%; padding: 15px; border-radius: 12px; border: none; background: #0d9488; color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; }
+.cashier-app .tbill-generate:hover { background: #0b7d72; }
+.cashier-app .tbill-generate:disabled { background: #94a3b8; cursor: default; }
