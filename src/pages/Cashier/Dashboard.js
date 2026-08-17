@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
-import { getCategories, getItemsByCategory } from "../../services/menuService";
+import { getCategories, getItemsByCategory, getAllItems } from "../../services/menuService";
 import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, markItemServed, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
@@ -17,6 +17,7 @@ function Dashboard() {
     const [selectedTable, setSelectedTable] = useState(null);
     const [categories, setCategories] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
+    const [allItems, setAllItems] = useState([]);    // whole menu (search across categories)
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [cart, setCart] = useState([]);
     const [runningOrders, setRunningOrders] = useState([]);
@@ -53,6 +54,7 @@ function Dashboard() {
         loadTables();
         loadRunningOrders();
         loadCategories();
+        loadAllItems();
         loadTodaysOrderCount();
 
         const statsTimer = setInterval(() => {
@@ -82,6 +84,14 @@ function Dashboard() {
         return () => clearInterval(t);
     }, [selectedCategory]);
 
+    // While searching, keep the whole-menu list fresh (for live availability).
+    useEffect(() => {
+        if (!searchTerm.trim()) return;
+        loadAllItems();
+        const t = setInterval(loadAllItems, 4000);
+        return () => clearInterval(t);
+    }, [searchTerm]);
+
     // Keep the current-order list in sync so items the kitchen (or waiter) marks
     // served flip to served here within a few seconds, no refresh needed.
     useEffect(() => {
@@ -91,8 +101,10 @@ function Dashboard() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedTable]);
 
-    const filteredItems = menuItems.filter((item) =>
-        item.item_name.toLowerCase().includes(searchTerm.toLowerCase())
+    // When searching, look across the WHOLE menu; otherwise the selected category.
+    const term = searchTerm.trim().toLowerCase();
+    const filteredItems = (term ? allItems : menuItems).filter((item) =>
+        item.item_name.toLowerCase().includes(term)
     );
 
     const subtotal   = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -226,6 +238,14 @@ function Dashboard() {
         try {
             const res = await getItemsByCategory(categoryId);
             setMenuItems(res.data.data);
+        } catch (e) { console.error(e); }
+    };
+
+    // Whole menu, used when searching across all categories.
+    const loadAllItems = async () => {
+        try {
+            const res = await getAllItems();
+            setAllItems(res.data.data || []);
         } catch (e) { console.error(e); }
     };
 
@@ -588,7 +608,7 @@ function Dashboard() {
                             <input type="text" placeholder="Search menu items..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
                     </div>
-                    <CategoryTabs categories={categories} selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
+                    <CategoryTabs categories={categories} selectedCategory={selectedCategory} onSelectCategory={(id) => { setSearchTerm(""); setSelectedCategory(id); }} />
                     <div className="pos-menu-grid">
                         {filteredItems.length === 0 ? (
                             <p className="pos-noitems">No items available</p>
