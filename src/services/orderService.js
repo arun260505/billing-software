@@ -15,8 +15,27 @@ export const getOrderDetails = (id) =>
 export const getTableItems = (tableId) =>
   api.get(`/orders/table/${tableId}/items`);
 
-export const settleTable = (tableId) =>
-  api.post(`/orders/table/${tableId}/settle`);
+export const settleTable = (tableId, paymentMethod = "Cash") =>
+  api.post(`/orders/table/${tableId}/settle`, { payment_method: paymentMethod });
+
+// ---------------------------------------------------------------------------
+// Bills — today's settled bills, so the cashier can correct an item that was
+// rung up twice or missed, then reprint.
+// ---------------------------------------------------------------------------
+export const getTodaysBills = () =>
+  api.get("/orders/bills/today");
+
+export const getBill = (orderId) =>
+  api.get(`/orders/bills/${orderId}`);
+
+// Add an item to THIS bill (works on a settled or counter bill, unlike
+// addBillItem which needs a table with an open order).
+export const addItemToOrder = (orderId, menuItemId, quantity = 1) =>
+  api.post(`/orders/${orderId}/item`, { menu_item_id: menuItemId, quantity });
+
+// Recompute an edited bill and bring the recorded payment into line.
+export const rebillOrder = (orderId, paymentMethod) =>
+  api.put(`/orders/${orderId}/rebill`, { payment_method: paymentMethod });
 
 export const markOrderServed = (id) =>
   api.put(`/orders/${id}/serve`);

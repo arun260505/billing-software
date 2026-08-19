@@ -1,19 +1,13 @@
 const orderModel = require("../models/orderModel");
 const generateOrderNumber = require("../utils/orderNumber");
+const auditLog = require("../utils/auditLog");
+const { totalsFromItems } = require("../utils/billing");
 const { success, error } = require("../utils/response");
 
-// Compute subtotal / tax / grand_total from a cart of items.
-// Each item: { menu_item_id, quantity, price, gst }
-const computeTotals = (items = []) => {
-    let subtotal = 0;
-    let tax = 0;
-    items.forEach((it) => {
-        const line = Number(it.price) * Number(it.quantity);
-        subtotal += line;
-        tax += (line * (Number(it.gst) || 0)) / 100;
-    });
-    return { subtotal, tax, grand_total: subtotal + tax };
-};
+// Totals come from utils/billing so a bill adds up the same way whether it is
+// being created, edited or reprinted. Client-sent totals are ignored — the
+// receipt and the database have to agree, and only one of them can be right.
+const computeTotals = totalsFromItems;
 
 // Normalise cart items into the order_items shape (adds `total`).
 const toOrderItems = (items = []) =>
@@ -59,11 +53,7 @@ exports.createOrder = (req, res) => {
     const restaurantId = req.user.restaurant_id;   // tenant from JWT, never the body
     const { items } = req.body;
 
-    // Totals: use the ones sent, otherwise compute from the cart.
-    const computed = computeTotals(items);
-    const subtotal = req.body.subtotal != null ? Number(req.body.subtotal) : computed.subtotal;
-    const tax = req.body.tax != null ? Number(req.body.tax) : computed.tax;
-    const grand_total = req.body.grand_total != null ? Number(req.body.grand_total) : computed.grand_total;
+    const { subtotal, tax, service_charge, grand_total } = computeTotals(items);
 
     generateOrderNumber(restaurantId, (err, orderNumber) => {
 
@@ -81,6 +71,7 @@ exports.createOrder = (req, res) => {
             subtotal,
             discount: req.body.discount || 0,
             tax,
+            service_charge,
             grand_total
         };
 
@@ -236,15 +227,98 @@ exports.markTableServed = (req, res) => {
 };
 
 // POST /api/orders/table/:tableId/settle — complete the table's orders + free it
+// Body: { payment_method } — recorded against each settled order.
 exports.settleTable = (req, res) => {
 
-    orderModel.settleTable(req.params.tableId, req.user.restaurant_id, (err) => {
+    orderModel.settleTable(
+        req.params.tableId,
+        req.user.restaurant_id,
+        req.body.payment_method || "Cash",
+        req.user.id,
+        (err) => {
+
+            if (err) return error(res, err.message, 500);
+
+            return success(res, "Table settled and freed.");
+
+        }
+    );
+
+};
+
+// ============================ Bills (cashier) ============================
+
+// GET /api/orders/bills/today — today's settled bills for the Bills screen
+exports.getTodaysBills = (req, res) => {
+
+    orderModel.getTodaysBills(req.user.restaurant_id, (err, results) => {
 
         if (err) return error(res, err.message, 500);
 
-        return success(res, "Table settled and freed.");
+        return success(res, "Bills fetched.", results);
 
     });
+
+};
+
+// GET /api/orders/bills/:id — one bill's header (for the receipt)
+exports.getBill = (req, res) => {
+
+    orderModel.getBillById(req.params.id, req.user.restaurant_id, (err, results) => {
+
+        if (err) return error(res, err.message, 500);
+
+        if (results.length === 0) return error(res, "Bill not found.", 404);
+
+        return success(res, "Bill fetched.", results[0]);
+
+    });
+
+};
+
+// POST /api/orders/:id/item — add an item to this specific bill.
+// Body: { menu_item_id, quantity }
+exports.addItemToOrder = (req, res) => {
+
+    orderModel.addItemToOrder(
+        req.params.id,
+        req.user.restaurant_id,
+        req.body.menu_item_id,
+        req.body.quantity,
+        (err, result) => {
+            if (err) return error(res, err.message, 500);
+            return success(res, "Item added to the bill.", result);
+        }
+    );
+
+};
+
+// PUT /api/orders/:id/rebill — recompute an edited bill and bring the recorded
+// payment into line. Body: { payment_method }.
+exports.rebillOrder = (req, res) => {
+
+    orderModel.rebillOrder(
+        req.params.id,
+        req.user.restaurant_id,
+        req.body.payment_method,
+        (err, result) => {
+
+            if (err) return error(res, err.message, 500);
+
+            const delta = `${result.difference < 0 ? "-" : "+"}₹${Math.abs(result.difference).toFixed(2)}`;
+
+            auditLog.log(
+                req.user,
+                "Billing",
+                "Bill Corrected",
+                `Order #${req.params.id}: total ₹${result.previousTotal.toFixed(2)} → ` +
+                `₹${result.newTotal.toFixed(2)} (${delta}), reprinted by ${req.user.username}`
+            );
+
+            return success(res, "Bill corrected.", result);
+
+        }
+    );
 
 };
 

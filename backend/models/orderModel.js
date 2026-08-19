@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { totalsFromSubtotal, money } = require("../utils/billing");
 
 // Get all orders (tenant-scoped)
 const getAllOrders = (restaurantId, callback) => {
@@ -48,11 +49,12 @@ const createOrder = (order, callback) => {
             subtotal,
             discount,
             tax,
+            service_charge,
             grand_total,
             payment_status,
             notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     db.query(sql, [
@@ -66,6 +68,7 @@ const createOrder = (order, callback) => {
         order.subtotal,
         order.discount,
         order.tax,
+        order.service_charge || 0,
         order.grand_total,
         order.payment_status,
         order.notes
@@ -227,13 +230,13 @@ const updateOrderTotals = (orderId, restaurantId, totals, callback) => {
 
     const sql = `
         UPDATE orders
-        SET subtotal = ?, tax = ?, grand_total = ?
+        SET subtotal = ?, tax = ?, service_charge = ?, grand_total = ?
         WHERE id = ? AND restaurant_id = ?
     `;
 
     db.query(
         sql,
-        [totals.subtotal, totals.tax, totals.grand_total, orderId, restaurantId],
+        [totals.subtotal, totals.tax, totals.service_charge || 0, totals.grand_total, orderId, restaurantId],
         callback
     );
 
@@ -359,22 +362,102 @@ const markTableServed = (tableId, restaurantId, callback) => {
 
 };
 
-// Settle a table: mark all its active orders Completed/Paid and free the table.
-const settleTable = (tableId, restaurantId, callback) => {
+// Settle a table: mark all its active orders Completed/Paid, record a payment
+// against each, and free the table.
+//
+// The payment row is what makes a settled bill auditable — before it existed the
+// cashier picked Cash/Card/UPI, it was printed on the receipt and then thrown
+// away, so dine-in revenue never reached the payments table at all.
+const settleTable = (tableId, restaurantId, paymentMethod, employeeId, callback) => {
 
+    // Grab the orders first — after the UPDATE they no longer match "active".
     db.query(
-        `UPDATE orders
-         SET order_status='Completed', payment_status='Paid'
+        `SELECT id, grand_total FROM orders
          WHERE table_id=? AND restaurant_id=?
            AND order_status IN ('Pending','Preparing','Ready','Served')`,
         [tableId, restaurantId],
-        (err) => {
+        (err, orders) => {
             if (err) return callback(err);
+
             db.query(
-                "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
+                `UPDATE orders
+                 SET order_status='Completed', payment_status='Paid'
+                 WHERE table_id=? AND restaurant_id=?
+                   AND order_status IN ('Pending','Preparing','Ready','Served')`,
                 [tableId, restaurantId],
+                (err) => {
+                    if (err) return callback(err);
+
+                    // One payment per settled order, in sequence so the payment
+                    // number generator sees each insert before the next lookup.
+                    const recordNext = (i) => {
+
+                        if (i >= orders.length) {
+                            return db.query(
+                                "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
+                                [tableId, restaurantId],
+                                callback
+                            );
+                        }
+
+                        recordPayment(
+                            orders[i].id,
+                            restaurantId,
+                            paymentMethod,
+                            orders[i].grand_total,
+                            `Table settled by employee ${employeeId}`,
+                            (err) => {
+                                if (err) return callback(err);
+                                recordNext(i + 1);
+                            }
+                        );
+
+                    };
+
+                    recordNext(0);
+
+                }
+            );
+        }
+    );
+
+};
+
+// Insert a Success payment for an order, numbered PAY-<date>-NNNN.
+const recordPayment = (orderId, restaurantId, method, amount, remarks, callback) => {
+
+    const datePart = new Date().toISOString().split("T")[0].replace(/-/g, "");
+
+    db.query(
+        `SELECT payment_number FROM payments
+         WHERE restaurant_id=? AND payment_number LIKE ?
+         ORDER BY payment_number DESC LIMIT 1`,
+        [restaurantId, `PAY-${datePart}-%`],
+        (err, rows) => {
+            if (err) return callback(err);
+
+            const sequence = rows.length
+                ? parseInt(rows[0].payment_number.split("-")[2], 10) + 1
+                : 1;
+
+            const paymentNumber = `PAY-${datePart}-${String(sequence).padStart(4, "0")}`;
+            const allowed = ["Cash", "Card", "UPI", "Wallet", "Bank Transfer", "Split"];
+
+            db.query(
+                `INSERT INTO payments
+                 (restaurant_id, order_id, payment_number, payment_method, amount, payment_status, remarks)
+                 VALUES (?, ?, ?, ?, ?, 'Success', ?)`,
+                [
+                    restaurantId,
+                    orderId,
+                    paymentNumber,
+                    allowed.includes(method) ? method : "Cash",
+                    money(amount),
+                    remarks || null
+                ],
                 callback
             );
+
         }
     );
 
@@ -410,17 +493,15 @@ const removeOrderItem = (itemId, restaurantId, callback) => {
                         [orderId],
                         (err, sumRows) => {
                             if (err) return callback(err);
-                            const subtotal = Number(sumRows[0].subtotal) || 0;
                             const cnt = Number(sumRows[0].cnt) || 0;
-                            const tax = Math.round(subtotal * 0.05 * 100) / 100;
-                            const grand = Math.round((subtotal + tax) * 100) / 100;
+                            const t = totalsFromSubtotal(sumRows[0].subtotal);
                             const cancelClause = cnt === 0 ? ", order_status='Cancelled'" : "";
 
                             db.query(
                                 `UPDATE orders
-                                 SET subtotal=?, tax=?, grand_total=?${cancelClause}
+                                 SET subtotal=?, tax=?, service_charge=?, grand_total=?${cancelClause}
                                  WHERE id=? AND restaurant_id=?`,
-                                [subtotal, tax, grand, orderId, restaurantId],
+                                [t.subtotal, t.tax, t.service_charge, t.grand_total, orderId, restaurantId],
                                 (err) => callback(err, { orderId, remaining: cnt })
                             );
                         }
@@ -440,13 +521,12 @@ const recomputeOrderTotals = (orderId, restaurantId, callback) => {
         [orderId],
         (err, rows) => {
             if (err) return callback(err);
-            const subtotal = Number(rows[0].subtotal) || 0;
-            const tax = Math.round(subtotal * 0.05 * 100) / 100;
-            const grand = Math.round((subtotal + tax) * 100) / 100;
+            const t = totalsFromSubtotal(rows[0].subtotal);
             db.query(
-                `UPDATE orders SET subtotal=?, tax=?, grand_total=? WHERE id=? AND restaurant_id=?`,
-                [subtotal, tax, grand, orderId, restaurantId],
-                (err) => callback(err, { orderId, subtotal, tax, grand })
+                `UPDATE orders SET subtotal=?, tax=?, service_charge=?, grand_total=?
+                 WHERE id=? AND restaurant_id=?`,
+                [t.subtotal, t.tax, t.service_charge, t.grand_total, orderId, restaurantId],
+                (err) => callback(err, { orderId, ...t })
             );
         }
     );
@@ -547,20 +627,216 @@ const setItemQuantity = (itemId, restaurantId, quantity, callback) => {
                         [orderId],
                         (err, sumRows) => {
                             if (err) return callback(err);
-                            const subtotal = Number(sumRows[0].subtotal) || 0;
-                            const tax = Math.round(subtotal * 0.05 * 100) / 100;
-                            const grand = Math.round((subtotal + tax) * 100) / 100;
+                            const t = totalsFromSubtotal(sumRows[0].subtotal);
 
                             db.query(
-                                `UPDATE orders SET subtotal=?, tax=?, grand_total=?
+                                `UPDATE orders SET subtotal=?, tax=?, service_charge=?, grand_total=?
                                  WHERE id=? AND restaurant_id=?`,
-                                [subtotal, tax, grand, orderId, restaurantId],
+                                [t.subtotal, t.tax, t.service_charge, t.grand_total, orderId, restaurantId],
                                 (err) => callback(err, { orderId, quantity: qty })
                             );
                         }
                     );
                 }
             );
+        }
+    );
+
+};
+
+// ---------------------------------------------------------------------------
+// Bills history (cashier "Bills" screen) — settled bills that can be corrected
+// and reprinted when an item was rung up twice or missed.
+// ---------------------------------------------------------------------------
+
+// Today's settled bills, newest first (tenant-scoped).
+const getTodaysBills = (restaurantId, callback) => {
+
+    const sql = `
+        SELECT
+            o.id,
+            o.order_number,
+            o.order_type,
+            o.table_id,
+            o.subtotal,
+            o.tax,
+            o.service_charge,
+            o.grand_total,
+            o.created_at,
+            o.updated_at,
+            dt.table_name,
+            u.full_name AS employee_name,
+            (SELECT COALESCE(SUM(oi.quantity), 0)
+             FROM order_items oi WHERE oi.order_id = o.id) AS item_count,
+            (SELECT COALESCE(SUM(p.amount), 0)
+             FROM payments p
+             WHERE p.order_id = o.id AND p.payment_status = 'Success') AS paid_amount,
+            (SELECT p.payment_method
+             FROM payments p
+             WHERE p.order_id = o.id AND p.payment_status = 'Success'
+             ORDER BY p.id DESC LIMIT 1) AS payment_method,
+            -- How many times this bill has been corrected, straight from the
+            -- audit trail rather than guessed from timestamps.
+            (SELECT COUNT(*)
+             FROM activity_logs al
+             WHERE al.restaurant_id = o.restaurant_id
+               AND al.module = 'Billing'
+               AND al.action = 'Bill Corrected'
+               AND al.description LIKE CONCAT('Order #', o.id, ':%')) AS correction_count
+        FROM orders o
+        LEFT JOIN dining_tables dt ON o.table_id = dt.id
+        LEFT JOIN users u ON o.employee_id = u.id
+        WHERE o.restaurant_id = ?
+          AND o.order_status = 'Completed'
+          AND DATE(o.created_at) = CURDATE()
+        ORDER BY o.id DESC
+    `;
+
+    db.query(sql, [restaurantId], callback);
+
+};
+
+// One bill's header — everything the receipt needs (tenant-scoped).
+const getBillById = (orderId, restaurantId, callback) => {
+
+    const sql = `
+        SELECT
+            o.id,
+            o.order_number,
+            o.order_type,
+            o.order_status,
+            o.subtotal,
+            o.tax,
+            o.service_charge,
+            o.grand_total,
+            o.created_at,
+            dt.table_name,
+            r.restaurant_name,
+            u.full_name AS employee_name,
+            (SELECT p.payment_method
+             FROM payments p
+             WHERE p.order_id = o.id AND p.payment_status = 'Success'
+             ORDER BY p.id DESC LIMIT 1) AS payment_method
+        FROM orders o
+        LEFT JOIN dining_tables dt ON o.table_id = dt.id
+        LEFT JOIN restaurants r ON o.restaurant_id = r.id
+        LEFT JOIN users u ON o.employee_id = u.id
+        WHERE o.id = ? AND o.restaurant_id = ?
+    `;
+
+    db.query(sql, [orderId, restaurantId], callback);
+
+};
+
+// Add an item to ONE specific order, whatever its status.
+//
+// Distinct from addBillItem, which targets a *table's* most recent active order
+// — that can't reach a settled bill or a counter order, which is exactly what
+// the Bills screen has to correct. Inserted already-served so a corrected bill
+// never sends a fresh ticket to the kitchen.
+const addItemToOrder = (orderId, restaurantId, menuItemId, quantity, callback) => {
+
+    const qty = Math.max(1, Number(quantity) || 1);
+
+    db.query(
+        `SELECT o.id FROM orders o WHERE o.id = ? AND o.restaurant_id = ?`,
+        [orderId, restaurantId],
+        (err, orows) => {
+            if (err) return callback(err);
+            if (!orows.length) return callback(new Error("Bill not found."));
+
+            db.query(
+                "SELECT price FROM menu_items WHERE id=? AND restaurant_id=?",
+                [menuItemId, restaurantId],
+                (err, mrows) => {
+                    if (err) return callback(err);
+                    if (!mrows.length) return callback(new Error("Menu item not found."));
+
+                    const price = Number(mrows[0].price);
+
+                    db.query(
+                        `INSERT INTO order_items
+                         (order_id, menu_item_id, quantity, price, total, served)
+                         VALUES (?, ?, ?, ?, ?, 1)`,
+                        [orderId, menuItemId, qty, price, money(price * qty)],
+                        (err) => {
+                            if (err) return callback(err);
+                            recomputeOrderTotals(orderId, restaurantId, callback);
+                        }
+                    );
+                }
+            );
+        }
+    );
+
+};
+
+// Re-settle an edited bill: recompute its totals from the items that are now on
+// it, then bring the recorded payment into line so the till matches the paper.
+// Returns { before, after } so the caller can write a meaningful audit entry.
+const rebillOrder = (orderId, restaurantId, paymentMethod, callback) => {
+
+    // "What the customer was charged" is the recorded payment, not the order
+    // row — by the time we get here the item edits have already rewritten the
+    // order's totals, so comparing against it would always report no change.
+    db.query(
+        `SELECT p.id, p.payment_method, p.amount, o.grand_total
+         FROM orders o
+         LEFT JOIN payments p
+           ON p.order_id = o.id AND p.restaurant_id = o.restaurant_id
+          AND p.payment_status = 'Success'
+         WHERE o.id = ? AND o.restaurant_id = ?
+         ORDER BY p.id DESC LIMIT 1`,
+        [orderId, restaurantId],
+        (err, before) => {
+            if (err) return callback(err);
+            if (!before.length) return callback(new Error("Bill not found."));
+
+            const paidRow = before[0].id ? before[0] : null;
+            const previousTotal = Number(
+                paidRow ? paidRow.amount : before[0].grand_total
+            );
+
+            recomputeOrderTotals(orderId, restaurantId, (err, totals) => {
+
+                if (err) return callback(err);
+
+                const method = paymentMethod || (paidRow ? paidRow.payment_method : "Cash");
+
+                const done = () => callback(null, {
+                    orderId,
+                    previousTotal,
+                    newTotal: totals.grand_total,
+                    difference: money(totals.grand_total - previousTotal),
+                    ...totals
+                });
+
+                // No payment on record (e.g. a bill settled before this feature
+                // existed) — create one rather than lose the sale.
+                if (!paidRow) {
+                    return recordPayment(
+                        orderId, restaurantId, method, totals.grand_total,
+                        "Recorded on bill correction",
+                        (err) => err ? callback(err) : done()
+                    );
+                }
+
+                db.query(
+                    `UPDATE payments SET amount=?, payment_method=?
+                     WHERE id=? AND restaurant_id=?`,
+                    [totals.grand_total, method, paidRow.id, restaurantId],
+                    (err) => {
+                        if (err) return callback(err);
+
+                        db.query(
+                            "UPDATE orders SET payment_status='Paid' WHERE id=? AND restaurant_id=?",
+                            [orderId, restaurantId],
+                            (err) => err ? callback(err) : done()
+                        );
+                    }
+                );
+
+            });
         }
     );
 
@@ -602,5 +878,11 @@ module.exports = {
     markItemServed,
     removeOrderItem,
     setItemQuantity,
-    addBillItem
+    addBillItem,
+    recomputeOrderTotals,
+    recordPayment,
+    getTodaysBills,
+    getBillById,
+    addItemToOrder,
+    rebillOrder
 };

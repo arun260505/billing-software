@@ -1,0 +1,94 @@
+// One receipt printer, used for the first print and every reprint, so a
+// corrected bill can never come out looking different from the original.
+
+const GST_PERCENT = 5;
+const SERVICE_PERCENT = 2;
+
+const rupees = (n) => `&#8377;${Number(n || 0).toFixed(2)}`;
+
+const row = (label, value, bold) =>
+    `<div style="display:flex;justify-content:space-between${bold ? ";font-weight:bold;font-size:15px" : ""}">
+        <span>${label}</span><span>${value}</span>
+     </div>`;
+
+/**
+ * Open the print dialog for a bill.
+ *
+ * @param {object}  bill
+ * @param {string}  bill.title        Restaurant name shown at the top
+ * @param {string}  bill.billNumber
+ * @param {string}  bill.place        "Table 3" / "Counter"
+ * @param {Array}   bill.items        [{ item_name, quantity, price }]
+ * @param {number}  bill.subtotal
+ * @param {number}  bill.gst
+ * @param {number}  bill.service
+ * @param {number}  bill.total
+ * @param {string}  bill.method       Payment method
+ * @param {boolean} bill.isReprint    Stamps the receipt as a corrected reprint
+ * @returns {boolean} false if the browser blocked the popup
+ */
+export function printBill({
+    title = "InWallz",
+    billNumber = "",
+    place = "",
+    items = [],
+    subtotal = 0,
+    gst = 0,
+    service = 0,
+    total = 0,
+    method = "",
+    isReprint = false
+}) {
+
+    const w = window.open("", "PrintBill", "width=340,height=640");
+    if (!w) return false;
+
+    const when = new Date().toLocaleString("en-GB", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit"
+    });
+
+    w.document.write(
+        `<div style="font-family:monospace;padding:12px;font-size:13px">
+            <h3 style="text-align:center;margin:0">${title}</h3>
+            <p style="text-align:center;margin:2px 0 6px">${place}</p>` +
+
+        (isReprint
+            ? `<p style="text-align:center;margin:0 0 6px;padding:4px;border:1px dashed #000;font-weight:bold">
+                   ** REPRINT &mdash; CORRECTED BILL **
+               </p>`
+            : "") +
+
+        `<div style="display:flex;justify-content:space-between;font-size:11px">
+            <span>${billNumber}</span><span>${when}</span>
+         </div>
+         <hr>` +
+
+        items.map((i) =>
+            `<div style="display:flex;justify-content:space-between">
+                <span>${i.item_name} x${Number(i.quantity)}</span>
+                <span>${rupees(Number(i.price) * Number(i.quantity))}</span>
+             </div>`
+        ).join("") +
+
+        `<hr>` +
+        row("Subtotal", rupees(subtotal)) +
+        row(`GST ${GST_PERCENT}%`, rupees(gst)) +
+        row(`Service ${SERVICE_PERCENT}%`, rupees(service)) +
+        `<hr>` +
+        row("TOTAL", rupees(total), true) +
+        (method ? row("Paid via", method) : "") +
+
+        `<p style="text-align:center;margin-top:12px">Thank you!</p>
+         </div>`
+    );
+
+    w.document.close();
+    w.focus();
+    w.print();
+
+    return true;
+
+}
+
+export { GST_PERCENT, SERVICE_PERCENT };

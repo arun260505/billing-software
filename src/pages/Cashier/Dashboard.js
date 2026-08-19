@@ -3,7 +3,8 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
 import { getCategories, getItemsByCategory, getAllItems } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, markItemServed, cancelItem, setItemQuantity, addBillItem, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, markItemServed, cancelItem, setItemQuantity, addBillItem, updateOrder, cancelOrder, getTodaysOrderCount, getBill, addItemToOrder, rebillOrder } from "../../services/orderService";
+import { printBill } from "../../utils/printBill";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -11,6 +12,8 @@ import CartItem from "../../components/Waiter/CartItem";
 import BillModal from "../../components/Cashier/BillModal";
 import TableBillModal from "../../components/Cashier/TableBillModal";
 import MenuAvailability from "../../components/Cashier/MenuAvailability";
+import BillsHistory from "../../components/Cashier/BillsHistory";
+import BillEditModal from "../../components/Cashier/BillEditModal";
 
 function Dashboard() {
     // ── State ───────────────────────────────────────────────────────
@@ -35,7 +38,12 @@ function Dashboard() {
 
     // Left sidebar + which full-screen view is showing.
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeView, setActiveView] = useState("dashboard");   // "dashboard" | "menu"
+    const [activeView, setActiveView] = useState("dashboard");   // "dashboard" | "menu" | "bills"
+    // Bills screen: a settled bill opened for correction + reprint.
+    const [editingBill, setEditingBill] = useState(null);        // the bill row
+    const [editingBillItems, setEditingBillItems] = useState([]);
+    const [editingBillCharged, setEditingBillCharged] = useState(0);  // amount already taken
+    const [billEditBusy, setBillEditBusy] = useState(false);
     const [showBill, setShowBill] = useState(false);
     const [billData, setBillData] = useState(null);
     // Table bill (waiter-requested) review + payment
@@ -534,34 +542,142 @@ function Dashboard() {
         finally { setTableBillBusy(false); }
     };
 
+    // ── Bills screen: correct a settled bill, then reprint ───────────────
+    const openBillForEdit = async (bill) => {
+        setEditingBill(bill);
+        setEditingBillCharged(Number(bill.paid_amount || bill.grand_total || 0));
+        setEditingBillItems([]);
+        // The menu is needed for "add a missed item".
+        if (allItems.length === 0) loadAllItems();
+        await refreshBillItems(bill.id);
+    };
+
+    const refreshBillItems = async (orderId) => {
+        try {
+            const res = await getOrderDetails(orderId);
+            setEditingBillItems(res.data.data || []);
+        } catch (e) {
+            console.error("Bill items error:", e);
+            alert("Could not load this bill's items.");
+        }
+    };
+
+    const handleBillSetQty = async (itemId, quantity) => {
+        setBillEditBusy(true);
+        try {
+            await setItemQuantity(itemId, quantity);
+            await refreshBillItems(editingBill.id);
+        } catch (e) {
+            alert("Could not change the quantity.");
+        } finally {
+            setBillEditBusy(false);
+        }
+    };
+
+    const handleBillRemove = async (rows) => {
+        if (!window.confirm(`Remove ${rows[0]?.item_name || "this item"} from this bill?`)) return;
+        setBillEditBusy(true);
+        try {
+            for (const r of rows) await cancelItem(r.id);
+            await refreshBillItems(editingBill.id);
+        } catch (e) {
+            alert("Could not remove the item.");
+        } finally {
+            setBillEditBusy(false);
+        }
+    };
+
+    const handleBillAdd = async (menuItem) => {
+        setBillEditBusy(true);
+        try {
+            await addItemToOrder(editingBill.id, menuItem.id, 1);
+            await refreshBillItems(editingBill.id);
+        } catch (e) {
+            alert("Could not add the item.");
+        } finally {
+            setBillEditBusy(false);
+        }
+    };
+
+    // Save the corrected totals (syncing the recorded payment) and reprint.
+    const handleBillReprint = async (method, totals) => {
+        setBillEditBusy(true);
+        try {
+            const res = await rebillOrder(editingBill.id, method);
+            const result = res.data.data;
+
+            // Re-read the header so the receipt shows the stored figures.
+            let header = editingBill;
+            try {
+                header = (await getBill(editingBill.id)).data.data;
+            } catch (e) {
+                console.error("Bill header reload failed, printing from screen:", e);
+            }
+
+            const opened = printBill({
+                title: header.restaurant_name || "InWallz",
+                billNumber: header.order_number,
+                place: header.table_name ? `Table ${header.table_name}` : "Counter",
+                items: editingBillItems,
+                subtotal: totals.subtotal,
+                gst: totals.gst,
+                service: totals.service,
+                total: totals.total,
+                method,
+                isReprint: true
+            });
+
+            if (!opened) alert("Bill saved, but the print window was blocked. Allow pop-ups to print.");
+
+            const diff = Number(result.difference || 0);
+            if (Math.abs(diff) >= 0.01) {
+                alert(
+                    diff > 0
+                        ? `Bill corrected. Collect ₹${diff.toFixed(2)} more from the customer.`
+                        : `Bill corrected. Refund ₹${Math.abs(diff).toFixed(2)} to the customer.`
+                );
+            }
+
+            closeBillEdit();
+            await loadTodaysOrderCount();
+        } catch (e) {
+            console.error("Rebill error:", e);
+            alert(e.response?.data?.message || "Could not save the corrected bill.");
+        } finally {
+            setBillEditBusy(false);
+        }
+    };
+
+    const closeBillEdit = () => {
+        setEditingBill(null);
+        setEditingBillItems([]);
+        setEditingBillCharged(0);
+    };
+
     // Print the receipt (with the chosen method) and settle the table.
     const generateTableBill = async (method) => {
         const table = tableBillTarget;
         setTableBillBusy(true);
         try {
             const items = tableBillItems;
-            const sub = items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0);
-            const gstAmt = Math.round(sub * 0.05);
-            const svc = Math.round(sub * 0.02);
-            const total = sub + gstAmt + svc;
-            const w = window.open("", "PrintBill", "width=340,height=600");
-            if (w) {
-                w.document.write(
-                    `<div style="font-family:monospace;padding:12px">
-                       <h3 style="text-align:center;margin:0">InWallz</h3>
-                       <p style="text-align:center;margin:2px 0 10px">Table ${table.table_number}</p><hr>` +
-                    items.map((i) => `<div style="display:flex;justify-content:space-between"><span>${i.item_name} x${i.quantity}</span><span>&#8377;${(Number(i.price) * Number(i.quantity)).toFixed(0)}</span></div>`).join("") +
-                    `<hr>
-                       <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>&#8377;${sub.toFixed(0)}</span></div>
-                       <div style="display:flex;justify-content:space-between"><span>GST 5%</span><span>&#8377;${gstAmt}</span></div>
-                       <div style="display:flex;justify-content:space-between"><span>Service 2%</span><span>&#8377;${svc}</span></div>
-                       <div style="display:flex;justify-content:space-between;font-weight:bold"><span>TOTAL</span><span>&#8377;${total.toFixed(0)}</span></div>
-                       <div style="display:flex;justify-content:space-between;margin-top:6px"><span>Paid via</span><span>${method}</span></div>
-                       <p style="text-align:center;margin-top:12px">Thank you!</p></div>`
-                );
-                w.document.close(); w.focus(); w.print();
-            }
-            await settleTable(table.id);
+            const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
+            const sub = money(items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0));
+            const gstAmt = money(sub * 0.05);
+            const svc = money(sub * 0.02);
+            const total = money(sub + gstAmt + svc);
+
+            printBill({
+                billNumber: `Table ${table.table_number}`,
+                place: `Table ${table.table_number}`,
+                items,
+                subtotal: sub,
+                gst: gstAmt,
+                service: svc,
+                total,
+                method
+            });
+
+            await settleTable(table.id, method);
             alert(`Table ${table.table_number} billed (${method}) & settled — now Available.`);
             setShowTableBill(false);
             setTableBillTarget(null);
@@ -607,6 +723,12 @@ function Dashboard() {
                     >
                         🍽 Menu
                     </button>
+                    <button
+                        className={`pos-nav-item${activeView === "bills" ? " active" : ""}`}
+                        onClick={() => { setActiveView("bills"); setSidebarOpen(false); }}
+                    >
+                        🧾 Bills
+                    </button>
                 </nav>
             </aside>
 
@@ -638,7 +760,8 @@ function Dashboard() {
                 </div>
             </header>
 
-            {activeView === "menu" ? <MenuAvailability /> : (
+            {activeView === "menu" ? <MenuAvailability /> :
+             activeView === "bills" ? <BillsHistory onOpenBill={openBillForEdit} /> : (
             <>
             {/* ══ TABLE BAR ══ */}
             <div className="pos-tablebar">
@@ -795,6 +918,20 @@ function Dashboard() {
             )}
             {showBill && billData && (
                 <BillModal order={billData} onClose={() => setShowBill(false)} onSuccess={handlePaymentSuccess} />
+            )}
+            {editingBill && (
+                <BillEditModal
+                    bill={editingBill}
+                    items={editingBillItems}
+                    menuItems={allItems}
+                    busy={billEditBusy}
+                    chargedTotal={editingBillCharged}
+                    onSetQty={handleBillSetQty}
+                    onRemoveGroup={handleBillRemove}
+                    onAddItem={handleBillAdd}
+                    onReprint={handleBillReprint}
+                    onClose={closeBillEdit}
+                />
             )}
         </div>
     );

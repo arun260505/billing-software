@@ -9,6 +9,9 @@ router.use(authMiddleware);
 
 const staff = roleMiddleware(["admin", "cashier", "waiter"]);
 const takers = roleMiddleware(["cashier", "waiter"]);
+// Correcting an already-settled bill touches recorded money, so it stays with
+// the cashier who rang it up and the admin above them.
+const billing = roleMiddleware(["admin", "cashier"]);
 
 // Reads. NOTE: static/more-specific paths must be registered before "/:id".
 router.get("/", staff, orderController.getAllOrders);
@@ -21,6 +24,14 @@ router.delete("/item/:itemId", staff, orderController.removeItem);   // cancel o
 router.post("/table/:tableId/settle", roleMiddleware(["admin", "cashier"]), orderController.settleTable);
 router.post("/table/:tableId/item", staff, orderController.addBillItem);   // add an item to the bill
 router.get("/today-count", staff, orderController.getTodaysOrderCount);
+
+// Bills screen — settled bills that can be corrected and reprinted.
+// These sit above "/:id" so "bills" is never read as an order id.
+router.get("/bills/today", billing, orderController.getTodaysBills);
+router.get("/bills/:id", billing, orderController.getBill);
+router.post("/:id/item", billing, orderController.addItemToOrder);   // add to THIS bill
+router.put("/:id/rebill", billing, orderController.rebillOrder);     // recompute + sync payment
+
 router.get("/:id/items", staff, orderController.getOrderDetails);
 router.get("/:id", staff, orderController.getOrderById);
 
