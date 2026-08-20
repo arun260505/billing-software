@@ -1,0 +1,1164 @@
+/* ===================================================================
+   Charges & Settings — Consolidated Stylesheet
+   =================================================================== */
+
+/* --- Page Header --- */
+.charges-page .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.charges-page .page-header-text h2 {
+    margin: 0 0 4px;
+    font-size: 24px;
+    color: #0F172A;
+    font-weight: 700;
+}
+
+.charges-page .page-header-text p {
+    margin: 0;
+    color: #64748B;
+    font-size: 14px;
+}
+
+.charges-page .primary-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: #2563EB;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.charges-page .primary-btn:hover {
+    background: #1D4ED8;
+}
+
+.charges-page .secondary-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: #fff;
+    color: #64748B;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.charges-page .secondary-btn:hover {
+    border-color: #CBD5E1;
+    color: #0F172A;
+}
+
+/* --- Summary Cards --- */
+.charges-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.charge-summary-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    border: 1px solid #E2E8F0;
+}
+
+.charge-summary-card .card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.charge-summary-card .card-info h3 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: #0F172A;
+}
+
+.charge-summary-card .card-info p {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: #64748B;
+}
+
+/* --- Filter Toolbar --- */
+.charges-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.charges-toolbar .search-box {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+}
+
+.charges-toolbar .search-box .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94A3B8;
+    font-size: 14px;
+    pointer-events: none;
+}
+
+.charges-toolbar .search-box input {
+    width: 100%;
+    padding: 9px 12px 9px 36px;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #0F172A;
+    background: #F8FAFC;
+    outline: none;
+    transition: border 0.2s;
+}
+
+.charges-toolbar .search-box input:focus {
+    border-color: #2563EB;
+}
+
+.charges-toolbar .filter-select {
+    padding: 9px 12px;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #0F172A;
+    background: #F8FAFC;
+    outline: none;
+    min-width: 140px;
+    cursor: pointer;
+}
+
+.charges-toolbar .filter-select:focus {
+    border-color: #2563EB;
+}
+
+.charges-toolbar .reset-btn {
+    padding: 9px 14px;
+    background: none;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #64748B;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.charges-toolbar .reset-btn:hover {
+    border-color: #CBD5E1;
+    color: #0F172A;
+}
+
+/* --- Charges Table --- */
+.charges-table-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    margin-bottom: 24px;
+}
+
+.charges-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.charges-table thead th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748B;
+    background: #F8FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+}
+
+.charges-table thead th:hover {
+    color: #0F172A;
+}
+
+.charges-table thead th .sort-arrow {
+    margin-left: 4px;
+    font-size: 10px;
+}
+
+.charges-table tbody td {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: #334155;
+    border-bottom: 1px solid #F1F5F9;
+    vertical-align: middle;
+}
+
+.charges-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.charges-table tbody tr:hover {
+    background: #F8FAFC;
+}
+
+.charge-name-cell {
+    font-weight: 600;
+    color: #0F172A;
+}
+
+.charge-desc {
+    font-size: 12px;
+    color: #94A3B8;
+    margin-top: 2px;
+}
+
+/* --- Status Dots --- */
+.status-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.status-dot .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.active .dot {
+    background: #16A34A;
+}
+
+.status-dot.active {
+    color: #16A34A;
+}
+
+.status-dot.inactive .dot {
+    background: #94A3B8;
+}
+
+.status-dot.inactive {
+    color: #94A3B8;
+}
+
+/* --- Applies-To Tags --- */
+.applies-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.applies-tag {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    background: #F1F5F9;
+    color: #475569;
+}
+
+.applies-tag.dinein {
+    background: #EFF6FF;
+    color: #2563EB;
+}
+
+.applies-tag.takeaway {
+    background: #FFF7ED;
+    color: #EA580C;
+}
+
+.applies-tag.delivery {
+    background: #F0FDF4;
+    color: #16A34A;
+}
+
+/* --- Tax Indicator --- */
+.tax-yes {
+    color: #16A34A;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.tax-no {
+    color: #94A3B8;
+    font-size: 13px;
+}
+
+/* --- Action Buttons --- */
+.charge-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.charge-actions .edit-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: #EFF6FF;
+    color: #2563EB;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.charge-actions .edit-btn:hover {
+    background: #2563EB;
+    color: #fff;
+}
+
+.charge-actions .menu-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: #F8FAFC;
+    color: #64748B;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.charge-actions .menu-btn:hover {
+    background: #F1F5F9;
+    color: #0F172A;
+}
+
+/* --- Action Dropdown --- */
+.action-dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: #fff;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    min-width: 160px;
+    z-index: 50;
+    padding: 4px;
+    overflow: hidden;
+}
+
+.action-dropdown button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 12px;
+    border: none;
+    background: none;
+    font-size: 13px;
+    color: #334155;
+    cursor: pointer;
+    text-align: left;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.action-dropdown button:hover {
+    background: #F8FAFC;
+}
+
+.action-dropdown button.danger {
+    color: #DC2626;
+}
+
+.action-dropdown button.danger:hover {
+    background: #FEF2F2;
+}
+
+/* --- Empty State --- */
+.charges-empty {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.charges-empty .empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.charges-empty h3 {
+    margin: 0 0 6px;
+    color: #0F172A;
+    font-size: 18px;
+}
+
+.charges-empty p {
+    margin: 0 0 16px;
+    color: #64748B;
+    font-size: 14px;
+}
+
+/* --- Pagination --- */
+.charges-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.charges-pagination button {
+    padding: 7px 14px;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    background: #fff;
+    color: #64748B;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.charges-pagination button:hover:not(:disabled) {
+    border-color: #2563EB;
+    color: #2563EB;
+}
+
+.charges-pagination button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.charges-pagination button.active-page {
+    background: #2563EB;
+    color: #fff;
+    border-color: #2563EB;
+}
+
+.charges-pagination .page-info {
+    font-size: 13px;
+    color: #64748B;
+    margin: 0 8px;
+}
+
+/* ===================================================================
+   Modal — Add / Edit Charge
+   =================================================================== */
+.charge-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.charge-modal {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.charge-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 28px 0;
+}
+
+.charge-modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: #0F172A;
+}
+
+.charge-modal-header .close-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: #F1F5F9;
+    color: #64748B;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.charge-modal-header .close-btn:hover {
+    background: #E2E8F0;
+    color: #0F172A;
+}
+
+.charge-modal-subtitle {
+    padding: 4px 28px 0;
+    font-size: 13px;
+    color: #64748B;
+}
+
+.charge-modal-body {
+    padding: 20px 28px 28px;
+}
+
+/* --- Form Groups --- */
+.charge-form-group {
+    margin-bottom: 18px;
+}
+
+.charge-form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.charge-form-group input[type="text"],
+.charge-form-group input[type="number"],
+.charge-form-group textarea,
+.charge-form-group select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #0F172A;
+    background: #F8FAFC;
+    outline: none;
+    transition: border 0.2s;
+    box-sizing: border-box;
+}
+
+.charge-form-group input:focus,
+.charge-form-group textarea:focus,
+.charge-form-group select:focus {
+    border-color: #2563EB;
+    background: #fff;
+}
+
+.charge-form-group .field-error {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #DC2626;
+}
+
+.charge-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+/* --- Amount Input with Prefix --- */
+.amount-input-wrap {
+    position: relative;
+}
+
+.amount-input-wrap .currency-prefix {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748B;
+    pointer-events: none;
+}
+
+.amount-input-wrap input {
+    padding-left: 32px !important;
+}
+
+/* --- Applies-To Cards --- */
+.applies-cards {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.applies-card {
+    flex: 1;
+    min-width: 100px;
+    padding: 12px 14px;
+    border: 2px solid #E2E8F0;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748B;
+    background: #fff;
+}
+
+.applies-card.selected {
+    border-color: #2563EB;
+    background: #EFF6FF;
+    color: #2563EB;
+}
+
+.applies-card:hover:not(.selected) {
+    border-color: #CBD5E1;
+}
+
+/* --- Toggle Switch --- */
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-top: 1px solid #F1F5F9;
+}
+
+.toggle-row:first-child {
+    border-top: none;
+}
+
+.toggle-label {
+    font-size: 14px;
+    color: #334155;
+    font-weight: 500;
+}
+
+.toggle-switch {
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    background: #CBD5E1;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    padding: 0;
+}
+
+.toggle-switch.on {
+    background: #16A34A;
+}
+
+.toggle-switch .toggle-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.toggle-switch.on .toggle-knob {
+    transform: translateX(20px);
+}
+
+/* --- Advanced Section --- */
+.advanced-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748B;
+    cursor: pointer;
+    border: none;
+    background: none;
+    transition: color 0.2s;
+}
+
+.advanced-toggle:hover {
+    color: #2563EB;
+}
+
+.advanced-fields {
+    padding: 14px;
+    background: #F8FAFC;
+    border-radius: 10px;
+    border: 1px solid #E2E8F0;
+}
+
+/* --- Modal Footer --- */
+.charge-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 0 28px 24px;
+}
+
+.charge-modal-footer .cancel-btn {
+    padding: 10px 20px;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    background: #fff;
+    color: #64748B;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.charge-modal-footer .cancel-btn:hover {
+    border-color: #CBD5E1;
+    color: #0F172A;
+}
+
+.charge-modal-footer .save-btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    background: #2563EB;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.charge-modal-footer .save-btn:hover {
+    background: #1D4ED8;
+}
+
+/* ===================================================================
+   Delete Confirmation Modal
+   =================================================================== */
+.delete-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+}
+
+.delete-dialog {
+    background: #fff;
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.delete-dialog .del-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #FEF2F2;
+    color: #DC2626;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 16px;
+}
+
+.delete-dialog h3 {
+    margin: 0 0 8px;
+    color: #0F172A;
+    font-size: 18px;
+}
+
+.delete-dialog p {
+    margin: 0 0 24px;
+    color: #64748B;
+    font-size: 14px;
+}
+
+.delete-dialog p strong {
+    color: #0F172A;
+}
+
+.delete-dialog .del-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.delete-dialog .del-cancel {
+    padding: 10px 20px;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    background: #fff;
+    color: #64748B;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.delete-dialog .del-confirm {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    background: #DC2626;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.delete-dialog .del-confirm:hover {
+    background: #B91C1C;
+}
+
+/* ===================================================================
+   Menu Item Pricing Section
+   =================================================================== */
+.menu-pricing-section {
+    margin-top: 8px;
+    margin-bottom: 24px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.section-header h3 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    color: #0F172A;
+}
+
+.section-header p {
+    margin: 0;
+    font-size: 13px;
+    color: #64748B;
+}
+
+.pricing-table-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.pricing-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.pricing-table thead th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748B;
+    background: #F8FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    white-space: nowrap;
+}
+
+.pricing-table tbody td {
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #334155;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.pricing-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.pricing-table tbody tr:hover {
+    background: #F8FAFC;
+}
+
+.pricing-table .item-name {
+    font-weight: 600;
+    color: #0F172A;
+}
+
+.pricing-table .addon-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #F1F5F9;
+    font-size: 12px;
+    color: #475569;
+}
+
+.pricing-table .edit-pricing-btn {
+    padding: 6px 12px;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    background: #fff;
+    color: #64748B;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pricing-table .edit-pricing-btn:hover {
+    border-color: #2563EB;
+    color: #2563EB;
+}
+
+/* ===================================================================
+   Bill Preview Panel
+   =================================================================== */
+.bill-preview-section {
+    margin-top: 8px;
+    margin-bottom: 24px;
+}
+
+.bill-preview-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    padding: 24px;
+    max-width: 400px;
+}
+
+.bill-preview-card h4 {
+    margin: 0 0 16px;
+    font-size: 16px;
+    color: #0F172A;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.bill-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 14px;
+    color: #334155;
+}
+
+.bill-line.charge {
+    color: #64748B;
+}
+
+.bill-divider {
+    border: none;
+    border-top: 1px dashed #E2E8F0;
+    margin: 8px 0;
+}
+
+.bill-line.subtotal {
+    font-weight: 600;
+    color: #0F172A;
+}
+
+.bill-line.total {
+    font-weight: 700;
+    font-size: 16px;
+    color: #0F172A;
+}
+
+.bill-note {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: #F8FAFC;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #64748B;
+    line-height: 1.5;
+}
+
+/* ===================================================================
+   Menu Pricing Modal
+   =================================================================== */
+.pricing-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.pricing-modal {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.pricing-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 28px 0;
+}
+
+.pricing-modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: #0F172A;
+}
+
+.pricing-modal-body {
+    padding: 20px 28px 28px;
+}
+
+.addon-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.addon-row input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+}
+
+.addon-row input:focus {
+    border-color: #2563EB;
+}
+
+.addon-row .addon-price {
+    width: 90px;
+}
+
+.addon-row .remove-addon {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: #FEF2F2;
+    color: #DC2626;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.add-addon-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 14px;
+    border: 1px dashed #CBD5E1;
+    border-radius: 8px;
+    background: none;
+    color: #64748B;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 4px;
+}
+
+.add-addon-btn:hover {
+    border-color: #2563EB;
+    color: #2563EB;
+}
+
+/* ===================================================================
+   Responsive — Tablet
+   =================================================================== */
+@media (max-width: 1024px) {
+    .charges-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .charges-toolbar .search-box {
+        min-width: 100%;
+    }
+
+    .charges-table-card {
+        overflow-x: auto;
+    }
+
+    .charges-table {
+        min-width: 700px;
+    }
+
+    .charge-form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===================================================================
+   Responsive — Mobile
+   =================================================================== */
+@media (max-width: 640px) {
+    .charges-page .page-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .charges-summary {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .charge-modal {
+        margin: 10px;
+        max-height: 95vh;
+    }
+
+    .applies-cards {
+        flex-direction: column;
+    }
+}
