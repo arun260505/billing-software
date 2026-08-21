@@ -1,12 +1,37 @@
 const db = require("../config/db");
 
+const timingAvailabilitySql = `
+    CASE
+        WHEN c.start_time IS NULL OR c.end_time IS NULL THEN 1
+        WHEN c.start_time = c.end_time THEN 1
+        WHEN c.start_time < c.end_time
+            THEN CURTIME() BETWEEN c.start_time AND c.end_time
+        ELSE
+            CURTIME() >= c.start_time OR CURTIME() <= c.end_time
+    END
+`;
+
+const effectiveAvailabilitySql = `
+    CASE
+        WHEN m.available = 1
+         AND c.status = 'Active'
+         AND (${timingAvailabilitySql}) = 1
+            THEN 1
+        ELSE 0
+    END
+`;
+
 // Get All Menu Items (tenant-scoped)
 exports.getAllMenuItems = (restaurantId, callback) => {
 
     const sql = `
         SELECT
             m.*,
-            c.category_name
+            c.category_name,
+            c.start_time,
+            c.end_time,
+            (${timingAvailabilitySql}) AS is_category_timing_active,
+            (${effectiveAvailabilitySql}) AS effective_available
         FROM menu_items m
         JOIN categories c
             ON m.category_id = c.id
@@ -24,11 +49,12 @@ exports.getSummary = (restaurantId, callback) => {
     const sql = `
         SELECT
             COUNT(*) AS totalItems,
-            COALESCE(SUM(available = 1), 0) AS availableItems,
+            COALESCE(SUM((${effectiveAvailabilitySql}) = 1), 0) AS availableItems,
             COALESCE(SUM(is_best_seller = 1), 0) AS bestSellerItems,
             COALESCE(SUM(is_today_special = 1), 0) AS todaySpecialItems
-        FROM menu_items
-        WHERE restaurant_id = ?
+        FROM menu_items m
+        INNER JOIN categories c ON m.category_id = c.id
+        WHERE m.restaurant_id = ?
     `;
 
     db.query(sql, [restaurantId], callback);
@@ -151,10 +177,14 @@ exports.deleteMenuItem = (id, restaurantId, callback) => {
 exports.getMenuCategories = (restaurantId, callback) => {
 
     const sql = `
-        SELECT id, category_name, status
-        FROM categories
-        WHERE restaurant_id = ? AND status = 'Active'
-        ORDER BY category_name ASC
+        SELECT c.id, c.category_name, c.status
+             , c.start_time
+             , c.end_time
+             , (${timingAvailabilitySql}) AS is_currently_available
+        FROM categories c
+        WHERE c.restaurant_id = ?
+          AND c.status = 'Active'
+        ORDER BY c.category_name ASC
     `;
 
     db.query(sql, [restaurantId], callback);
@@ -172,8 +202,11 @@ exports.getWaiterItems = (restaurantId, callback) => {
             m.gst,
             m.food_type,
             m.description,
-            m.available AS available_quantity,
-            c.category_name
+            (${effectiveAvailabilitySql}) AS available_quantity,
+            c.category_name,
+            c.start_time,
+            c.end_time,
+            (${timingAvailabilitySql}) AS is_category_timing_active
         FROM menu_items m
         INNER JOIN categories c ON m.category_id = c.id
         WHERE m.restaurant_id = ?
@@ -206,8 +239,11 @@ exports.getWaiterItemsByCategory = (categoryId, restaurantId, callback) => {
             m.gst,
             m.food_type,
             m.description,
-            m.available AS available_quantity,
-            c.category_name
+            (${effectiveAvailabilitySql}) AS available_quantity,
+            c.category_name,
+            c.start_time,
+            c.end_time,
+            (${timingAvailabilitySql}) AS is_category_timing_active
         FROM menu_items m
         INNER JOIN categories c ON m.category_id = c.id
         WHERE m.category_id = ? AND m.restaurant_id = ?

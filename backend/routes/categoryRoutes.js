@@ -13,6 +13,7 @@ router.get("/", categoryController.getCategories);
 router.get("/summary", categoryController.getSummary);
 router.post("/", categoryController.addCategory);
 router.put("/:id", categoryController.updateCategory);
+router.patch("/:id/timing", categoryController.updateCategoryTiming);
 router.delete("/:id", categoryController.deleteCategory);
 
 module.exports = router;

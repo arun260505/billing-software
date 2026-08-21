@@ -44,6 +44,48 @@ db.query(`
     else console.log("Charges table ready.");
 });
 
+db.query(`
+    SELECT COLUMN_NAME
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'categories'
+      AND COLUMN_NAME IN ('start_time', 'end_time')
+`, (err, rows) => {
+    if (err) {
+        console.error("Categories timing migration check error:", err.message);
+        return;
+    }
+
+    const existingColumns = new Set(
+        (rows || []).map((row) => row.COLUMN_NAME)
+    );
+    const alterClauses = [];
+
+    if (!existingColumns.has("start_time")) {
+        alterClauses.push("ADD COLUMN start_time TIME NULL AFTER status");
+    }
+
+    if (!existingColumns.has("end_time")) {
+        alterClauses.push("ADD COLUMN end_time TIME NULL AFTER start_time");
+    }
+
+    if (alterClauses.length === 0) {
+        console.log("Categories timing columns ready.");
+        return;
+    }
+
+    db.query(
+        `ALTER TABLE categories ${alterClauses.join(", ")}`,
+        (alterErr) => {
+            if (alterErr) {
+                console.error("Categories timing migration error:", alterErr.message);
+            } else {
+                console.log("Categories timing columns ready.");
+            }
+        }
+    );
+});
+
 /*
 |--------------------------------------------------------------------------
 | Global Middleware

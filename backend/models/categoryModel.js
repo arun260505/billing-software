@@ -13,6 +13,8 @@ exports.getCategories = (restaurantId, callback) => {
             description,
             display_order,
             status,
+            start_time,
+            end_time,
             created_at
         FROM categories
         WHERE restaurant_id = ?
@@ -71,10 +73,12 @@ exports.addCategory = (data, callback) => {
                     category_name,
                     description,
                     display_order,
-                    status
+                    status,
+                    start_time,
+                    end_time
                 )
                 VALUES
-                (?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?)
             `;
 
             db.query(
@@ -84,7 +88,9 @@ exports.addCategory = (data, callback) => {
                     data.category_name,
                     data.description,
                     data.display_order || 0,
-                    data.status || "Active"
+                    data.status || "Active",
+                    data.start_time || null,
+                    data.end_time || null
                 ],
                 callback
             );
@@ -105,7 +111,9 @@ exports.updateCategory = (id, restaurantId, data, callback) => {
             category_name = ?,
             description = ?,
             display_order = ?,
-            status = ?
+            status = ?,
+            start_time = ?,
+            end_time = ?
         WHERE id = ? AND restaurant_id = ?
     `;
 
@@ -116,9 +124,32 @@ exports.updateCategory = (id, restaurantId, data, callback) => {
             data.description,
             data.display_order,
             data.status,
+            data.start_time || null,
+            data.end_time || null,
             id,
             restaurantId
         ],
+        callback
+    );
+
+};
+
+// ===============================
+// Update Category Timing only (tenant-scoped)
+// ===============================
+exports.updateCategoryTiming = (id, restaurantId, startTime, endTime, callback) => {
+
+    const sql = `
+        UPDATE categories
+        SET
+            start_time = ?,
+            end_time = ?
+        WHERE id = ? AND restaurant_id = ?
+    `;
+
+    db.query(
+        sql,
+        [startTime, endTime, id, restaurantId],
         callback
     );
 

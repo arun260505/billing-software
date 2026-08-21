@@ -28,6 +28,15 @@ const updateCategory = async (id, data) => {
 
 };
 
+// Update only category timing (start_time / end_time)
+const updateCategoryTiming = async (id, data) => {
+
+    const response = await api.patch(`/categories/${id}/timing`, data);
+
+    return response.data;
+
+};
+
 // Delete category
 const deleteCategory = async (id) => {
 
@@ -42,6 +51,7 @@ const categoryService = {
     getSummary,
     addCategory,
     updateCategory,
+    updateCategoryTiming,
     deleteCategory
 };
 

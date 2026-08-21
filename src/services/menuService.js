@@ -45,13 +45,20 @@ const deleteMenuItem = async (id) => {
     return response.data;
 };
 
+// Admin: manual per-item availability toggle.
+const setAvailability = async (id, available) => {
+    const response = await setItemAvailability(id, available);
+    return response.data;
+};
+
 const menuService = {
     getMenuItems,
     getSummary,
     getCategories: getAdminCategories,
     addMenuItem,
     updateMenuItem,
-    deleteMenuItem
+    deleteMenuItem,
+    setAvailability
 };
 
 export default menuService;

@@ -7,6 +7,14 @@ function CategoryTable({
     onDelete
 }) {
 
+    const formatTiming = (startTime, endTime) => {
+        if (!startTime || !endTime) {
+            return "All Day";
+        }
+
+        return `${startTime.slice(0, 5)} - ${endTime.slice(0, 5)}`;
+    };
+
     return (
 
         <div className="category-table-container">
@@ -20,6 +28,7 @@ function CategoryTable({
                         <th>Category</th>
                         <th>Description</th>
                         <th>Display Order</th>
+                        <th>Timing</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -33,7 +42,7 @@ function CategoryTable({
                         <tr>
 
                             <td
-                                colSpan="6"
+                                colSpan="7"
                                 className="empty-table"
                             >
 
@@ -59,6 +68,13 @@ function CategoryTable({
 
                                 <td>
                                     {category.display_order}
+                                </td>
+
+                                <td>
+                                    {formatTiming(
+                                        category.start_time,
+                                        category.end_time
+                                    )}
                                 </td>
 
                                 <td>
