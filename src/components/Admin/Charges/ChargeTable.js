@@ -1,14 +1,13 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { FaEdit, FaEllipsisV, FaCopy, FaPowerOff, FaTrash } from "react-icons/fa";
 
 function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, sortField, sortDir, onSort }) {
 
     const [openMenu, setOpenMenu] = useState(null);
-    const menuRef = useRef(null);
 
     useEffect(() => {
         const handleClick = (e) => {
-            if (menuRef.current && !menuRef.current.contains(e.target)) {
+            if (!e.target.closest('.menu-btn') && !e.target.closest('.action-dropdown')) {
                 setOpenMenu(null);
             }
         };
@@ -117,7 +116,7 @@ function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, s
                                         <button className="edit-btn" onClick={() => onEdit(charge)} title="Edit">
                                             <FaEdit />
                                         </button>
-                                        <div style={{ position: "relative" }} ref={menuRef}>
+                                        <div style={{ position: "relative" }}>
                                             <button
                                                 className="menu-btn"
                                                 onClick={() => setOpenMenu(openMenu === charge.id ? null : charge.id)}

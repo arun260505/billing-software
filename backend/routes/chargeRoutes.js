@@ -5,13 +5,12 @@ const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
 router.use(authMiddleware);
-router.use(roleMiddleware(["admin"]));
 
-router.get("/", chargeController.getCharges);
-router.get("/summary", chargeController.getChargeSummary);
-router.post("/", chargeController.createCharge);
-router.put("/:id", chargeController.updateCharge);
-router.delete("/:id", chargeController.deleteCharge);
-router.post("/:id/duplicate", chargeController.duplicateCharge);
+router.get("/", roleMiddleware(["admin", "cashier"]), chargeController.getCharges);
+router.get("/summary", roleMiddleware(["admin"]), chargeController.getChargeSummary);
+router.post("/", roleMiddleware(["admin"]), chargeController.createCharge);
+router.put("/:id", roleMiddleware(["admin"]), chargeController.updateCharge);
+router.delete("/:id", roleMiddleware(["admin"]), chargeController.deleteCharge);
+router.post("/:id/duplicate", roleMiddleware(["admin"]), chargeController.duplicateCharge);
 
 module.exports = router;

@@ -416,3 +416,36 @@
 .cashier-app .tbill-generate { width: 100%; padding: 15px; border-radius: 12px; border: none; background: #0d9488; color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; }
 .cashier-app .tbill-generate:hover { background: #0b7d72; }
 .cashier-app .tbill-generate:disabled { background: #94a3b8; cursor: default; }
+
+/* ── Charges chips (TableBillModal) ─────────────────────────────────── */
+.cashier-app .tbill-charges-section { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; }
+.cashier-app .tbill-charges-label { font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 8px; }
+.cashier-app .tbill-charges-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.cashier-app .tbill-charge-chip {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 8px 14px; border-radius: 10px; border: 1.5px solid #e2e8f0;
+    background: #fff; cursor: pointer; transition: all 0.15s; min-width: 90px;
+}
+.cashier-app .tbill-charge-chip:hover { border-color: #0d9488; background: #f0fdfa; }
+.cashier-app .tbill-charge-chip.active { border-color: #0d9488; background: #ccfbf1; box-shadow: 0 0 0 2px rgba(13,148,136,.18); }
+.cashier-app .tbill-charge-name { font-size: 12px; font-weight: 700; color: #0f172a; }
+.cashier-app .tbill-charge-value { font-size: 11px; font-weight: 600; color: #0d9488; }
+.cashier-app .tbill-tot.charges-line { color: #0d9488; font-weight: 600; }
+
+/* ── Charges chips (BillModal) ──────────────────────────────────────── */
+.cashier-app .bill-charges-section { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; }
+.cashier-app .bill-charges-label { font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 8px; }
+.cashier-app .bill-charges-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.cashier-app .bill-charge-chip {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 8px 14px; border-radius: 10px; border: 1.5px solid #e2e8f0;
+    background: #fff; cursor: pointer; transition: all 0.15s; min-width: 90px;
+}
+.cashier-app .bill-charge-chip:hover { border-color: #0d9488; background: #f0fdfa; }
+.cashier-app .bill-charge-chip.active { border-color: #0d9488; background: #ccfbf1; box-shadow: 0 0 0 2px rgba(13,148,136,.18); }
+.cashier-app .bill-charge-name { font-size: 12px; font-weight: 700; color: #0f172a; }
+.cashier-app .bill-charge-value { font-size: 11px; font-weight: 600; color: #0d9488; }
+.cashier-app .bill-charge-row { padding-left: 12px; border-left: 3px solid #ccfbf1; }
+.cashier-app .bill-charges-total { font-weight: 700; color: #0d9488; padding-top: 6px; border-top: 1px dashed #e2e8f0; margin-top: 4px; }
+.cashier-app .tbill-charge-row { padding-left: 12px; border-left: 3px solid #ccfbf1; }
+.cashier-app .tbill-charges-total { font-weight: 700; color: #0d9488; padding-top: 6px; border-top: 1px dashed #e2e8f0; margin-top: 4px; }
