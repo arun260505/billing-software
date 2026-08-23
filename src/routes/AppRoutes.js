@@ -22,6 +22,7 @@ import Categories from "../pages/Admin/Categories";
 import Menu from "../pages/Admin/Menu";
 import Tables from "../pages/Admin/Tables";
 import Charges from "../pages/Admin/Charges";
+import Orders from "../pages/Admin/Orders";
 
 // Where each role lands after login / when hitting "/" while authenticated.
 const roleHome = {
@@ -124,6 +125,15 @@ function AppRoutes() {
                     element={
                         <ProtectedRoute roles={["admin"]}>
                             <Charges />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/admin/orders"
+                    element={
+                        <ProtectedRoute roles={["admin"]}>
+                            <Orders />
                         </ProtectedRoute>
                     }
                 />

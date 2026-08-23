@@ -13,6 +13,7 @@ const customerRoutes = require("./routes/customerRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 const authRoutes = require("./routes/authRoutes");
 const errorHandler = require("./middleware/errorHandler");
 /*
@@ -139,6 +140,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/kitchen", kitchenRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/menu", menuRoutes);
 app.use("/api/charges", chargeRoutes);

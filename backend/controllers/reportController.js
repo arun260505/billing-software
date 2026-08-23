@@ -1,20 +1,86 @@
 const reportModel = require("../models/reportModel");
+const { success, error } = require("../utils/response");
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_RANGE_DAYS = 366;
+
+const toDateOnly = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+};
+
+const resolveRange = (req) => {
+
+    const today = new Date();
+    const from = req.query.from;
+    const to = req.query.to;
+
+    if (from || to) {
+
+        if (!DATE_RE.test(from || "") || !DATE_RE.test(to || "")) {
+            return { error: "Invalid date range. Use YYYY-MM-DD for both from and to." };
+        }
+
+        if (from > to) {
+            return { error: "'from' date must be before or equal to 'to' date." };
+        }
+
+        const days = Math.round(
+            (new Date(`${to}T00:00:00`) - new Date(`${from}T00:00:00`)) / 86400000
+        ) + 1;
+
+        if (days > MAX_RANGE_DAYS) {
+            return { error: `Date range cannot exceed ${MAX_RANGE_DAYS} days.` };
+        }
+
+        return { from, to };
+
+    }
+
+    return { from: toDateOnly(today), to: toDateOnly(today) };
+
+};
+
+const safeOverview = async ({ restaurantId, from, to }) => {
+
+    try {
+        const data = await reportModel.getOverview({ restaurantId, from, to });
+        return { data };
+    } catch (err) {
+        return { err };
+    }
+
+};
+
+exports.getOverview = (req, res) => {
+
+    const range = resolveRange(req);
+
+    if (range.error) return error(res, range.error, 400);
+
+    safeOverview({
+        restaurantId: req.user.restaurant_id,
+        from: range.from,
+        to: range.to
+    }).then(({ data, err }) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Reports overview fetched.", data);
+
+    });
+
+};
 
 exports.getDailySales = (req, res) => {
 
-    reportModel.getDailySales((err, results) => {
+    reportModel.getDailySales(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: results
-        });
+        return success(res, "Daily sales fetched.", results);
 
     });
 
@@ -22,19 +88,11 @@ exports.getDailySales = (req, res) => {
 
 exports.getMonthlySales = (req, res) => {
 
-    reportModel.getMonthlySales((err, results) => {
+    reportModel.getMonthlySales(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: results
-        });
+        return success(res, "Monthly sales fetched.", results);
 
     });
 
@@ -42,19 +100,11 @@ exports.getMonthlySales = (req, res) => {
 
 exports.getPaymentSummary = (req, res) => {
 
-    reportModel.getPaymentSummary((err, results) => {
+    reportModel.getPaymentSummary(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: results
-        });
+        return success(res, "Payment summary fetched.", results);
 
     });
 
@@ -62,19 +112,11 @@ exports.getPaymentSummary = (req, res) => {
 
 exports.getTopSellingItems = (req, res) => {
 
-    reportModel.getTopSellingItems((err, results) => {
+    reportModel.getTopSellingItems(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: results
-        });
+        return success(res, "Top selling items fetched.", results);
 
     });
 
@@ -82,19 +124,11 @@ exports.getTopSellingItems = (req, res) => {
 
 exports.getEmployeeSales = (req, res) => {
 
-    reportModel.getEmployeeSales((err, results) => {
+    reportModel.getEmployeeSales(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: results
-        });
+        return success(res, "Employee sales fetched.", results);
 
     });
 
@@ -102,140 +136,13 @@ exports.getEmployeeSales = (req, res) => {
 
 exports.getTableSales = (req, res) => {
 
-    reportModel.getTableSales((err, results) => {
+    reportModel.getTableSales(req.user.restaurant_id, (err, results) => {
 
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        if (err) return error(res, err.message, 500);
 
-        res.json({
-            success: true,
-            data: results
-        });
-
-    });
-
-};const reportModel = require("../models/reportModel");
-
-exports.getDailySales = (req, res) => {
-
-    reportModel.getDailySales((err, results) => {
-
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        res.json({
-            success: true,
-            data: results
-        });
+        return success(res, "Table sales fetched.", results);
 
     });
 
 };
 
-exports.getMonthlySales = (req, res) => {
-
-    reportModel.getMonthlySales((err, results) => {
-
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        res.json({
-            success: true,
-            data: results
-        });
-
-    });
-
-};
-
-exports.getPaymentSummary = (req, res) => {
-
-    reportModel.getPaymentSummary((err, results) => {
-
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        res.json({
-            success: true,
-            data: results
-        });
-
-    });
-
-};
-
-exports.getTopSellingItems = (req, res) => {
-
-    reportModel.getTopSellingItems((err, results) => {
-
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        res.json({
-            success: true,
-            data: results
-        });
-
-    });
-
-};
-
-exports.getEmployeeSales = (req, res) => {
-
-    reportModel.getEmployeeSales((err, results) => {
-
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        res.json({
-            success: true,
-            data: results
-        });
-
-    });
-
-};
-
-exports.getTableSales = (req, res) => {
-
-    reportModel.getTableSales((err, results) => {
-
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        res.json({
-            success: true,
-            data: results
-        });
-
-    });
-
-};
