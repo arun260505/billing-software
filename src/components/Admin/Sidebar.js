@@ -14,6 +14,7 @@ function Sidebar({ isOpen }) {
     { name: "Tables", path: "/admin/tables" },
     { name: "Customers", path: "/admin/customers" },
     { name: "Orders", path: "/admin/orders" },
+    { name: "Charges & Settings", path: "/admin/charges" },
     { name: "Reports", path: "/admin/reports" },
     { name: "Settings", path: "/admin/settings" }
   ];

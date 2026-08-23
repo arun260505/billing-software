@@ -1,5 +1,9 @@
 import api from "./api";
 
+// Full tenant order list (admin Orders page).
+export const getOrders = () =>
+  api.get("/orders");
+
 export const createOrder = (data) =>
   api.post("/orders", data);
 

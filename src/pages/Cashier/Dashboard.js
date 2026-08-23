@@ -655,16 +655,31 @@ function Dashboard() {
     };
 
     // Print the receipt (with the chosen method) and settle the table.
-    const generateTableBill = async (method) => {
+    const generateTableBill = async (method, finalTotal, selectedCharges = []) => {
         const table = tableBillTarget;
         setTableBillBusy(true);
         try {
             const items = tableBillItems;
+            // Rounds to paise the same way backend/utils/billing.js does, so the
+            // printed receipt and the stored order can never disagree.
             const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
             const sub = money(items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0));
             const gstAmt = money(sub * 0.05);
             const svc = money(sub * 0.02);
-            const total = money(sub + gstAmt + svc);
+
+            // Per-bill charges (packing, delivery, …) resolve to rupees here so
+            // the receipt and the total agree on one number each.
+            const resolvedCharges = selectedCharges.map((c) => ({
+                charge_name: c.charge_name,
+                amount: c.charge_type === "Percentage"
+                    ? money(sub * c.amount / 100)
+                    : money(c.amount)
+            }));
+            const chargesTotal = money(
+                resolvedCharges.reduce((s, c) => s + c.amount, 0)
+            );
+
+            const total = money(sub + gstAmt + svc + chargesTotal);
 
             printBill({
                 billNumber: `Table ${table.table_number}`,
@@ -673,6 +688,7 @@ function Dashboard() {
                 subtotal: sub,
                 gst: gstAmt,
                 service: svc,
+                charges: resolvedCharges,
                 total,
                 method
             });

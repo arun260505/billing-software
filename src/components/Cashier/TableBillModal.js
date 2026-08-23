@@ -1,15 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import chargeService from "../../services/chargeService";
 
-// The cashier's bill screen for a table the waiter sent to billing. The cashier
-// can review/edit the items (adjust qty, remove, add), pick a payment method,
-// then Generate Bill (prints the receipt + settles the table).
 function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup, onAddItem, onGenerate, onClose }) {
 
     const [method, setMethod] = useState("Cash");
     const [adding, setAdding] = useState(false);
     const [search, setSearch] = useState("");
+    const [charges, setCharges] = useState([]);
+    const [selectedCharges, setSelectedCharges] = useState([]);
 
-    // Merge per-order-item rows into display lines by item.
+    useEffect(() => {
+        chargeService.getCharges().then((res) => {
+            setCharges((res.data.data || []).filter((c) => c.status === "Active"));
+        }).catch(() => {});
+    }, []);
+
     const groups = [];
     const byKey = {};
     items.forEach((it) => {
@@ -22,10 +27,28 @@ function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup
         byKey[key].rows.push(it);
     });
 
-    const subtotal = groups.reduce((s, g) => s + g.price * g.qty, 0);
-    const gst = Math.round(subtotal * 0.05);
-    const service = Math.round(subtotal * 0.02);
-    const total = subtotal + gst + service;
+    // Same paise rounding as backend/utils/billing.js and the receipt printer,
+    // so the total shown here is the total printed and the total stored.
+    const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+    const subtotal = money(groups.reduce((s, g) => s + g.price * g.qty, 0));
+    const gst = money(subtotal * 0.05);
+    const service = money(subtotal * 0.02);
+
+    const toggleCharge = (charge) => {
+        setSelectedCharges((prev) =>
+            prev.find((c) => c.id === charge.id)
+                ? prev.filter((c) => c.id !== charge.id)
+                : [...prev, charge]
+        );
+    };
+
+    const chargesTotal = money(selectedCharges.reduce((sum, c) => {
+        if (c.charge_type === "Percentage") return sum + money(subtotal * c.amount / 100);
+        return sum + money(c.amount);
+    }, 0));
+
+    const total = money(subtotal + gst + service + chargesTotal);
 
     const inc = (g) => onSetQty(g.rows[0].id, Number(g.rows[0].quantity) + 1);
     const dec = (g) => {
@@ -107,6 +130,49 @@ function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup
                     <div className="tbill-tot"><span>Subtotal</span><span>₹{subtotal.toFixed(0)}</span></div>
                     <div className="tbill-tot"><span>GST (5%)</span><span>₹{gst.toFixed(0)}</span></div>
                     <div className="tbill-tot"><span>Service (2%)</span><span>₹{service.toFixed(0)}</span></div>
+
+                    {charges.length > 0 && (
+                        <div className="tbill-charges-section">
+                            <div className="tbill-charges-label">Additional Charges</div>
+                            <div className="tbill-charges-grid">
+                                {charges.map((c) => {
+                                    const isActive = selectedCharges.some((sc) => sc.id === c.id);
+                                    const value = c.charge_type === "Percentage"
+                                        ? `${c.amount}%`
+                                        : `₹${c.amount}`;
+                                    return (
+                                        <button
+                                            key={c.id}
+                                            className={`tbill-charge-chip${isActive ? " active" : ""}`}
+                                            onClick={() => toggleCharge(c)}
+                                            disabled={busy}
+                                        >
+                                            <span className="tbill-charge-name">{c.charge_name}</span>
+                                            <span className="tbill-charge-value">{value}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {selectedCharges.length > 0 && (
+                        <>
+                            {selectedCharges.map((c) => {
+                                const val = c.charge_type === "Percentage"
+                                    ? Math.round(subtotal * c.amount / 100)
+                                    : Number(c.amount);
+                                return (
+                                    <div key={c.id} className="tbill-tot tbill-charge-row">
+                                        <span>{c.charge_name}</span>
+                                        <span>₹{val.toFixed(0)}</span>
+                                    </div>
+                                );
+                            })}
+                            <div className="tbill-tot tbill-charges-total"><span>Total Charges</span><span>₹{chargesTotal.toFixed(0)}</span></div>
+                        </>
+                    )}
+
                     <div className="tbill-tot grand"><span>Total</span><span>₹{total.toFixed(0)}</span></div>
 
                     <div className="tbill-pay">
@@ -118,7 +184,7 @@ function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup
                         </div>
                     </div>
 
-                    <button className="tbill-generate" disabled={busy || groups.length === 0} onClick={() => onGenerate(method, total)}>
+                    <button className="tbill-generate" disabled={busy || groups.length === 0} onClick={() => onGenerate(method, total, selectedCharges)}>
                         {busy ? "Working…" : `🖨 Generate Bill · ₹${total.toFixed(0)}`}
                     </button>
                 </div>

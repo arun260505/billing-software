@@ -4,6 +4,7 @@ import MenuModal from "../../components/Admin/MenuModal";
 import DeleteModal from "../../components/Admin/DeleteModal";
 
 import menuService from "../../services/menuService";
+import categoryService from "../../services/categoryService";
 
 import "../../styles/Admin/Dashboard.css";
 import "../../styles/Admin/Menu.css";
@@ -25,6 +26,55 @@ function Menu() {
             prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
         );
 
+    // Inline timing editor: which category row is being edited and its draft times.
+    const [timingEditCat, setTimingEditCat] = useState(null);
+    const [timingForm, setTimingForm] = useState({
+        start_time: "",
+        end_time: ""
+    });
+
+    const openTimingEditor = (catName, startTime, endTime) => {
+        setTimingForm({
+            start_time: startTime ? startTime.slice(0, 5) : "",
+            end_time: endTime ? endTime.slice(0, 5) : ""
+        });
+        setTimingEditCat(catName);
+    };
+
+    const closeTimingEditor = () => {
+        setTimingEditCat(null);
+        setTimingForm({ start_time: "", end_time: "" });
+    };
+
+    const saveCategoryTiming = async (categoryId, catName) => {
+
+        if (
+            (timingForm.start_time && !timingForm.end_time) ||
+            (!timingForm.start_time && timingForm.end_time)
+        ) {
+            alert("Please set both start time and end time, or clear both.");
+            return;
+        }
+
+        try {
+
+            await categoryService.updateCategoryTiming(categoryId, {
+                start_time: timingForm.start_time || null,
+                end_time: timingForm.end_time || null
+            });
+
+            closeTimingEditor();
+            loadMenuItems();
+
+        } catch (err) {
+
+            console.error(err);
+            alert("Unable to update category timing.");
+
+        }
+
+    };
+
     const [loading, setLoading] = useState(false);
 
     const [search, setSearch] = useState("");
@@ -37,6 +87,43 @@ function Menu() {
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+
+    const formatClockTime = (time) => {
+        const [h, m] = time.slice(0, 5).split(":");
+        const hour = Number(h);
+        const ampm = hour >= 12 ? "PM" : "AM";
+        const displayHour = hour % 12 || 12;
+        return `${displayHour}:${m} ${ampm}`;
+    };
+
+    const formatTiming = (startTime, endTime) => {
+        if (!startTime || !endTime) {
+            return "All Day";
+        }
+
+        return `${formatClockTime(startTime)} - ${formatClockTime(endTime)}`;
+    };
+
+    // Checks current time against a category's start/end (supports overnight windows).
+    const isWithinTiming = (startTime, endTime) => {
+        if (!startTime || !endTime || startTime === endTime) {
+            return true;
+        }
+
+        const toMinutes = (t) => {
+            const [h, m] = t.slice(0, 5).split(":").map(Number);
+            return h * 60 + m;
+        };
+
+        const now = new Date();
+        const current = now.getHours() * 60 + now.getMinutes();
+        const start = toMinutes(startTime);
+        const end = toMinutes(endTime);
+
+        return start < end
+            ? current >= start && current <= end
+            : current >= start || current <= end;
+    };
 
     // ===========================
     // Load Data
@@ -131,6 +218,48 @@ function Menu() {
         setSelectedItem(item);
 
         setShowDelete(true);
+
+    };
+
+    // Manual per-item availability toggle (overrides category timing).
+    // Updates the row in place — no table reload, no flicker.
+    const handleToggleAvailability = async (item) => {
+
+        const newAvailable = !item.available;
+        const newEffective = newAvailable
+            ? item.is_category_timing_active
+            : 0;
+
+        const patchRow = (available, effective) =>
+            setMenuItems((prev) =>
+                prev.map((i) =>
+                    i.id === item.id
+                        ? {
+                              ...i,
+                              available: available ? 1 : 0,
+                              effective_available: effective
+                          }
+                        : i
+                )
+            );
+
+        patchRow(newAvailable, newEffective);
+
+        try {
+
+            await menuService.setAvailability(item.id, newAvailable);
+
+            loadSummary();
+
+        } catch (err) {
+
+            console.error(err);
+
+            patchRow(!newAvailable, item.effective_available);
+
+            alert("Unable to update item availability.");
+
+        }
 
     };
 
@@ -429,6 +558,8 @@ function Menu() {
 
                 <th>Food Type</th>
 
+                <th>Timing</th>
+
                 <th>Status</th>
 
                 <th>Special</th>
@@ -445,7 +576,7 @@ function Menu() {
 
                 <tr>
 
-                    <td colSpan="7" className="empty-cell">
+                    <td colSpan="8" className="empty-cell">
                         Loading...
                     </td>
 
@@ -455,7 +586,7 @@ function Menu() {
 
                 <tr>
 
-                    <td colSpan="7" className="empty-cell">
+                    <td colSpan="8" className="empty-cell">
 
                         <div className="empty-state">
 
@@ -492,7 +623,14 @@ function Menu() {
                         (groups[key] = groups[key] || []).push(item);
                         return groups;
                     }, {})
-                ).map(([catName, catItems]) => (
+                ).map(([catName, catItems]) => {
+
+                    // All items in a group share their category's timing.
+                    const catStart = catItems[0].start_time;
+                    const catEnd = catItems[0].end_time;
+                    const timingOpen = isWithinTiming(catStart, catEnd);
+
+                    return (
 
                     <React.Fragment key={catName}>
 
@@ -500,7 +638,7 @@ function Menu() {
                             className="cat-header-row"
                             onClick={() => toggleCat(catName)}
                         >
-                            <td colSpan="7">
+                            <td colSpan="8">
                                 <span className="cat-toggle">
                                     {openCats.includes(catName) ? "▾" : "▸"}
                                 </span>
@@ -508,6 +646,69 @@ function Menu() {
                                 <span className="cat-count">
                                     {catItems.length} item{catItems.length !== 1 ? "s" : ""}
                                 </span>
+                                <span
+                                    className={`cat-timing ${timingOpen ? "" : "closed"}`}
+                                    title="Click to set timing for all items"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        openTimingEditor(catName, catStart, catEnd);
+                                    }}
+                                >
+                                    🕒 {formatTiming(catStart, catEnd)}
+                                </span>
+                                {!timingOpen && (
+                                    <span className="cat-timing-note">
+                                        Closed now
+                                    </span>
+                                )}
+                                {timingEditCat === catName && (
+                                    <span
+                                        className="cat-timing-editor"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <input
+                                            type="time"
+                                            value={timingForm.start_time}
+                                            onChange={(e) =>
+                                                setTimingForm({
+                                                    ...timingForm,
+                                                    start_time: e.target.value
+                                                })
+                                            }
+                                        />
+                                        <span className="editor-sep">to</span>
+                                        <input
+                                            type="time"
+                                            value={timingForm.end_time}
+                                            onChange={(e) =>
+                                                setTimingForm({
+                                                    ...timingForm,
+                                                    end_time: e.target.value
+                                                })
+                                            }
+                                        />
+                                        <button
+                                            className="editor-save"
+                                            onClick={() =>
+                                                saveCategoryTiming(
+                                                    catItems[0].category_id,
+                                                    catName
+                                                )
+                                            }
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            className="editor-cancel"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                closeTimingEditor();
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </span>
+                                )}
                             </td>
                         </tr>
 
@@ -577,23 +778,69 @@ function Menu() {
 
                         <td>
 
-                            {item.available ? (
+                            <div className="timing-cell">
 
-                                <span className="status available">
-
-                                    Available
-
+                                <span className="timing-range">
+                                    {formatTiming(
+                                        item.start_time,
+                                        item.end_time
+                                    )}
                                 </span>
 
-                            ) : (
+                                {item.start_time &&
+                                    item.end_time &&
+                                    !item.is_category_timing_active && (
+                                        <small className="timing-note">
+                                            Outside timing
+                                        </small>
+                                    )}
 
-                                <span className="status unavailable">
+                            </div>
 
-                                    Unavailable
+                        </td>
 
-                                </span>
+                        <td>
 
-                            )}
+                            <div className="status-cell">
+
+                                <label className="toggle-switch" title="Toggle item availability">
+                                    <input
+                                        type="checkbox"
+                                        checked={!!item.available}
+                                        onChange={() =>
+                                            handleToggleAvailability(item)
+                                        }
+                                    />
+                                    <span className="toggle-slider" />
+                                </label>
+
+                                {item.effective_available ? (
+
+                                    <span className="status available">
+
+                                        Available
+
+                                    </span>
+
+                                ) : item.available ? (
+
+                                    <span className="status unavailable">
+
+                                        Timing Off
+
+                                    </span>
+
+                                ) : (
+
+                                    <span className="status unavailable">
+
+                                        Unavailable
+
+                                    </span>
+
+                                )}
+
+                            </div>
 
                         </td>
 
@@ -653,11 +900,13 @@ function Menu() {
 
                     </tr>
 
-                        ))}
+                         ))}
 
                     </React.Fragment>
 
-                ))
+                    );
+
+                })
 
             )}
 

@@ -22,6 +22,7 @@ const row = (label, value, bold) =>
  * @param {number}  bill.subtotal
  * @param {number}  bill.gst
  * @param {number}  bill.service
+ * @param {Array}   bill.charges      [{ charge_name, amount }] already resolved to rupees
  * @param {number}  bill.total
  * @param {string}  bill.method       Payment method
  * @param {boolean} bill.isReprint    Stamps the receipt as a corrected reprint
@@ -35,6 +36,7 @@ export function printBill({
     subtotal = 0,
     gst = 0,
     service = 0,
+    charges = [],
     total = 0,
     method = "",
     isReprint = false
@@ -75,6 +77,22 @@ export function printBill({
         row("Subtotal", rupees(subtotal)) +
         row(`GST ${GST_PERCENT}%`, rupees(gst)) +
         row(`Service ${SERVICE_PERCENT}%`, rupees(service)) +
+
+        // Optional per-bill charges (packing, delivery, …). When present the
+        // receipt shows what the bill came to BEFORE them, so the customer can
+        // see what was added on top.
+        (charges.length > 0
+            ? `<hr>` +
+              row("Bill Amount", rupees(subtotal + gst + service)) +
+              `<div style="margin-top:6px;font-weight:bold">Charges</div>` +
+              charges.map((c) =>
+                  `<div style="display:flex;justify-content:space-between;padding-left:10px">
+                      <span>${c.charge_name}</span><span>${rupees(c.amount)}</span>
+                   </div>`
+              ).join("") +
+              row("Total Charges", rupees(charges.reduce((s, c) => s + Number(c.amount || 0), 0)))
+            : "") +
+
         `<hr>` +
         row("TOTAL", rupees(total), true) +
         (method ? row("Paid via", method) : "") +

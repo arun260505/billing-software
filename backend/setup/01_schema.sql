@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS `categories` (
   `description` text,
   `display_order` int DEFAULT '0',
   `status` enum('Active','Inactive') DEFAULT 'Active',
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

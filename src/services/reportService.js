@@ -8,3 +8,5 @@ export const getPaymentSummary = () => api.get(`${API}/payment-summary`);
 export const getTopSellingItems = () => api.get(`${API}/top-selling-items`);
 export const getEmployeeSales = () => api.get(`${API}/employee-sales`);
 export const getTableSales = () => api.get(`${API}/table-sales`);
+export const getReportsOverview = (from, to) =>
+    api.get(`${API}/overview`, { params: { from, to } });

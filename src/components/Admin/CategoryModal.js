@@ -14,7 +14,9 @@ function CategoryModal({
         category_name: "",
         description: "",
         display_order: "",
-        status: "Active"
+        status: "Active",
+        start_time: "",
+        end_time: ""
     };
 
     const [form, setForm] = useState(initialState);
@@ -27,7 +29,9 @@ function CategoryModal({
                 category_name: category.category_name || "",
                 description: category.description || "",
                 display_order: category.display_order || "",
-                status: category.status || "Active"
+                status: category.status || "Active",
+                start_time: category.start_time || "",
+                end_time: category.end_time || ""
             });
 
         } else {
@@ -51,6 +55,14 @@ function CategoryModal({
     const handleSubmit = (e) => {
 
         e.preventDefault();
+
+        if (
+            (form.start_time && !form.end_time) ||
+            (!form.start_time && form.end_time)
+        ) {
+            alert("Please set both start time and end time.");
+            return;
+        }
 
         onSave(form);
 
@@ -146,6 +158,36 @@ function CategoryModal({
                                 </option>
 
                             </select>
+
+                        </div>
+
+                    </div>
+
+                    <div className="form-row">
+
+                        <div className="form-group">
+
+                            <label>Start Time</label>
+
+                            <input
+                                type="time"
+                                name="start_time"
+                                value={form.start_time}
+                                onChange={handleChange}
+                            />
+
+                        </div>
+
+                        <div className="form-group">
+
+                            <label>End Time</label>
+
+                            <input
+                                type="time"
+                                name="end_time"
+                                value={form.end_time}
+                                onChange={handleChange}
+                            />
 
                         </div>
 
