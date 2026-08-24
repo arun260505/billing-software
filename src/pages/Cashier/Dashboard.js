@@ -11,6 +11,8 @@ import CartItem from "../../components/Waiter/CartItem";
 import BillModal from "../../components/Cashier/BillModal";
 import TableBillModal from "../../components/Cashier/TableBillModal";
 import MenuAvailability from "../../components/Cashier/MenuAvailability";
+import billingFormatService from "../../services/billingFormatService";
+import { printBill, DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
 
 function Dashboard() {
     // ── State ───────────────────────────────────────────────────────
@@ -48,6 +50,8 @@ function Dashboard() {
     const [cashierName] = useState("Cashier");
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
+    const [billFormat, setBillFormat] = useState(DEFAULT_BILL_FORMAT);
+    const [restaurantInfo, setRestaurantInfo] = useState(null);
 
     // ── Functions ───────────────────────────────────────────────────
     function updateDateTime() {
@@ -56,6 +60,18 @@ function Dashboard() {
         setCurrentTime(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
     }
 
+    const loadBillingFormat = async () => {
+        try {
+            const res = await billingFormatService.getBillingFormat();
+            if (res.data?.success && res.data?.data) {
+                if (res.data.data.format) setBillFormat(res.data.data.format);
+                if (res.data.data.restaurant) setRestaurantInfo(res.data.data.restaurant);
+            }
+        } catch (e) {
+            console.error("Failed to load bill format in cashier:", e);
+        }
+    };
+
     useEffect(() => {
         updateDateTime();
         loadTables();
@@ -63,6 +79,7 @@ function Dashboard() {
         loadCategories();
         loadAllItems();
         loadTodaysOrderCount();
+        loadBillingFormat();
 
         const statsTimer = setInterval(() => {
             loadTables();
@@ -548,34 +565,28 @@ function Dashboard() {
                 return sum + Number(c.amount);
             }, 0);
             const total = finalTotal || (sub + gstAmt + svc + chargesTotal);
-            const billAmount = sub + gstAmt + svc;
-            const chargesHtml = selectedCharges.length > 0
-                ? `<div style="display:flex;justify-content:space-between;font-weight:bold;border-top:1px dashed #ccc;padding-top:6px;margin-top:6px"><span>Bill Amount</span><span>&#8377;${billAmount}</span></div>` +
-                  `<div style="margin-top:8px;font-weight:bold">Charges</div>` +
-                  selectedCharges.map((c) => {
-                    const val = c.charge_type === "Percentage" ? Math.round(sub * c.amount / 100) : Number(c.amount);
-                    return `<div style="display:flex;justify-content:space-between;padding-left:10px"><span>${c.charge_name}</span><span>&#8377;${val}</span></div>`;
-                  }).join("") +
-                  `<div style="display:flex;justify-content:space-between;font-weight:bold;border-top:1px dashed #ccc;padding-top:4px;margin-top:4px"><span>Total Charges</span><span>&#8377;${chargesTotal}</span></div>`
-                : "";
-            const w = window.open("", "PrintBill", "width=340,height=600");
-            if (w) {
-                w.document.write(
-                    `<div style="font-family:monospace;padding:12px">
-                       <h3 style="text-align:center;margin:0">InWallz</h3>
-                       <p style="text-align:center;margin:2px 0 10px">Table ${table.table_number}</p><hr>` +
-                    items.map((i) => `<div style="display:flex;justify-content:space-between"><span>${i.item_name} x${i.quantity}</span><span>&#8377;${(Number(i.price) * Number(i.quantity)).toFixed(0)}</span></div>`).join("") +
-                    `<hr>
-                       <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>&#8377;${sub.toFixed(0)}</span></div>
-                       <div style="display:flex;justify-content:space-between"><span>GST 5%</span><span>&#8377;${gstAmt}</span></div>
-                       <div style="display:flex;justify-content:space-between"><span>Service 2%</span><span>&#8377;${svc}</span></div>
-                       ${chargesHtml}
-                       <div style="display:flex;justify-content:space-between;font-weight:bold"><span>TOTAL</span><span>&#8377;${total.toFixed(0)}</span></div>
-                       <div style="display:flex;justify-content:space-between;margin-top:6px"><span>Paid via</span><span>${method}</span></div>
-                       <p style="text-align:center;margin-top:12px">Thank you!</p></div>`
-                );
-                w.document.close(); w.focus(); w.print();
-            }
+
+            // Print the receipt using the customized bill format
+            printBill({
+                order: {
+                    order_number: `TBL-${table.table_number}-${Date.now().toString().slice(-4)}`,
+                    tableName: `Table ${table.table_number}`,
+                    table_number: table.table_number,
+                    items: items,
+                    subtotal: sub,
+                    tax: gstAmt,
+                    service_charge: svc,
+                    charges: selectedCharges,
+                    grand_total: total,
+                    payment_method: method,
+                    cashier_name: cashierName,
+                    date: currentDate,
+                    time: currentTime
+                },
+                restaurant: restaurantInfo || {},
+                format: billFormat || {}
+            });
+
             await settleTable(table.id);
             alert(`Table ${table.table_number} billed (${method}) & settled — now Available.`);
             setShowTableBill(false);
@@ -809,7 +820,13 @@ function Dashboard() {
                 />
             )}
             {showBill && billData && (
-                <BillModal order={billData} onClose={() => setShowBill(false)} onSuccess={handlePaymentSuccess} />
+                <BillModal
+                    order={billData}
+                    restaurant={restaurantInfo}
+                    format={billFormat}
+                    onClose={() => setShowBill(false)}
+                    onSuccess={handlePaymentSuccess}
+                />
             )}
         </div>
     );
