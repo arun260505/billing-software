@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { createPayment } from "../../services/paymentService";
 import chargeService from "../../services/chargeService";
+import { printBill } from "../../utils/billPrinter";
 
-function BillModal({ order, onClose, onSuccess }) {
+function BillModal({ order, restaurant, format, onClose, onSuccess }) {
     const [paymentMethod, setPaymentMethod] = useState("Cash");
     const [loading, setLoading] = useState(false);
     const [charges, setCharges] = useState([]);
@@ -38,6 +39,19 @@ function BillModal({ order, onClose, onSuccess }) {
                 amount: grandTotal,
                 remarks: order.tableName,
             });
+
+            // Automatically print the customized bill
+            printBill({
+                order: {
+                    ...order,
+                    payment_method: paymentMethod,
+                    charges: selectedCharges,
+                    grand_total: grandTotal
+                },
+                restaurant: restaurant || {},
+                format: format || {}
+            });
+
             onSuccess();
         } catch (error) {
             console.error("Payment Error:", error);

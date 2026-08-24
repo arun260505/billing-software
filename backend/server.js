@@ -46,6 +46,48 @@ db.query(`
 });
 
 db.query(`
+    CREATE TABLE IF NOT EXISTS bill_formats (
+        id                   INT AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id        INT NOT NULL UNIQUE,
+        paper_size           VARCHAR(20) DEFAULT 'thermal',
+        show_logo            TINYINT(1) DEFAULT 0,
+        show_restaurant_name TINYINT(1) DEFAULT 1,
+        show_address         TINYINT(1) DEFAULT 1,
+        show_phone           TINYINT(1) DEFAULT 1,
+        show_email           TINYINT(1) DEFAULT 0,
+        show_gst             TINYINT(1) DEFAULT 1,
+        show_fssai           TINYINT(1) DEFAULT 0,
+        show_order_number    TINYINT(1) DEFAULT 1,
+        show_date            TINYINT(1) DEFAULT 1,
+        show_time            TINYINT(1) DEFAULT 1,
+        show_table_name      TINYINT(1) DEFAULT 1,
+        show_customer_name   TINYINT(1) DEFAULT 0,
+        show_waiter_name     TINYINT(1) DEFAULT 0,
+        show_cashier_name    TINYINT(1) DEFAULT 0,
+        show_payment_method  TINYINT(1) DEFAULT 1,
+        show_item_qty        TINYINT(1) DEFAULT 1,
+        show_item_price      TINYINT(1) DEFAULT 1,
+        show_subtotal        TINYINT(1) DEFAULT 1,
+        show_tax             TINYINT(1) DEFAULT 1,
+        show_service_charge  TINYINT(1) DEFAULT 1,
+        show_charges         TINYINT(1) DEFAULT 1,
+        show_grand_total     TINYINT(1) DEFAULT 1,
+        header_title         VARCHAR(100) DEFAULT NULL,
+        footer_text          VARCHAR(255) DEFAULT 'Thank you! Visit again.',
+        terms_text           TEXT DEFAULT NULL,
+        created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_bill_format_restaurant
+            FOREIGN KEY (restaurant_id)
+            REFERENCES restaurants(id)
+            ON DELETE CASCADE
+    )
+`, (err) => {
+    if (err) console.error("Bill formats table migration error:", err.message);
+    else console.log("Bill formats table ready.");
+});
+
+db.query(`
     SELECT COLUMN_NAME
     FROM INFORMATION_SCHEMA.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE()
@@ -87,6 +129,28 @@ db.query(`
     );
 });
 
+db.query(`
+    SELECT DATA_TYPE
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'restaurants'
+      AND COLUMN_NAME = 'logo'
+`, (err, rows) => {
+    if (err) {
+        console.error("Restaurants logo column check error:", err.message);
+        return;
+    }
+    const currentType = (rows && rows[0]?.DATA_TYPE) ? rows[0].DATA_TYPE.toLowerCase() : "";
+    if (currentType !== "longtext" && currentType !== "mediumtext") {
+        db.query(`ALTER TABLE restaurants MODIFY COLUMN logo LONGTEXT DEFAULT NULL`, (alterErr) => {
+            if (alterErr) console.error("Restaurants logo column alter error:", alterErr.message);
+            else console.log("Restaurants logo column upgraded to LONGTEXT.");
+        });
+    } else {
+        console.log("Restaurants logo column ready.");
+    }
+});
+
 /*
 |--------------------------------------------------------------------------
 | Global Middleware
@@ -106,7 +170,8 @@ app.use(cors({
     credentials: true
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 const adminRoutes = require("./routes/adminRoutes");
 
 
@@ -119,6 +184,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
 const menuRoutes = require("./routes/menuRoutes");
 const chargeRoutes = require("./routes/chargeRoutes");
+const billingFormatRoutes = require("./routes/billingFormatRoutes");
 
 
 
@@ -144,6 +210,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/menu", menuRoutes);
 app.use("/api/charges", chargeRoutes);
+app.use("/api/billing", billingFormatRoutes);
 /*
 |--------------------------------------------------------------------------
 | Test Route

@@ -4,7 +4,10 @@ import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
 import { getCategories, getItemsByCategory, getAllItems } from "../../services/menuService";
 import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, markItemServed, cancelItem, setItemQuantity, addBillItem, updateOrder, cancelOrder, getTodaysOrderCount, getBill, addItemToOrder, rebillOrder } from "../../services/orderService";
-import { printBill } from "../../utils/printBill";
+// Two printers coexist for now: billPrinter renders the admin-configured bill
+// format and is used for the first print, while printBill carries the
+// "REPRINT — CORRECTED BILL" stamp the Bills screen needs.
+import { printBill as printCorrectedBill } from "../../utils/printBill";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -14,6 +17,8 @@ import TableBillModal from "../../components/Cashier/TableBillModal";
 import MenuAvailability from "../../components/Cashier/MenuAvailability";
 import BillsHistory from "../../components/Cashier/BillsHistory";
 import BillEditModal from "../../components/Cashier/BillEditModal";
+import billingFormatService from "../../services/billingFormatService";
+import { printBill, DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
 
 function Dashboard() {
     // ── State ───────────────────────────────────────────────────────
@@ -56,6 +61,8 @@ function Dashboard() {
     const [cashierName] = useState("Cashier");
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
+    const [billFormat, setBillFormat] = useState(DEFAULT_BILL_FORMAT);
+    const [restaurantInfo, setRestaurantInfo] = useState(null);
 
     // ── Functions ───────────────────────────────────────────────────
     function updateDateTime() {
@@ -64,6 +71,18 @@ function Dashboard() {
         setCurrentTime(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
     }
 
+    const loadBillingFormat = async () => {
+        try {
+            const res = await billingFormatService.getBillingFormat();
+            if (res.data?.success && res.data?.data) {
+                if (res.data.data.format) setBillFormat(res.data.data.format);
+                if (res.data.data.restaurant) setRestaurantInfo(res.data.data.restaurant);
+            }
+        } catch (e) {
+            console.error("Failed to load bill format in cashier:", e);
+        }
+    };
+
     useEffect(() => {
         updateDateTime();
         loadTables();
@@ -71,6 +90,7 @@ function Dashboard() {
         loadCategories();
         loadAllItems();
         loadTodaysOrderCount();
+        loadBillingFormat();
 
         const statsTimer = setInterval(() => {
             loadTables();
@@ -614,8 +634,8 @@ function Dashboard() {
                 console.error("Bill header reload failed, printing from screen:", e);
             }
 
-            const opened = printBill({
-                title: header.restaurant_name || "InWallz",
+            const opened = printCorrectedBill({
+                title: header.restaurant_name || restaurantInfo?.restaurant_name || "InWallz",
                 billNumber: header.order_number,
                 place: header.table_name ? `Table ${header.table_name}` : "Counter",
                 items: editingBillItems,
@@ -679,20 +699,30 @@ function Dashboard() {
                 resolvedCharges.reduce((s, c) => s + c.amount, 0)
             );
 
-            const total = money(sub + gstAmt + svc + chargesTotal);
+            const total = finalTotal || money(sub + gstAmt + svc + chargesTotal);
 
+            // Print the receipt using the admin-configured bill format.
             printBill({
-                billNumber: `Table ${table.table_number}`,
-                place: `Table ${table.table_number}`,
-                items,
-                subtotal: sub,
-                gst: gstAmt,
-                service: svc,
-                charges: resolvedCharges,
-                total,
-                method
+                order: {
+                    order_number: `TBL-${table.table_number}-${Date.now().toString().slice(-4)}`,
+                    tableName: `Table ${table.table_number}`,
+                    table_number: table.table_number,
+                    items: items,
+                    subtotal: sub,
+                    tax: gstAmt,
+                    service_charge: svc,
+                    charges: resolvedCharges,
+                    grand_total: total,
+                    payment_method: method,
+                    cashier_name: cashierName,
+                    date: currentDate,
+                    time: currentTime
+                },
+                restaurant: restaurantInfo || {},
+                format: billFormat || {}
             });
 
+            // Pass the method through — settleTable records it as the payment.
             await settleTable(table.id, method);
             alert(`Table ${table.table_number} billed (${method}) & settled — now Available.`);
             setShowTableBill(false);
@@ -933,7 +963,13 @@ function Dashboard() {
                 />
             )}
             {showBill && billData && (
-                <BillModal order={billData} onClose={() => setShowBill(false)} onSuccess={handlePaymentSuccess} />
+                <BillModal
+                    order={billData}
+                    restaurant={restaurantInfo}
+                    format={billFormat}
+                    onClose={() => setShowBill(false)}
+                    onSuccess={handlePaymentSuccess}
+                />
             )}
             {editingBill && (
                 <BillEditModal
