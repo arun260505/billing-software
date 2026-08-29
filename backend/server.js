@@ -2,9 +2,14 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const kitchenRoutes = require("./routes/kitchenRoutes");
 
 const app = express();
+// Behind nginx: trust the first proxy so req.ip is the real client, not nginx.
+app.set("trust proxy", 1);
+app.use(helmet());
 const restaurantRoutes = require("./routes/restaurantRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
@@ -163,7 +168,11 @@ app.use(cors({
     origin: [
         "http://localhost:3000",
         "http://localhost:3001",
-        "http://localhost:3002"
+        "http://localhost:3002",
+        // Capacitor app origins — Android uses https://localhost with
+        // androidScheme "https", iOS uses capacitor://localhost.
+        "https://localhost",
+        "capacitor://localhost"
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -194,6 +203,17 @@ const billingFormatRoutes = require("./routes/billingFormatRoutes");
 |--------------------------------------------------------------------------
 */
 
+
+// Throttle login attempts — the API is reachable from every phone on the WiFi
+// and (in the cloud tier) the public internet.
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: "Too many attempts. Try again later." }
+});
+app.use("/api/auth/login", authLimiter);
 
 app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/admin", adminRoutes);
@@ -235,6 +255,22 @@ app.get("/", (req, res) => {
 app.get("/test", (req, res) => {
     res.json({
         message: "Test route working"
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Health Check
+|--------------------------------------------------------------------------
+| Hit by the app on launch to decide whether the device is on the restaurant
+| network. Deliberately unauthenticated and cheap — reaching it at all is the
+| answer, so it must not touch the database.
+*/
+
+app.get("/api/health", (req, res) => {
+    res.json({
+        success: true,
+        service: "inwallz-billing"
     });
 });
 
