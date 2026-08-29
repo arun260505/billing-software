@@ -1,10 +1,30 @@
-import React from "react";
-import { FaEllipsisV } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { FaEllipsisV, FaEdit, FaTrash } from "react-icons/fa";
 import TableIllustration from "./TableIllustration";
 
 import "../../../styles/Admin/Tables/TableCard.css";
 
-const TableCard = ({ table }) => {
+const TableCard = ({ table, onEdit, onDelete }) => {
+
+    const [menuOpen, setMenuOpen] = useState(false);
+
+    useEffect(() => {
+
+        const handleClick = (e) => {
+
+            if (!e.target.closest(".table-card-menu")) {
+
+                setMenuOpen(false);
+
+            }
+
+        };
+
+        document.addEventListener("mousedown", handleClick);
+
+        return () => document.removeEventListener("mousedown", handleClick);
+
+    }, []);
 
     const getStatusClass = (status) => {
 
@@ -36,9 +56,43 @@ const TableCard = ({ table }) => {
 
     <div className={`table-card ${getStatusClass(table.status)}`}>
 
-        <button className="menu-btn">
-            <FaEllipsisV />
-        </button>
+        <div className="table-card-menu">
+
+            <button
+                className="menu-btn"
+                onClick={() => setMenuOpen(!menuOpen)}
+            >
+                <FaEllipsisV />
+            </button>
+
+            {menuOpen && (
+
+                <div className="action-dropdown">
+
+                    <button
+                        onClick={() => {
+                            setMenuOpen(false);
+                            onEdit(table);
+                        }}
+                    >
+                        <FaEdit /> Edit Table
+                    </button>
+
+                    <button
+                        className="danger"
+                        onClick={() => {
+                            setMenuOpen(false);
+                            onDelete(table);
+                        }}
+                    >
+                        <FaTrash /> Delete Table
+                    </button>
+
+                </div>
+
+            )}
+
+        </div>
 
         <TableIllustration
     capacity={table.capacity}

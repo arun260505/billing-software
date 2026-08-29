@@ -2,7 +2,7 @@ import React from "react";
 
 import TableCard from "./TableCard";
 
-const TableGrid = ({ tables }) => {
+const TableGrid = ({ tables, onEdit, onDelete }) => {
 
     if (!tables.length) {
 
@@ -29,6 +29,8 @@ const TableGrid = ({ tables }) => {
                 <TableCard
                     key={table.id}
                     table={table}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
                 />
 
             ))}

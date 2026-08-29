@@ -1,99 +1,133 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
-  Tooltip,
-  CartesianGrid
+  CartesianGrid,
+  Tooltip
 } from "recharts";
-
-import { getSalesChart } from "../../services/dashboardService";
+import { FaChartLine } from "react-icons/fa";
 import "../../styles/Admin/Chart.css";
 
-function SalesChart() {
-  const [period, setPeriod] = useState("today");
+const PERIODS = [
+  { key: "today", label: "Today" },
+  { key: "yesterday", label: "Yesterday" },
+  { key: "week", label: "This Week" },
+  { key: "month", label: "This Month" }
+];
 
-  const [chartData, setChartData] = useState([]);
-useEffect(() => {
-    fetchChartData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [period]);
-  const fetchChartData = () => {
-    getSalesChart(period)
-      .then((response) => {
-        if (response.data.success) {
-          const formattedData = response.data.data.map((item) => {
+const inr = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
 
-    let label = item.label;
+const compactAxis = (v) => {
+  const n = Number(v || 0);
+  if (Math.abs(n) >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+  if (Math.abs(n) >= 1000) return `₹${(n / 1000).toFixed(1)}k`;
+  return `₹${n}`;
+};
 
-    if (period === "today") {
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div className="ad-chart-tip">
+      <div className="ad-chart-tip-label">{label}</div>
+      <div className="ad-chart-tip-value">{inr(payload[0].value)}</div>
+    </div>
+  );
+}
 
-        label = `${item.label}:00`;
+function SalesChart({
+  data = [],
+  loading = false,
+  error = false,
+  period = "today",
+  onPeriodChange,
+  onRetry
+}) {
 
-    } else {
-
-        label = new Date(item.label).toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "short"
-        });
-
-    }
-
-    return {
-        label,
-        sales: Number(item.sales)
-    };
-
-});
-          
-
-          setChartData(formattedData);
-        }
-      })
-      .catch((error) => {
-        console.error("Sales Chart Error:", error);
-      });
-  };
+  const hasSales = data.some((d) => Number(d.sales) > 0);
 
   return (
-    <div className="chart-card">
+    <div className="ad-card ad-chart">
+      <div className="ad-card-head">
+        <div>
+          <h3>Sales Overview</h3>
+          <span className="ad-card-sub">Revenue over the selected period</span>
+        </div>
 
-      <div className="chart-header">
-        <h3>Sales Overview</h3>
+        <div className="ad-period-switch">
+          {PERIODS.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              className={period === p.key ? "active" : ""}
+              onClick={() => onPeriodChange && onPeriodChange(p.key)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <select
-    value={period}
-    onChange={(e) => setPeriod(e.target.value)}
->
-    <option value="today">Today</option>
-    <option value="week">This Week</option>
-    <option value="month">This Month</option>
-</select>
 
-
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={chartData}>
-
-          <CartesianGrid strokeDasharray="3 3" />
-
-          <XAxis dataKey="label" />
-
-          <YAxis />
-
-          <Tooltip />
-
-          <Line
-            type="monotone"
-            dataKey="sales"
-            stroke="#2563EB"
-            strokeWidth={3}
-          />
-
-        </LineChart>
-      </ResponsiveContainer>
-
+      <div className="ad-chart-body">
+        {loading ? (
+          <div className="ad-chart-loading">
+            <span className="ad-skel ad-skel-block" />
+          </div>
+        ) : error ? (
+          <div className="ad-state">
+            <div className="ad-state-icon"><FaChartLine /></div>
+            <p>Unable to load sales data.</p>
+            <button className="ad-retry" onClick={onRetry}>Retry</button>
+          </div>
+        ) : !hasSales ? (
+          <div className="ad-state">
+            <div className="ad-state-icon"><FaChartLine /></div>
+            <p>No sales data available yet.</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart
+              data={data}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="adAreaFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2563EB" stopOpacity={0.24} />
+                  <stop offset="100%" stopColor="#2563EB" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="4 6" stroke="#EEF2F7" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 12, fill: "#9CA3AF" }}
+                tickLine={false}
+                axisLine={{ stroke: "#EEF2F7" }}
+                minTickGap={28}
+              />
+              <YAxis
+                tick={{ fontSize: 12, fill: "#9CA3AF" }}
+                tickLine={false}
+                axisLine={false}
+                width={52}
+                tickFormatter={compactAxis}
+              />
+              <Tooltip content={<ChartTooltip />} cursor={{ stroke: "#C7D2FE", strokeWidth: 1 }} />
+              <Area
+                type="monotone"
+                dataKey="sales"
+                stroke="#2563EB"
+                strokeWidth={2.5}
+                fill="url(#adAreaFill)"
+                animationDuration={600}
+                dot={data.length <= 25 ? { r: 3, fill: "#2563EB", strokeWidth: 0 } : false}
+                activeDot={{ r: 5 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
     </div>
   );
 }

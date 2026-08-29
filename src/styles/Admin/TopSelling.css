@@ -1,0 +1,104 @@
+/* ==========================================================================
+   Top Selling Items — donut + legend
+   ========================================================================== */
+
+.ad-top{
+    display:flex;
+    flex-direction:column;
+}
+
+.ad-top-donut{
+    position:relative;
+    width:100%;
+    height:210px;
+}
+
+.ad-top-center{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+    text-align:center;
+}
+
+.ad-top-center strong{
+    color:#0F172A;
+    font-size:21px;
+    font-weight:700;
+}
+
+.ad-top-center span{
+    color:#94A3B8;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    margin-top:2px;
+}
+
+/* ── Legend ────────────────────────────────────────────────── */
+
+.ad-top-legend{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    margin-top:8px;
+}
+
+.ad-top-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:7px 10px;
+    border-radius:9px;
+    transition:background .15s;
+}
+
+.ad-top-row:hover{
+    background:#F8FAFC;
+}
+
+.ad-top-name{
+    flex:1;
+    color:#475569;
+    font-size:13.5px;
+    font-weight:600;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.ad-top-meta{
+    color:#64748B;
+    font-size:12px;
+    white-space:nowrap;
+}
+
+.ad-dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    flex:0 0 auto;
+}
+
+/* ── Tooltip ───────────────────────────────────────────────── */
+
+.ad-top-tip{
+    background:#0F172A;
+    color:#fff;
+    border-radius:10px;
+    padding:9px 12px;
+    box-shadow:0 8px 24px rgba(15,23,42,.25);
+    font-size:12px;
+}
+
+.ad-top-tip-name{
+    font-weight:700;
+    margin-bottom:4px;
+}
+
+.ad-top-tip-row{
+    color:#CBD5E1;
+}

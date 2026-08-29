@@ -15,5 +15,6 @@ router.get("/recent-orders", dashboardController.getRecentOrders);
 router.get("/top-items", dashboardController.getTopItems);
 router.get("/tables", dashboardController.getTableStatus);
 router.get("/sales-chart", dashboardController.getSalesChart);
+router.get("/health", dashboardController.getHealth);
 
 module.exports = router;

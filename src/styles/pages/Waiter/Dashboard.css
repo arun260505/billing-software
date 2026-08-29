@@ -898,3 +898,90 @@
     border: 1px solid #e2e8f0; background: #f8fafc; font-size: 12px; outline: none;
 }
 .waiter-app .cir-note:focus { border-color: #0d9488; background: #fff; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CASHIER AUTO-DISCOVERY STATUS BAR
+   Always-visible slim strip below the navbar.
+   Read-only — no form or button. Status updates automatically.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.waiter-app .cashier-connect-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 56px;           /* sit flush under the navbar */
+    z-index: 99;
+    min-height: 36px;
+}
+
+/* Connected state — subtle green tint */
+.waiter-app .cashier-connect-bar.ccb-connected {
+    background: #f0fdf4;
+    border-bottom-color: #bbf7d0;
+}
+
+/* Disconnected / searching state — subtle amber tint */
+.waiter-app .cashier-connect-bar.ccb-disconnected {
+    background: #fffbeb;
+    border-bottom-color: #fde68a;
+}
+
+.waiter-app .ccb-dot {
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.waiter-app .ccb-label {
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.waiter-app .ccb-label.ccb-ok   { color: #166534; }
+.waiter-app .ccb-label.ccb-fail { color: #92400e; }  /* amber, not red — it's searching */
+
+.waiter-app .ccb-ip {
+    font-size: 11px;
+    color: #374151;
+    font-family: 'Courier New', Courier, monospace;
+    background: rgba(0,0,0,.05);
+    padding: 1px 7px;
+    border-radius: 5px;
+}
+
+.waiter-app .ccb-note {
+    font-size: 11px;
+    color: #6b7280;
+    margin-left: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LOCKED ORDER BAR
+   Shown inside .wc-sticky-send when cashier is not reachable.
+   Replaces the "Review & Send" button with an explanation.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.waiter-app .wc-order-locked {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 20px;
+    background: #fff7ed;
+    border-radius: 12px;
+    border: 1.5px solid #fed7aa;
+}
+
+.waiter-app .wc-lock-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.waiter-app .wc-lock-msg {
+    font-size: 13px;
+    font-weight: 600;
+    color: #92400e;
+}
