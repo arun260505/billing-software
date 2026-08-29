@@ -1,4 +1,5 @@
 import axios from "axios";
+import { App } from "@capacitor/app";
 import {
     resolveApiBaseUrl,
     resolveHealthUrl,
@@ -40,13 +41,10 @@ export { isNativeApp };
  */
 export function exitApp() {
     try {
-        const appPlugin = window.Capacitor?.Plugins?.App;
-        if (appPlugin?.exitApp) {
-            appPlugin.exitApp();
-            return;
-        }
+        App.exitApp();
+        return;
     } catch {
-        /* fall through */
+        /* web: not implemented — fall through */
     }
     window.close();
 }

@@ -1,22 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
+import { Network } from "@capacitor/network";
 import { getNetworkStatus } from "../services/systemService";
 import { exitApp } from "../services/networkGuard";
 import "../styles/NetworkGate.css";
 
 // Reads the phone's connection type via @capacitor/network:
-// "wifi" | "cellular" | "none" | "unknown".
+// "wifi" | "cellular" | "none" | "unknown". Importing the plugin (not reading it
+// off the global) is what registers the native bridge — without the import it
+// returns "unknown" and mobile data is not detected.
 async function getConnectionType() {
     try {
-        const net = window.Capacitor?.Plugins?.Network;
-        if (net?.getStatus) {
-            const s = await net.getStatus();
-            return s.connectionType || "unknown";
-        }
+        const s = await Network.getStatus();
+        return s.connectionType || "unknown";
     } catch {
-        /* fall through */
+        if (navigator.onLine === false) return "none";
+        return "unknown";
     }
-    if (navigator.onLine === false) return "none";
-    return "unknown";
 }
 
 /**
@@ -68,14 +67,11 @@ function WifiGuard({ children }) {
     // Re-check on connection change and when the app returns to foreground.
     useEffect(() => {
         let handle;
-        try {
-            const net = window.Capacitor?.Plugins?.Network;
-            if (net?.addListener) {
-                handle = net.addListener("networkStatusChange", () => check());
-            }
-        } catch {
-            /* ignore */
-        }
+        // addListener returns a Promise<PluginListenerHandle> in Capacitor.
+        Network.addListener("networkStatusChange", () => check())
+            .then((h) => { handle = h; })
+            .catch(() => { /* ignore */ });
+
         const onVis = () => { if (document.visibilityState === "visible") check(); };
         document.addEventListener("visibilitychange", onVis);
         window.addEventListener("online", check);
