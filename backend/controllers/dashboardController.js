@@ -74,3 +74,26 @@ exports.getSalesChart = (req, res) => {
     });
 
 };
+
+// Heartbeat for the Connection Status widget: verifies backend + database.
+exports.getHealth = (req, res) => {
+
+    dashboardModel.ping((err) => {
+
+        if (err) {
+            return success(res, "Service status fetched.", {
+                server: true,
+                db: false,
+                server_time: new Date().toISOString()
+            });
+        }
+
+        return success(res, "Service status fetched.", {
+            server: true,
+            db: true,
+            server_time: new Date().toISOString()
+        });
+
+    });
+
+};

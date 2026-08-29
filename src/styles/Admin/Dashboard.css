@@ -22,3 +22,230 @@ body{
 .dashboard-content{
     padding:25px;
 }
+
+/* ==========================================================================
+   Admin Dashboard (ad-*) — premium redesign
+   Palette: primary #2563EB | dark #0F172A | bg #F5F7FB | success #16A34A
+            warning #F59E0B | danger #EF4444
+   ========================================================================== */
+
+.ad-dashboard{
+    max-width:1400px;
+}
+
+.ad-heading{
+    margin-bottom:22px;
+}
+
+.ad-heading h1{
+    margin:0 0 4px;
+    font-size:24px;
+    font-weight:700;
+    color:#0F172A;
+}
+
+.ad-heading p{
+    margin:0;
+    font-size:14px;
+    color:#64748B;
+}
+
+/* ── 12-column responsive grid ─────────────────────────────── */
+
+.ad-grid{
+    display:grid;
+    grid-template-columns:repeat(12,1fr);
+    gap:20px;
+    margin-bottom:20px;
+    align-items:start;
+}
+
+.ad-col-8{ grid-column:span 8; }
+.ad-col-4{ grid-column:span 4; }
+
+/* ── Shared card surface ───────────────────────────────────── */
+
+.ad-card{
+    background:#fff;
+    border:1px solid #E8EDF3;
+    border-radius:14px;
+    padding:20px;
+    box-shadow:0 1px 3px rgba(15,23,42,.04),0 8px 24px rgba(15,23,42,.04);
+    height:100%;
+    position:relative;
+}
+
+.ad-card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    margin-bottom:16px;
+    flex-wrap:wrap;
+}
+
+.ad-card-head h3{
+    margin:0;
+    color:#0F172A;
+    font-size:16px;
+    font-weight:700;
+}
+
+.ad-card-sub{
+    display:block;
+    margin-top:2px;
+    color:#94A3B8;
+    font-size:12.5px;
+}
+
+/* ── Shared empty / error / state container ────────────────── */
+
+.ad-state{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    min-height:180px;
+    padding:24px;
+    color:#64748B;
+    background:#F8FAFC;
+    border:1px dashed #CBD5E1;
+    border-radius:12px;
+}
+
+.ad-state p{
+    margin:10px 0 4px;
+    font-size:14px;
+}
+
+.ad-state h3{
+    margin:10px 0 2px;
+    font-size:15px;
+    color:#0F172A;
+}
+
+.ad-error .ad-state-icon{
+    background:#FEF2F2;
+    color:#EF4444;
+}
+
+.ad-state .ad-state-icon{
+    width:46px;
+    height:46px;
+    border-radius:50%;
+    background:#EFF6FF;
+    color:#2563EB;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+}
+
+.ad-retry{
+    margin-top:12px;
+    height:34px;
+    padding:0 16px;
+    background:#2563EB;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+    transition:background .15s;
+    font-family:inherit;
+}
+
+.ad-retry:hover{
+    background:#1D4ED8;
+}
+
+/* ── Skeleton loaders ──────────────────────────────────────── */
+
+.ad-skel{
+    display:block;
+    background:linear-gradient(90deg,#EEF2F7 25%,#F8FAFC 50%,#EEF2F7 75%);
+    background-size:200% 100%;
+    animation:ad-shimmer 1.2s infinite;
+    border-radius:6px;
+}
+
+@keyframes ad-shimmer{
+    0%{ background-position:200% 0; }
+    100%{ background-position:-200% 0; }
+}
+
+.ad-skel-icon{
+    width:46px;
+    height:46px;
+    border-radius:12px;
+}
+
+.ad-skel-line{
+    height:12px;
+    border-radius:6px;
+}
+
+.ad-skel-line-sm{ width:55%; }
+.ad-skel-line-lg{ width:80%; height:22px; }
+
+.ad-skel-block{
+    width:100%;
+    height:150px;
+    border-radius:10px;
+    margin-bottom:8px;
+}
+
+.ad-skel-lines{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-top:6px;
+}
+
+.ad-skel-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:14px;
+    padding:12px 0;
+    border-bottom:1px solid #F1F5F9;
+}
+
+/* ── Dashboard header ──────────────────────────────────────── */
+
+.dashboard-content .ad-heading h1,
+.ad-heading h1{
+    font-size:23px;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+
+@media (max-width:1100px){
+
+    .ad-col-8,
+    .ad-col-4{
+        grid-column:span 12;
+    }
+
+    .ad-summary{
+        grid-template-columns:repeat(2,1fr);
+    }
+}
+
+@media (max-width:560px){
+
+    .ad-summary{
+        grid-template-columns:1fr;
+    }
+
+    .ad-card{
+        padding:16px;
+    }
+
+    .ad-period-switch{
+        width:100%;
+        overflow-x:auto;
+        justify-content:flex-start;
+    }
+}
