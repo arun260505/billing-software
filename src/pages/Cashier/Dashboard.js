@@ -53,6 +53,13 @@ function Dashboard() {
     const [billFormat, setBillFormat] = useState(DEFAULT_BILL_FORMAT);
     const [restaurantInfo, setRestaurantInfo] = useState(null);
 
+    // ── Network presence state ───────────────────────────────────────
+    // The local IP of this machine — shown so waiters can connect.
+    const [localIP, setLocalIP] = useState(null);
+    // True when this machine's local network server (port 5001) is
+    // actually reachable — drives the Online/Offline badge.
+    const [networkOnline, setNetworkOnline] = useState(false);
+
     // ── Functions ───────────────────────────────────────────────────
     function updateDateTime() {
         const now = new Date();
@@ -72,6 +79,49 @@ function Dashboard() {
         }
     };
 
+    // Fetch this machine's local IP from the backend so it can be
+    // displayed in the Network panel for waiters to use.
+    const loadLocalIP = async () => {
+        try {
+            const res = await fetch("http://localhost:5000/api/local-ip");
+            const json = await res.json();
+            if (json.success) setLocalIP(json.ip);
+        } catch {
+            // Not critical — IP display is informational only.
+        }
+    };
+
+    // Ping this machine's own local network server (port 5001) to check
+    // whether the Cashier service is actually online and reachable.
+    // Fetches the current IP fresh each time so the IP + status both
+    // auto-update when the wifi network changes (no manual refresh).
+    const loadNetworkStatus = async () => {
+        let ip = localIP;
+        try {
+            const ipRes = await fetch("http://localhost:5000/api/local-ip");
+            const ipJson = await ipRes.json();
+            if (ipJson.success && ipJson.ip) {
+                ip = ipJson.ip;
+                setLocalIP(ipJson.ip);
+            }
+        } catch {
+            // fall through to whatever IP we already have
+        }
+        if (!ip) {
+            setNetworkOnline(false);
+            return;
+        }
+        try {
+            const res = await fetch(`http://${ip}:5001/connection-check`, {
+                signal: AbortSignal.timeout(2500),
+            });
+            const json = await res.json();
+            setNetworkOnline(res.ok && json.status === "online" && ip !== "127.0.0.1");
+        } catch {
+            setNetworkOnline(false);
+        }
+    };
+
     useEffect(() => {
         updateDateTime();
         loadTables();
@@ -80,13 +130,13 @@ function Dashboard() {
         loadAllItems();
         loadTodaysOrderCount();
         loadBillingFormat();
+        loadLocalIP();
 
         const statsTimer = setInterval(() => {
             loadTables();
             loadRunningOrders();
             loadTodaysOrderCount();
         }, 10000);
-
         const refreshOnFocus = () => {
             loadTables();
             loadRunningOrders();
@@ -107,6 +157,54 @@ function Dashboard() {
         const t = setInterval(() => loadMenuItems(selectedCategory), 4000);
         return () => clearInterval(t);
     }, [selectedCategory]);
+
+    // Poll this machine's local network server (port 5001) so the
+    // Online/Offline badge tracks real connectivity. loadNetworkStatus
+    // re-fetches the local IP itself each cycle, so the displayed IP and
+    // status auto-update when the wifi is connected/disconnected — no
+    // manual page refresh needed.
+    useEffect(() => {
+        loadLocalIP();
+        loadNetworkStatus();
+        const t = setInterval(loadNetworkStatus, 5000);
+        return () => clearInterval(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Cashier presence heartbeat: while this screen is mounted (i.e. the
+    // Cashier is logged in), keep telling the backend we are online. The
+    // backend only reports the Cashier as available to waiters while this
+    // heartbeat is recent. On logout we stop AND clear it, taking the
+    // Cashier offline for waiters.
+    useEffect(() => {
+        let stopped = false;
+        const beat = () => {
+            const token = authService.getToken();
+            if (!token) return;
+            fetch("http://localhost:5000/api/cashier/heartbeat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            }).catch(() => {});
+        };
+        beat();
+        const t = setInterval(() => { if (!stopped) beat(); }, 4000);
+        const onUnload = () => {
+            const token = authService.getToken();
+            if (token) {
+                navigator.sendBeacon?.(
+                    "http://localhost:5000/api/cashier/logout",
+                    new Blob([], { type: "application/json" })
+                );
+            }
+        };
+        window.addEventListener("beforeunload", onUnload);
+        return () => {
+            stopped = true;
+            clearInterval(t);
+            window.removeEventListener("beforeunload", onUnload);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // While searching, keep the whole-menu list fresh (for live availability).
     useEffect(() => {
@@ -192,8 +290,19 @@ function Dashboard() {
     const cartQtyFor = (itemId) =>
         cart.filter((c) => c.id === itemId).reduce((s, c) => s + normalizeQuantity(c.quantity), 0);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            const token = authService.getToken();
+            await fetch("http://localhost:5000/api/cashier/logout", {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+        } catch {
+            // Best effort — even if this call fails, the heartbeat TTL will
+            // take the cashier offline shortly.
+        }
         authService.logout();
+        setNetworkOnline(false);
         window.location.href = "/";
     };
 
@@ -650,6 +759,19 @@ function Dashboard() {
                     <span className="pos-stat"><b>{runningOrders.length}</b> Active</span>
                     <span className="pos-stat"><b>{availableCount}</b> Free</span>
                 </div>
+
+                {/* ── Network presence panel — shows local IP for waiter to use ── */}
+                <div className="pos-network-panel">
+                    <span className="pos-network-label">Network</span>
+                    <span className="pos-network-ip">
+                        {localIP ? localIP : "Loading…"}
+                    </span>
+                    <span className={`pos-network-badge ${networkOnline ? "pos-network-online" : "pos-network-offline"}`}>
+                        {networkOnline ? "🟢 Online" : "🔴 Offline"}
+                    </span>
+                    <span className="pos-network-hint">Port 5001</span>
+                </div>
+
                 <div className="pos-topactions">
                     <button className="pos-bell" onClick={openRunningOrders} title="Running orders">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>

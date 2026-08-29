@@ -37,6 +37,14 @@ function Dashboard() {
     const [tableFilter, setTableFilter] = useState("all");
     const [tableSearch, setTableSearch] = useState("");
 
+    // ── Cashier auto-discovery state ────────────────────────────────
+    // The waiter never enters an IP. The backend (server.js) browses mDNS
+    // and returns the Cashier's IP via GET /api/discover-cashier.
+    // cashierConnected: true when the last direct ping of port 5001 succeeded.
+    // cashierIP: the IP discovered automatically (display only).
+    const [cashierConnected, setCashierConnected] = useState(false);
+    const [cashierIP, setCashierIP]               = useState(null);
+
     // ── Existing functions (unchanged) ──────────────────────────────
     function updateDateTime() {
         const now = new Date();
@@ -69,6 +77,67 @@ function Dashboard() {
             clearInterval(statsTimer);
             window.removeEventListener("focus", refreshOnFocus);
         };
+    }, []);
+
+    // ── Cashier auto-discovery logic ────────────────────────────────
+
+    /**
+     * Step 1: Ask the backend (which runs a Bonjour browser) if it has
+     *         discovered the Cashier's mDNS service on the LAN.
+     * Returns { found, ip, port } or { found: false }.
+     */
+    const discoverCashierViaBackend = async () => {
+        try {
+            const res = await fetch("http://localhost:5000/api/discover-cashier", {
+                signal: AbortSignal.timeout(3000),
+            });
+            return await res.json();          // { found, ip, port }
+        } catch {
+            return { found: false };
+        }
+    };
+
+    /**
+     * Step 2: Directly ping the Cashier's port 5001 to confirm live
+     *         connectivity (proves both devices are on the same LAN right now).
+     */
+    const pingCashier = async (ip, port = 5001) => {
+        try {
+            const res = await fetch(`http://${ip}:${port}/connection-check`, {
+                signal: AbortSignal.timeout(3000),
+            });
+            if (!res.ok) return false;
+            const json = await res.json();
+            return json.status === "online";
+        } catch {
+            return false;
+        }
+    };
+
+    /**
+     * Full auto-discovery cycle:
+     *   1. Ask backend for mDNS-cached Cashier IP.
+     *   2. Directly ping that IP on port 5001.
+     *   3. Update state accordingly — waiter sees 🟢 or 🔴 automatically.
+     */
+    const runDiscovery = async () => {
+        const { found, ip, port } = await discoverCashierViaBackend();
+        if (!found) {
+            setCashierConnected(false);
+            setCashierIP(null);
+            return;
+        }
+        const alive = await pingCashier(ip, port);
+        setCashierConnected(alive);
+        setCashierIP(alive ? ip : null);
+    };
+
+    // Run discovery immediately on mount, then every 8 seconds.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        runDiscovery();
+        const poll = setInterval(runDiscovery, 8000);
+        return () => clearInterval(poll);
     }, []);
 
     useEffect(() => {
@@ -565,6 +634,23 @@ function Dashboard() {
                 </div>
             </nav>
 
+            {/* ══════════════ CASHIER AUTO-DISCOVERY STATUS BAR ══════════════ */}
+            <div className={`cashier-connect-bar ${cashierConnected ? "ccb-connected" : "ccb-disconnected"}`}>
+                <span className="ccb-dot">{cashierConnected ? "🟢" : "🔴"}</span>
+                {cashierConnected ? (
+                    <>
+                        <span className="ccb-label ccb-ok">Cashier Connected</span>
+                        <span className="ccb-ip">{cashierIP}</span>
+                        <span className="ccb-note">Same network · Auto-discovered</span>
+                    </>
+                ) : (
+                    <>
+                        <span className="ccb-label ccb-fail">Searching for Cashier…</span>
+                        <span className="ccb-note">Make sure the Cashier is on the same Wi-Fi and running the local server</span>
+                    </>
+                )}
+            </div>
+
             {/* ═══════ SCREEN 1: pick a table (shown until one is selected) ═══════ */}
             {!selectedTable && (
             <>
@@ -761,11 +847,20 @@ function Dashboard() {
             {/* Always-visible bar — opens the order sheet to review before sending */}
             {selectedTable && cart.length > 0 && (
                 <div className="wc-sticky-send">
-                    <button className="wc-send-btn" onClick={() => setShowCart(true)}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                        {editingOrder ? "Review & Update" : "Review & Send"}
-                        <span className="wc-send-count">{totalItems}</span>
-                    </button>
+                    {cashierConnected ? (
+                        <button className="wc-send-btn" onClick={() => setShowCart(true)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                            {editingOrder ? "Review & Update" : "Review & Send"}
+                            <span className="wc-send-count">{totalItems}</span>
+                        </button>
+                    ) : (
+                        <div className="wc-order-locked">
+                            <span className="wc-lock-icon">🟡</span>
+                            <span className="wc-lock-msg">
+                                Searching for Cashier — Both devices must be on the same Wi-Fi.
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
 
