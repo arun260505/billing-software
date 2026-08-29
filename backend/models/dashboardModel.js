@@ -1,12 +1,15 @@
 const db = require("../config/db");
 
-// Dashboard Summary (tenant-scoped)
+// Dashboard Summary (tenant-scoped). One call returns every headline figure
+// the Admin Dashboard reads — order/sales KPI plus today's payment split and
+// live operational counters (tables, kitchen, pending bills, restaurant state).
 const getSummary = (restaurantId, callback) => {
 
     const sql = `
         SELECT
             (SELECT COUNT(*) FROM orders
-             WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()) AS total_orders,
+             WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
+               AND order_status <> 'Cancelled') AS total_orders,
 
             (SELECT IFNULL(SUM(grand_total),0) FROM orders
              WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
@@ -15,11 +18,53 @@ const getSummary = (restaurantId, callback) => {
             (SELECT COUNT(*) FROM dining_tables
              WHERE restaurant_id = ? AND status='Occupied') AS occupied_tables,
 
-            (SELECT COUNT(*) FROM customers
-             WHERE restaurant_id = ?) AS total_customers
+            (SELECT COUNT(*) FROM dining_tables
+             WHERE restaurant_id = ?) AS total_tables,
+
+            (SELECT COUNT(*) FROM orders
+             WHERE restaurant_id = ?
+             AND order_status IN ('Pending','Preparing','Ready')) AS kitchen_orders,
+
+            (SELECT COUNT(*) FROM orders
+             WHERE restaurant_id = ?
+             AND order_status <> 'Cancelled'
+             AND payment_status IN ('Pending','Partial')) AS pending_bills,
+
+            (SELECT IFNULL(SUM(amount),0) FROM payments
+             WHERE restaurant_id = ? AND payment_status='Success'
+             AND DATE(payment_date)=CURDATE()) AS total_collection,
+
+            (SELECT IFNULL(SUM(CASE WHEN payment_method='Cash' THEN amount END),0) FROM payments
+             WHERE restaurant_id = ? AND payment_status='Success'
+             AND DATE(payment_date)=CURDATE()) AS cash_amount,
+
+            (SELECT IFNULL(SUM(CASE WHEN payment_method='UPI' THEN amount END),0) FROM payments
+             WHERE restaurant_id = ? AND payment_status='Success'
+             AND DATE(payment_date)=CURDATE()) AS upi_amount,
+
+            (SELECT IFNULL(SUM(CASE WHEN payment_method='Card' THEN amount END),0) FROM payments
+             WHERE restaurant_id = ? AND payment_status='Success'
+             AND DATE(payment_date)=CURDATE()) AS card_amount,
+
+            (SELECT IFNULL(SUM(CASE WHEN payment_method='Wallet' THEN amount END),0) FROM payments
+             WHERE restaurant_id = ? AND payment_status='Success'
+             AND DATE(payment_date)=CURDATE()) AS wallet_amount,
+
+            (SELECT IFNULL(SUM(CASE WHEN payment_method IN ('Bank Transfer','Split') THEN amount END),0) FROM payments
+             WHERE restaurant_id = ? AND payment_status='Success'
+             AND DATE(payment_date)=CURDATE()) AS other_amount,
+
+            (SELECT restaurant_name FROM restaurants WHERE id=?) AS restaurant_name,
+            (SELECT status FROM restaurants WHERE id=?) AS restaurant_status,
+            (SELECT opening_time FROM restaurants WHERE id=?) AS opening_time,
+            (SELECT closing_time FROM restaurants WHERE id=?) AS closing_time
     `;
 
-    db.query(sql, [restaurantId, restaurantId, restaurantId, restaurantId], callback);
+    db.query(sql, [
+        restaurantId, restaurantId, restaurantId, restaurantId, restaurantId, restaurantId,
+        restaurantId, restaurantId, restaurantId, restaurantId, restaurantId, restaurantId,
+        restaurantId, restaurantId, restaurantId, restaurantId
+    ], callback);
 
 };
 
@@ -39,35 +84,46 @@ const getTodaysSales = (restaurantId, callback) => {
 
 };
 
-// Recent Orders (tenant-scoped)
+// Recent Orders (tenant-scoped). Rich enough for the dashboard's Recent Orders
+// table: type, item count and the latest successful payment method.
 const getRecentOrders = (restaurantId, callback) => {
 
     db.query(`
         SELECT
-            order_number,
-            order_status,
-            payment_status,
-            grand_total,
-            created_at
-        FROM orders
-        WHERE restaurant_id = ?
-        ORDER BY created_at DESC
+            o.id,
+            o.order_number,
+            o.order_type,
+            o.order_status,
+            o.payment_status,
+            o.grand_total,
+            o.created_at,
+            (SELECT COALESCE(SUM(oi.quantity), 0)
+             FROM order_items oi WHERE oi.order_id = o.id) AS total_items,
+            (SELECT p.payment_method
+             FROM payments p
+             WHERE p.order_id = o.id AND p.payment_status = 'Success'
+             ORDER BY p.id DESC LIMIT 1) AS payment_method
+        FROM orders o
+        WHERE o.restaurant_id = ?
+        ORDER BY o.created_at DESC
         LIMIT 10
     `, [restaurantId], callback);
 
 };
 
-// Top Selling Items (tenant-scoped via parent order)
+// Top Selling Items (tenant-scoped via parent order) with revenue.
 const getTopItems = (restaurantId, callback) => {
 
     const sql = `
         SELECT
             mi.item_name,
-            SUM(oi.quantity) AS total_qty
+            SUM(oi.quantity) AS total_qty,
+            SUM(oi.total) AS total_sales
         FROM order_items oi
         INNER JOIN menu_items mi ON oi.menu_item_id = mi.id
         INNER JOIN orders o ON oi.order_id = o.id
         WHERE o.restaurant_id = ?
+          AND o.order_status <> 'Cancelled'
         GROUP BY oi.menu_item_id
         ORDER BY total_qty DESC
         LIMIT 10
@@ -110,6 +166,20 @@ const getSalesChart = (period, restaurantId, callback) => {
             ORDER BY HOUR(created_at)
         `;
 
+    } else if (period === "yesterday") {
+
+        sql = `
+            SELECT
+                HOUR(created_at) AS label,
+                SUM(grand_total) AS sales
+            FROM orders
+            WHERE restaurant_id = ?
+              AND DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+              AND payment_status='Paid'
+            GROUP BY HOUR(created_at)
+            ORDER BY HOUR(created_at)
+        `;
+
     } else if (period === "week") {
 
         sql = `
@@ -145,11 +215,18 @@ const getSalesChart = (period, restaurantId, callback) => {
 
 };
 
+// Trivial heartbeat used by the Connection Status widget — verifies the
+// database connection is alive (tenant-agnostic).
+const ping = (callback) => {
+    db.query("SELECT 1 AS ok", callback);
+};
+
 module.exports = {
     getSummary,
     getTodaysSales,
     getRecentOrders,
     getTopItems,
     getTableStatus,
-    getSalesChart
+    getSalesChart,
+    ping
 };
