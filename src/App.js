@@ -1,7 +1,8 @@
 import AppRoutes from "./routes/AppRoutes";
 import NetworkGate from "./components/NetworkGate";
+import WifiGuard from "./components/WifiGuard";
 import ServerConfig from "./components/ServerConfig";
-import { isNativeApp, getStoredServer } from "./services/serverConfig";
+import { isNativeApp, getStoredServer, hasBakedApiUrl } from "./services/serverConfig";
 
 //import { ToastContainer } from "react-toastify";
 
@@ -15,7 +16,18 @@ function App() {
     // lock the admin out for nothing).
     if (isNativeApp()) {
 
-        // First launch: ask for the server address, then reload into the gate.
+        // Cloud APK (URL baked in): connects to the cloud but must be on the
+        // same WiFi as the cashier — WifiGuard enforces that and blocks on
+        // mobile data.
+        if (hasBakedApiUrl()) {
+            return (
+                <WifiGuard>
+                    <AppRoutes />
+                </WifiGuard>
+            );
+        }
+
+        // LAN APK, first launch: ask for the server address, then reachability-gate.
         if (!getStoredServer()) {
             return <ServerConfig />;
         }

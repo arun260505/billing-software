@@ -2,9 +2,15 @@ const express = require("express");
 const router = express.Router();
 
 const systemController = require("../controllers/systemController");
+const authMiddleware = require("../middleware/authMiddleware");
 
 // Server LAN IP (for waiter-phone setup)
 router.get("/server-ip", systemController.getServerIp);
+
+// Same-network enforcement (cloud model): cashier registers the restaurant's
+// WAN IP, waiter checks it is on that same network.
+router.post("/register-network", authMiddleware, systemController.registerNetwork);
+router.get("/network-status", authMiddleware, systemController.networkStatus);
 
 // Settings
 router.get("/settings/:restaurantId", systemController.getSettings);

@@ -49,12 +49,25 @@ function authorityToBase(host) {
 }
 
 export function resolveApiBaseUrl() {
+    // A build-time URL always wins — this is how the CLOUD APK is baked to talk
+    // to https://billing.inwallz.in/api, and how the cloud/cashier browser uses
+    // "/api" behind nginx.
+    if (process.env.REACT_APP_API_URL) {
+        return process.env.REACT_APP_API_URL;
+    }
+    // No baked URL: the native LAN APK uses the per-device address entered on
+    // first launch; a browser dev build falls back to localhost.
     if (isNativeApp()) {
         const host = getStoredServer();
-        // Not configured yet — ServerConfig gates before any API call is made.
         return host ? authorityToBase(host) : "";
     }
-    return process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+    return "http://localhost:5000/api";
+}
+
+// True when the build has a fixed backend URL baked in (cloud APK / nginx),
+// so the app should NOT show the "enter server address" setup screen.
+export function hasBakedApiUrl() {
+    return Boolean(process.env.REACT_APP_API_URL);
 }
 
 export function resolveHealthUrl() {

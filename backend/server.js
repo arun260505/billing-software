@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -48,6 +49,17 @@ db.query(`
 `, (err) => {
     if (err) console.error("Charges table migration error:", err.message);
     else console.log("Charges table ready.");
+});
+
+db.query(`
+    CREATE TABLE IF NOT EXISTS restaurant_networks (
+        restaurant_id INT PRIMARY KEY,
+        wan_ip        VARCHAR(64) DEFAULT NULL,
+        updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+`, (err) => {
+    if (err) console.error("restaurant_networks table migration error:", err.message);
+    else console.log("restaurant_networks table ready.");
 });
 
 db.query(`
@@ -181,6 +193,13 @@ app.use(cors({
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Serve the built React app so ONE machine (the cashier PC) hosts both the UI
+// and the API on http://<lan-ip>:5000. On the cloud, nginx serves the build and
+// only proxies /api here, so this static layer is dormant there — harmless.
+const buildDir = path.join(__dirname, "..", "build");
+app.use(express.static(buildDir));
+
 const adminRoutes = require("./routes/adminRoutes");
 
 
@@ -274,6 +293,18 @@ app.get("/api/health", (req, res) => {
         success: true,
         service: "inwallz-billing"
     });
+});
+
+// SPA fallback: any non-API GET returns index.html so React Router deep links
+// (e.g. /cashier) work on a refresh. Must come after all API routes. Written as
+// middleware rather than app.get("*") for Express 5 path-matching compatibility.
+app.use((req, res, next) => {
+    if (req.method === "GET" && !req.path.startsWith("/api")) {
+        return res.sendFile(path.join(buildDir, "index.html"), (err) => {
+            if (err) next();
+        });
+    }
+    next();
 });
 
 // Global Error Handler (must be registered last)

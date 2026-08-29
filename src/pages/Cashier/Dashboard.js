@@ -18,6 +18,7 @@ import MenuAvailability from "../../components/Cashier/MenuAvailability";
 import BillsHistory from "../../components/Cashier/BillsHistory";
 import BillEditModal from "../../components/Cashier/BillEditModal";
 import ServerIP from "../../components/Cashier/ServerIP";
+import { registerNetwork } from "../../services/systemService";
 import billingFormatService from "../../services/billingFormatService";
 import { printBill, DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
 
@@ -93,6 +94,12 @@ function Dashboard() {
         loadTodaysOrderCount();
         loadBillingFormat();
 
+        // Register this restaurant's WAN IP so waiter phones on the same WiFi
+        // are recognised as "on the restaurant network" (cloud model).
+        const pingNetwork = () => { registerNetwork().catch(() => {}); };
+        pingNetwork();
+        const netTimer = setInterval(pingNetwork, 60000);
+
         const statsTimer = setInterval(() => {
             loadTables();
             loadRunningOrders();
@@ -108,6 +115,7 @@ function Dashboard() {
 
         return () => {
             clearInterval(statsTimer);
+            clearInterval(netTimer);
             window.removeEventListener("focus", refreshOnFocus);
         };
     }, []);
