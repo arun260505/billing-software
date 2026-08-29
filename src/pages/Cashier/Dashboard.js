@@ -12,7 +12,9 @@ import BillModal from "../../components/Cashier/BillModal";
 import TableBillModal from "../../components/Cashier/TableBillModal";
 import MenuAvailability from "../../components/Cashier/MenuAvailability";
 import billingFormatService from "../../services/billingFormatService";
+import kitchenFormatService from "../../services/kitchenFormatService";
 import { printBill, DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
+import { printKitchenTicket, DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
 
 function Dashboard() {
     // ── State ───────────────────────────────────────────────────────
@@ -51,7 +53,9 @@ function Dashboard() {
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
     const [billFormat, setBillFormat] = useState(DEFAULT_BILL_FORMAT);
+    const [kitchenFormat, setKitchenFormat] = useState(DEFAULT_KITCHEN_FORMAT);
     const [restaurantInfo, setRestaurantInfo] = useState(null);
+    const [orderBusy, setOrderBusy] = useState(false);
 
     // ── Functions ───────────────────────────────────────────────────
     function updateDateTime() {
@@ -72,6 +76,18 @@ function Dashboard() {
         }
     };
 
+    const loadKitchenFormat = async () => {
+        try {
+            const res = await kitchenFormatService.getKitchenFormat();
+            if (res.data?.success && res.data?.data) {
+                if (res.data.data.format) setKitchenFormat(res.data.data.format);
+                if (res.data.data.restaurant && !restaurantInfo) setRestaurantInfo(res.data.data.restaurant);
+            }
+        } catch (e) {
+            console.error("Failed to load kitchen format in cashier:", e);
+        }
+    };
+
     useEffect(() => {
         updateDateTime();
         loadTables();
@@ -80,6 +96,7 @@ function Dashboard() {
         loadAllItems();
         loadTodaysOrderCount();
         loadBillingFormat();
+        loadKitchenFormat();
 
         const statsTimer = setInterval(() => {
             loadTables();
@@ -98,6 +115,7 @@ function Dashboard() {
             clearInterval(statsTimer);
             window.removeEventListener("focus", refreshOnFocus);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -389,23 +407,32 @@ function Dashboard() {
     };
 
     const placeOrder = async () => {
+        if (orderBusy) return;
         if (cart.length === 0) { alert("Please add items."); return; }
         if (!selectedTable) { alert("Please select a table first."); return; }
+
+        setOrderBusy(true);
         const orderData = {
             order_number: `ORD-${Date.now()}`,
             waiter_id: 1,
             table_id: selectedTable?.id || null,
+            order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
             items: mergeCartItems(cart),
         };
         try {
+            let assignedOrderNumber = orderData.order_number;
             if (editingOrder) {
                 await updateOrder(editingOrder.id, orderData);
+                assignedOrderNumber = editingOrder.order_number;
                 alert(selectedTable?.isParcel ? "Parcel Order Updated" : "Order Updated Successfully");
                 if (!selectedTable?.isParcel) {
                     setEditingOrder(null);
                 }
             } else {
                 const res = await createOrder(orderData);
+                if (res.data?.data?.order_number) {
+                    assignedOrderNumber = res.data.data.order_number;
+                }
                 if (selectedTable && selectedTable.id) {
                     await updateTableStatus(selectedTable.id, "OCCUPIED");
                     setSelectedTable({ ...selectedTable, status: "OCCUPIED" });
@@ -417,6 +444,24 @@ function Dashboard() {
                     setEditingOrder({ id: res.data.data.order_id, order_number: res.data.data.order_number });
                 }
             }
+
+            // Print KOT to kitchen printer
+            printKitchenTicket({
+                order: {
+                    order_number: assignedOrderNumber,
+                    order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
+                    isParcel: Boolean(selectedTable?.isParcel),
+                    tableName: selectedTable?.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`,
+                    table_number: selectedTable?.table_number,
+                    items: orderData.items,
+                    cashier_name: cashierName,
+                    date: currentDate,
+                    time: currentTime
+                },
+                restaurant: restaurantInfo || {},
+                format: kitchenFormat || {}
+            });
+
             if (!selectedTable?.isParcel) {
                 setCart([]);
                 setSelectedTable(null);
@@ -429,6 +474,8 @@ function Dashboard() {
         } catch (error) {
             console.error("Order Error:", error);
             alert(error.response?.data?.message || "Failed to place order.");
+        } finally {
+            setOrderBusy(false);
         }
     };
 
@@ -456,29 +503,54 @@ function Dashboard() {
     };
 
     const handleProceedToBilling = async () => {
+        if (orderBusy) return;
         if (cart.length === 0) { alert("Please add items."); return; }
 
         let orderId = editingOrder?.id;
+        let assignedOrderNumber = editingOrder ? editingOrder.order_number : `ORD-${orderNumber}`;
 
         // No existing order yet → create it now (this also sends it to the kitchen).
         if (!orderId) {
+            setOrderBusy(true);
+            const isTakeaway = !selectedTable || Boolean(selectedTable?.isParcel);
             const orderData = {
                 order_number: `ORD-${Date.now()}`,
                 waiter_id: 1,
                 table_id: selectedTable?.id || null,
-                order_type: selectedTable ? "Dine-In" : "Takeaway",
+                order_type: isTakeaway ? "Takeaway" : "Dine-In",
                 items: mergeCartItems(cart),
             };
             try {
                 const res = await createOrder(orderData);
                 orderId = res.data.data.order_id;
+                assignedOrderNumber = res.data.data.order_number || orderData.order_number;
                 if (selectedTable && selectedTable.id) {
                     await updateTableStatus(selectedTable.id, "OCCUPIED");
                 }
+
+                // Print KOT to kitchen printer
+                printKitchenTicket({
+                    order: {
+                        order_number: assignedOrderNumber,
+                        order_type: isTakeaway ? "Takeaway" : "Dine-In",
+                        isParcel: isTakeaway,
+                        tableName: selectedTable ? (selectedTable.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`) : "Counter",
+                        table_number: selectedTable?.table_number,
+                        items: orderData.items,
+                        cashier_name: cashierName,
+                        date: currentDate,
+                        time: currentTime
+                    },
+                    restaurant: restaurantInfo || {},
+                    format: kitchenFormat || {}
+                });
             } catch (error) {
                 console.error("Order Error:", error);
                 alert(error.response?.data?.message || "Failed to place order.");
+                setOrderBusy(false);
                 return;
+            } finally {
+                setOrderBusy(false);
             }
         }
 
@@ -486,8 +558,8 @@ function Dashboard() {
 
         setBillData({
             order_id: orderId,
-            order_number: editingOrder ? editingOrder.order_number : `ORD-${orderNumber}`,
-            tableName: selectedTable ? `Table ${selectedTable.table_number}` : "Counter",
+            order_number: assignedOrderNumber,
+            tableName: selectedTable ? (selectedTable.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`) : "Counter",
             items: mergeCartItems(cart),
             subtotal: Number(subtotal.toFixed(2)),
             gst: Number(gst.toFixed(2)),
@@ -787,12 +859,12 @@ function Dashboard() {
                         <div className="pos-tot-row grand"><span>Total</span><span>₹{displayTotal.toFixed(0)}</span></div>
                         <div className="pos-bill-actions">
                             {selectedTable && (
-                                <button className="pos-send" onClick={placeOrder} disabled={cart.length === 0}>
-                                    {editingOrder ? "Update Order" : "Send to Kitchen"}
+                                <button className="pos-send" onClick={placeOrder} disabled={cart.length === 0 || orderBusy}>
+                                    {orderBusy ? "Sending..." : editingOrder ? "Update Order" : "Send to Kitchen"}
                                 </button>
                             )}
-                            <button className="pos-pay" onClick={handleProceedToBilling} disabled={cart.length === 0}>
-                                {selectedTable ? "Proceed to Billing →" : "Send & Bill →"}
+                            <button className="pos-pay" onClick={handleProceedToBilling} disabled={cart.length === 0 || orderBusy}>
+                                {orderBusy ? "Processing..." : selectedTable ? "Proceed to Billing →" : "Send & Bill →"}
                             </button>
                         </div>
                         {editingOrder && selectedTable && <button className="pos-cancel" onClick={handleCancelOrder}>✕ Cancel Order</button>}

@@ -4,7 +4,7 @@ import CartItem from "./CartItem";
 // bar so the waiter reviews everything right before sending — and so adding
 // items from the menu never pushes the menu around (the cart lives here, not
 // inline above the menu).
-function CartSheet({ tableLabel, items, editing, increaseQuantity, decreaseQuantity, removeItem, setNote, onClear, onSend, onCancelOrder, onClose }) {
+function CartSheet({ tableLabel, items, editing, busy, increaseQuantity, decreaseQuantity, removeItem, setNote, onClear, onSend, onCancelOrder, onClose }) {
 
     const total = items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0);
     const count = items.reduce((s, i) => s + Number(i.quantity), 0);
@@ -42,8 +42,8 @@ function CartSheet({ tableLabel, items, editing, increaseQuantity, decreaseQuant
                     <div className="cs-total"><span>Total</span><span>₹{total.toFixed(0)}</span></div>
                     <div className="cs-actions">
                         <button className="cs-addmore" onClick={onClose}>+ Add more</button>
-                        <button className="cs-send" onClick={onSend} disabled={items.length === 0}>
-                            {editing ? "Update Order" : "Send to Kitchen"}
+                        <button className="cs-send" onClick={onSend} disabled={items.length === 0 || busy}>
+                            {busy ? "Sending..." : editing ? "Update Order" : "Send to Kitchen"}
                         </button>
                     </div>
                     {editing
