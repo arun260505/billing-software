@@ -3,6 +3,9 @@ const router = express.Router();
 
 const systemController = require("../controllers/systemController");
 
+// Server LAN IP (for waiter-phone setup)
+router.get("/server-ip", systemController.getServerIp);
+
 // Settings
 router.get("/settings/:restaurantId", systemController.getSettings);
 

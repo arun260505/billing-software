@@ -194,6 +194,7 @@ const superAdminRoutes = require("./routes/superAdminRoutes");
 const menuRoutes = require("./routes/menuRoutes");
 const chargeRoutes = require("./routes/chargeRoutes");
 const billingFormatRoutes = require("./routes/billingFormatRoutes");
+const systemRoutes = require("./routes/systemRoutes");
 
 
 
@@ -231,6 +232,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/menu", menuRoutes);
 app.use("/api/charges", chargeRoutes);
 app.use("/api/billing", billingFormatRoutes);
+app.use("/api/system", systemRoutes);
 /*
 |--------------------------------------------------------------------------
 | Test Route

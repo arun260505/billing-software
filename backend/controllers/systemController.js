@@ -1,4 +1,43 @@
+const os = require("os");
 const systemModel = require("../models/systemModel");
+
+// Report the server PC's LAN IPv4 address(es) so the cashier can read off the
+// address to enter into the waiter phones. Unauthenticated on purpose — it
+// leaks nothing sensitive and is handy during setup before anyone logs in.
+exports.getServerIp = (req, res) => {
+
+    const nets = os.networkInterfaces();
+    const addresses = [];
+
+    for (const iface of Object.keys(nets)) {
+        for (const net of nets[iface] || []) {
+            if (net.family === "IPv4" && !net.internal) {
+                addresses.push({ iface, address: net.address });
+            }
+        }
+    }
+
+    // Prefer real private-LAN addresses; push virtual adapters (VMware, WSL,
+    // Hyper-V, Tailscale, VirtualBox) to the bottom so "best" is the WiFi/LAN.
+    const isPrivate = (a) =>
+        /^192\.168\./.test(a) ||
+        /^10\./.test(a) ||
+        /^172\.(1[6-9]|2\d|3[01])\./.test(a);
+    const isVirtual = (n) =>
+        /vmware|virtualbox|vethernet|wsl|hyper-?v|tailscale|loopback|docker/i.test(n);
+
+    const score = (e) =>
+        (isPrivate(e.address) ? 2 : 0) + (isVirtual(e.iface) ? -2 : 1);
+    addresses.sort((a, b) => score(b) - score(a));
+
+    res.json({
+        success: true,
+        port: Number(process.env.PORT) || 5000,
+        best: addresses.length ? addresses[0].address : null,
+        addresses
+    });
+
+};
 
 // Get Settings
 exports.getSettings = (req, res) => {

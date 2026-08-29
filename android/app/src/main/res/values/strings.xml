@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">InWallz Waiter</string>
+    <string name="title_activity_main">InWallz Waiter</string>
+    <string name="package_name">com.inwallz.waiter</string>
+    <string name="custom_url_scheme">com.inwallz.waiter</string>
+</resources>

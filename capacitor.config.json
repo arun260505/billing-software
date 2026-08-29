@@ -1,0 +1,12 @@
+{
+  "appId": "com.inwallz.waiter",
+  "appName": "InWallz Waiter",
+  "webDir": "build",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

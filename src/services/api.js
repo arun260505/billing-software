@@ -1,10 +1,10 @@
 import axios from "axios";
+import { resolveApiBaseUrl } from "./serverConfig";
 
-// On a phone "localhost" is the phone itself, so the mobile build sets
-// REACT_APP_API_URL to the server PC's LAN IP (see .env). Browser dev keeps
-// working off the localhost fallback.
+// Native APK: the per-device server address the user configured on first launch.
+// Browser (cloud/cashier/dev): the build-time REACT_APP_API_URL, else localhost.
 const api = axios.create({
-    baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000/api",
+    baseURL: resolveApiBaseUrl(),
     headers: {
         "Content-Type": "application/json"
     }

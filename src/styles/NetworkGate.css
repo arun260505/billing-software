@@ -1,0 +1,209 @@
+.netgate-page{
+
+    width:100%;
+    min-height:100vh;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    padding:24px;
+
+    background:linear-gradient(135deg,#0f172a,#1e293b,#334155);
+
+    font-family:'Segoe UI',sans-serif;
+
+}
+
+.netgate-card{
+
+    width:100%;
+    max-width:420px;
+
+    background:#ffffff;
+
+    border-radius:18px;
+
+    padding:40px 32px;
+
+    text-align:center;
+
+    box-shadow:0 20px 50px rgba(0,0,0,.25);
+
+}
+
+.netgate-icon{
+
+    font-size:52px;
+
+    line-height:1;
+
+    margin-bottom:18px;
+
+}
+
+.netgate-card h1{
+
+    color:#1e3a8a;
+
+    font-size:24px;
+
+    line-height:1.3;
+
+    margin-bottom:14px;
+
+}
+
+.netgate-body{
+
+    color:#666;
+
+    font-size:15px;
+
+    line-height:1.6;
+
+    margin-bottom:28px;
+
+}
+
+.netgate-actions{
+
+    display:flex;
+    flex-direction:column;
+
+    gap:12px;
+
+}
+
+.netgate-btn{
+
+    width:100%;
+
+    padding:14px;
+
+    border:none;
+    border-radius:10px;
+
+    font-size:16px;
+    font-weight:600;
+
+    cursor:pointer;
+
+}
+
+.netgate-btn-primary{
+
+    background:#1e3a8a;
+    color:#ffffff;
+
+}
+
+.netgate-btn-secondary{
+
+    background:#f1f5f9;
+    color:#334155;
+
+}
+
+/* Touch devices keep :hover styles stuck after a tap, so gate them. */
+@media (hover:hover){
+
+    .netgate-btn-primary:hover{
+        background:#1e40af;
+    }
+
+    .netgate-btn-secondary:hover{
+        background:#e2e8f0;
+    }
+
+}
+
+.netgate-server{
+
+    margin-top:24px;
+
+    color:#94a3b8;
+
+    font-size:12px;
+
+    word-break:break-all;
+
+}
+
+.netgate-checking{
+
+    color:#666;
+
+    font-size:15px;
+
+}
+
+.srvcfg-input{
+
+    width:100%;
+
+    margin:6px 0 4px;
+
+    padding:14px;
+
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+
+    font-size:18px;
+    text-align:center;
+
+    font-family:'Consolas',monospace;
+
+}
+
+.srvcfg-input:focus{
+    outline:none;
+    border-color:#1e3a8a;
+}
+
+.srvcfg-error{
+
+    color:#dc2626;
+
+    font-size:13px;
+
+    margin-bottom:12px;
+
+}
+
+.netgate-link{
+
+    margin-top:16px;
+
+    background:none;
+    border:none;
+
+    color:#1e3a8a;
+
+    font-size:14px;
+    font-weight:600;
+
+    text-decoration:underline;
+
+    cursor:pointer;
+
+}
+
+.netgate-spinner{
+
+    width:38px;
+    height:38px;
+
+    margin:0 auto 18px;
+
+    border:3px solid #e2e8f0;
+    border-top-color:#1e3a8a;
+    border-radius:50%;
+
+    animation:netgate-spin .8s linear infinite;
+
+}
+
+@keyframes netgate-spin{
+    to{ transform:rotate(360deg); }
+}

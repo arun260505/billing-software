@@ -17,6 +17,7 @@ import TableBillModal from "../../components/Cashier/TableBillModal";
 import MenuAvailability from "../../components/Cashier/MenuAvailability";
 import BillsHistory from "../../components/Cashier/BillsHistory";
 import BillEditModal from "../../components/Cashier/BillEditModal";
+import ServerIP from "../../components/Cashier/ServerIP";
 import billingFormatService from "../../services/billingFormatService";
 import { printBill, DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
 
@@ -775,6 +776,12 @@ function Dashboard() {
                     >
                         🧾 Bills
                     </button>
+                    <button
+                        className={`pos-nav-item${activeView === "serverip" ? " active" : ""}`}
+                        onClick={() => { setActiveView("serverip"); setSidebarOpen(false); }}
+                    >
+                        📡 Server IP
+                    </button>
                 </nav>
             </aside>
 
@@ -807,6 +814,7 @@ function Dashboard() {
             </header>
 
             {activeView === "menu" ? <MenuAvailability /> :
+             activeView === "serverip" ? <ServerIP /> :
              activeView === "bills" ? <BillsHistory onOpenBill={openBillForEdit} /> : (
             <>
             {/* ══ TABLE BAR ══ */}
