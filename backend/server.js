@@ -7,6 +7,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const kitchenRoutes = require("./routes/kitchenRoutes");
 
+
 const app = express();
 // Behind nginx: trust the first proxy so req.ip is the real client, not nginx.
 app.set("trust proxy", 1);
@@ -22,6 +23,8 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const authRoutes = require("./routes/authRoutes");
 const errorHandler = require("./middleware/errorHandler");
+const authMiddleware = require("./middleware/authMiddleware");
+const roleMiddleware = require("./middleware/roleMiddleware");
 /*
 |--------------------------------------------------------------------------
 | Database Connection
@@ -102,6 +105,41 @@ db.query(`
 `, (err) => {
     if (err) console.error("Bill formats table migration error:", err.message);
     else console.log("Bill formats table ready.");
+});
+
+db.query(`
+    CREATE TABLE IF NOT EXISTS kitchen_formats (
+        id                   INT AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id        INT NOT NULL UNIQUE,
+        paper_size           VARCHAR(20) DEFAULT 'thermal',
+        show_logo            TINYINT(1) DEFAULT 0,
+        show_restaurant_name TINYINT(1) DEFAULT 1,
+        show_address         TINYINT(1) DEFAULT 0,
+        show_phone           TINYINT(1) DEFAULT 0,
+        show_order_number    TINYINT(1) DEFAULT 1,
+        show_date            TINYINT(1) DEFAULT 1,
+        show_time            TINYINT(1) DEFAULT 1,
+        show_order_type      TINYINT(1) DEFAULT 1,
+        show_table_name      TINYINT(1) DEFAULT 1,
+        show_customer_name   TINYINT(1) DEFAULT 0,
+        show_waiter_name     TINYINT(1) DEFAULT 1,
+        show_cashier_name    TINYINT(1) DEFAULT 0,
+        show_item_qty        TINYINT(1) DEFAULT 1,
+        show_item_name       TINYINT(1) DEFAULT 1,
+        show_item_notes      TINYINT(1) DEFAULT 1,
+        show_item_category   TINYINT(1) DEFAULT 0,
+        header_title         VARCHAR(100) DEFAULT 'KITCHEN ORDER TICKET',
+        footer_text          VARCHAR(255) DEFAULT 'Please prepare carefully.',
+        created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_kitchen_format_restaurant
+            FOREIGN KEY (restaurant_id)
+            REFERENCES restaurants(id)
+            ON DELETE CASCADE
+    )
+`, (err) => {
+    if (err) console.error("Kitchen formats table migration error:", err.message);
+    else console.log("Kitchen formats table ready.");
 });
 
 db.query(`
@@ -214,6 +252,7 @@ const menuRoutes = require("./routes/menuRoutes");
 const chargeRoutes = require("./routes/chargeRoutes");
 const billingFormatRoutes = require("./routes/billingFormatRoutes");
 const systemRoutes = require("./routes/systemRoutes");
+const kitchenFormatRoutes = require("./routes/kitchenFormatRoutes");
 
 
 
@@ -252,6 +291,7 @@ app.use("/api/menu", menuRoutes);
 app.use("/api/charges", chargeRoutes);
 app.use("/api/billing", billingFormatRoutes);
 app.use("/api/system", systemRoutes);
+app.use("/api/kitchen-format", kitchenFormatRoutes);
 /*
 |--------------------------------------------------------------------------
 | Test Route

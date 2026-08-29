@@ -487,3 +487,57 @@
 .cashier-app .bill-charges-total { font-weight: 700; color: #0d9488; padding-top: 6px; border-top: 1px dashed #e2e8f0; margin-top: 4px; }
 .cashier-app .tbill-charge-row { padding-left: 12px; border-left: 3px solid #ccfbf1; }
 .cashier-app .tbill-charges-total { font-weight: 700; color: #0d9488; padding-top: 6px; border-top: 1px dashed #e2e8f0; margin-top: 4px; }
+
+/* ── Network presence panel (top bar) ──────────────────────────────────
+   Shows the cashier machine's local IP so waiters know what to enter.
+   Sits between .pos-stats and .pos-topactions in the header.
+   ──────────────────────────────────────────────────────────────────── */
+.cashier-app .pos-network-panel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 5px 12px;
+    flex-shrink: 0;
+}
+
+.cashier-app .pos-network-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #64748b;
+}
+
+.cashier-app .pos-network-ip {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f1f5f9;
+    font-family: 'Courier New', Courier, monospace;
+    letter-spacing: .02em;
+}
+
+.cashier-app .pos-network-badge {
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 2px 8px;
+}
+.cashier-app .pos-network-online {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.cashier-app .pos-network-offline {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.cashier-app .pos-network-hint {
+    font-size: 10px;
+    color: #475569;
+    font-family: 'Courier New', Courier, monospace;
+}
+

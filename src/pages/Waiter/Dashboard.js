@@ -9,6 +9,8 @@ import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
 import CartSheet from "../../components/Waiter/CartSheet";
 import BillModal from "../../components/Waiter/BillModal";
+import kitchenFormatService from "../../services/kitchenFormatService";
+import { printKitchenTicket, DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
 
 function Dashboard() {
     // ── Existing state (unchanged) ──────────────────────────────────
@@ -32,6 +34,9 @@ function Dashboard() {
     const [waiterName] = useState("John");
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
+    const [kitchenFormat, setKitchenFormat] = useState(DEFAULT_KITCHEN_FORMAT);
+    const [restaurantInfo, setRestaurantInfo] = useState(null);
+    const [orderBusy, setOrderBusy] = useState(false);
 
     // ── UI-only state (no business logic) ──────────────────────────
     const [tableFilter, setTableFilter] = useState("all");
@@ -44,6 +49,18 @@ function Dashboard() {
         setCurrentTime(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
     }
 
+    const loadKitchenFormat = async () => {
+        try {
+            const res = await kitchenFormatService.getKitchenFormat();
+            if (res.data?.success && res.data?.data) {
+                if (res.data.data.format) setKitchenFormat(res.data.data.format);
+                if (res.data.data.restaurant) setRestaurantInfo(res.data.data.restaurant);
+            }
+        } catch (e) {
+            console.error("Failed to load kitchen format in waiter:", e);
+        }
+    };
+
     useEffect(() => {
         updateDateTime();
         loadTables();
@@ -51,6 +68,7 @@ function Dashboard() {
         loadCategories();
         loadAllItems();
         loadTodaysOrderCount();
+        loadKitchenFormat();
 
         const statsTimer = setInterval(() => {
             loadTables();
@@ -69,6 +87,7 @@ function Dashboard() {
             clearInterval(statsTimer);
             window.removeEventListener("focus", refreshOnFocus);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -412,8 +431,11 @@ function Dashboard() {
     };
 
     const placeOrder = async () => {
+        if (orderBusy) return;
         if (cart.length === 0) { alert("Please add items."); return; }
         if (!selectedTable) { alert("Please select a table first."); return; }
+
+        setOrderBusy(true);
         // Merge lines that share the same item AND the same note; different notes
         // stay as separate order-items (e.g. juice "no ice" vs juice "with ice").
         const mergedItems = Object.values(
@@ -429,15 +451,21 @@ function Dashboard() {
             order_number: `ORD-${Date.now()}`,
             waiter_id: 1,
             table_id: selectedTable?.id || null,
+            order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
             items: mergedItems,
         };
         try {
+            let assignedOrderNumber = orderData.order_number;
             if (editingOrder) {
                 await updateOrder(editingOrder.id, orderData);
+                assignedOrderNumber = editingOrder.order_number;
                 alert("Order Updated Successfully");
                 setEditingOrder(null);
             } else {
-                await createOrder(orderData);
+                const res = await createOrder(orderData);
+                if (res.data?.data?.order_number) {
+                    assignedOrderNumber = res.data.data.order_number;
+                }
                 if (selectedTable && selectedTable.id) {
                     // Keep an already-billed table tagged "Billed" (the cashier
                     // hasn't settled it yet); otherwise mark it Occupied.
@@ -448,6 +476,24 @@ function Dashboard() {
                 }
                 alert(selectedTable?.isParcel ? "Parcel Order Sent To Kitchen" : "Order Sent To Kitchen");
             }
+
+            // Print KOT to kitchen printer
+            printKitchenTicket({
+                order: {
+                    order_number: assignedOrderNumber,
+                    order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
+                    isParcel: Boolean(selectedTable?.isParcel),
+                    tableName: selectedTable?.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`,
+                    table_number: selectedTable?.table_number,
+                    items: mergedItems,
+                    waiter_name: waiterName,
+                    date: currentDate,
+                    time: currentTime
+                },
+                restaurant: restaurantInfo || {},
+                format: kitchenFormat || {}
+            });
+
             setCart([]);
             setShowCart(false);
             setSelectedTable(null);
@@ -460,6 +506,8 @@ function Dashboard() {
         } catch (error) {
             console.error("Order Error:", error);
             alert(error.response?.data?.message || "Failed to place order.");
+        } finally {
+            setOrderBusy(false);
         }
     };
 
@@ -775,6 +823,7 @@ function Dashboard() {
                     tableLabel={selectedTable.isParcel ? "Parcel" : `Table ${selectedTable.table_number}`}
                     items={cart}
                     editing={!!editingOrder}
+                    busy={orderBusy}
                     increaseQuantity={increaseQuantity}
                     decreaseQuantity={decreaseQuantity}
                     removeItem={removeItem}

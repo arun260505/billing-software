@@ -1,4 +1,6 @@
 import React from "react";
+import ReactDOM from "react-dom";
+
 import "../../styles/Admin/DeleteModal.css";
 
 function DeleteModal({
@@ -11,35 +13,35 @@ function DeleteModal({
 
     if (!open) return null;
 
-    return (
+    return ReactDOM.createPortal(
 
-        <div className="delete-overlay">
+        <div className="confirm-delete-overlay">
 
-            <div className="delete-modal">
+            <div className="confirm-delete-modal">
 
-                <div className="delete-header">
+                <div className="confirm-delete-header">
 
                     <h2>{title}</h2>
 
                 </div>
 
-                <div className="delete-body">
+                <div className="confirm-delete-body">
 
                     <p>{message}</p>
 
                 </div>
 
-                <div className="delete-footer">
+                <div className="confirm-delete-footer">
 
                     <button
-                        className="cancel-btn"
+                        className="confirm-cancel-btn"
                         onClick={onCancel}
                     >
                         Cancel
                     </button>
 
                     <button
-                        className="delete-btn"
+                        className="confirm-delete-btn"
                         onClick={onDelete}
                     >
                         Delete
@@ -49,7 +51,9 @@ function DeleteModal({
 
             </div>
 
-        </div>
+        </div>,
+
+        document.body
 
     );
 

@@ -1,0 +1,54 @@
+/* ==========================================================================
+   Connection Status
+   ========================================================================== */
+
+.ad-conn{
+    display:flex;
+    flex-direction:column;
+}
+
+.ad-conn-list{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+}
+
+.ad-conn-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:10px 6px;
+    border-bottom:1px solid #F1F5F9;
+}
+
+.ad-conn-row:last-child{
+    border-bottom:none;
+}
+
+.ad-conn-left{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.ad-conn-label{
+    color:#475569;
+    font-size:13.5px;
+    font-weight:600;
+}
+
+.ad-conn-state{
+    font-size:12.5px;
+    font-weight:600;
+    white-space:nowrap;
+    text-align:right;
+}
+
+.ad-conn-state.ok{ color:#16A34A; }
+.ad-conn-state.down{ color:#EF4444; }
+
+.ad-conn-retry{
+    width:100%;
+    margin-top:12px;
+}

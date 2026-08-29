@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import AdminLayout from "../../layouts/AdminLayout";
 import AddTableModal from "../../components/Admin/Tables/AddTableModal";
+import EditTableModal from "../../components/Admin/Tables/EditTableModal";
+import DeleteModal from "../../components/Admin/DeleteModal";
 
 import TableStats from "../../components/Admin/Tables/TableStats";
 import TableToolbar from "../../components/Admin/Tables/TableToolbar";
@@ -21,6 +23,10 @@ const Tables = () => {
 
     const [view, setView] = useState("grid");
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingTable, setEditingTable] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletingTable, setDeletingTable] = useState(null);
 
     useEffect(() => {
 
@@ -105,6 +111,63 @@ const handleSaveTable = async (data) => {
     }
 
 };
+const handleEditTable = (table) => {
+
+    setEditingTable(table);
+    setShowEditModal(true);
+
+};
+
+const handleUpdateTable = async (data) => {
+
+    try {
+
+        await tableService.updateTable(editingTable.id, data);
+
+        setShowEditModal(false);
+        setEditingTable(null);
+
+        loadTables();
+        loadStats();
+
+    } catch (error) {
+
+        console.error(error);
+        alert("Failed to update table.");
+
+    }
+
+};
+
+const handleDeleteTable = (table) => {
+
+    setDeletingTable(table);
+    setShowDeleteModal(true);
+
+};
+
+const handleConfirmDelete = async () => {
+
+    if (!deletingTable) return;
+
+    try {
+
+        await tableService.deleteTable(deletingTable.id);
+
+        setShowDeleteModal(false);
+        setDeletingTable(null);
+
+        loadTables();
+        loadStats();
+
+    } catch (error) {
+
+        console.error(error);
+        alert("Failed to delete table.");
+
+    }
+
+};
     return (
 
         <AdminLayout>
@@ -140,6 +203,8 @@ const handleSaveTable = async (data) => {
         <TableGrid
             tables={filteredTables}
             view={view}
+            onEdit={handleEditTable}
+            onDelete={handleDeleteTable}
         />
 
     </div>
@@ -147,6 +212,25 @@ const handleSaveTable = async (data) => {
     isOpen={showAddModal}
     onClose={() => setShowAddModal(false)}
     onSave={handleSaveTable}
+/>
+    {showEditModal && editingTable && (
+    <EditTableModal
+    table={editingTable}
+    onClose={() => setShowEditModal(false)}
+    onSave={handleUpdateTable}
+/>
+    )}
+
+    <DeleteModal
+    open={showDeleteModal}
+    title="Delete Table"
+    message={
+        deletingTable
+            ? `Are you sure you want to delete ${deletingTable.table_name}? This cannot be undone.`
+            : ""
+    }
+    onCancel={() => setShowDeleteModal(false)}
+    onDelete={handleConfirmDelete}
 />
 
 </AdminLayout>

@@ -1,60 +1,88 @@
-.notification-card{
-    background:#fff;
-    border-radius:12px;
-    padding:20px;
-    box-shadow:0 4px 12px rgba(0,0,0,.08);
-}
+/* ==========================================================================
+   Notifications panel
+   ========================================================================== */
 
-.notification-header{
+.ad-notif{
     display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:20px;
+    flex-direction:column;
 }
 
-.notification-header span{
-    background:#EF4444;
+.ad-notif-count{
+    min-width:26px;
+    height:26px;
+    padding:0 8px;
+    border-radius:999px;
+    background:#2563EB;
     color:#fff;
-    width:25px;
-    height:25px;
-    border-radius:50%;
+    font-size:12.5px;
+    font-weight:700;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:12px;
 }
 
-.notification-item{
+.ad-notif-list{
     display:flex;
-    margin-bottom:18px;
+    flex-direction:column;
+    gap:8px;
 }
 
-.notification-dot{
-    width:12px;
-    height:12px;
-    border-radius:50%;
-    margin-right:15px;
-    margin-top:6px;
+.ad-notif-item{
+    display:flex;
+    align-items:flex-start;
+    gap:11px;
+    padding:11px 12px;
+    border-radius:11px;
+    background:#F8FAFC;
+    border-left:3px solid #CBD5E1;
 }
 
-.notification-dot.order{
-    background:#2563EB;
+.ad-notif-item.sev-info{
+    border-left-color:#3B82F6;
+    background:#F8FAFF;
 }
 
-.notification-dot.stock{
-    background:#F59E0B;
+.ad-notif-item.sev-warning{
+    border-left-color:#F59E0B;
+    background:#FFFBF5;
 }
 
-.notification-dot.subscription{
-    background:#EF4444;
+.ad-notif-item.sev-danger{
+    border-left-color:#EF4444;
+    background:#FFF8F8;
 }
 
-.notification-content p{
-    margin:0;
+.ad-notif-icon{
+    flex:0 0 auto;
+    width:32px;
+    height:32px;
+    border-radius:9px;
+    background:#EFF6FF;
+    color:#2563EB;
+    display:flex;
+    align-items:center;
+    justify-content:center;
     font-size:14px;
-    color:#0F172A;
 }
 
-.notification-content small{
-    color:#64748B;
+.ad-notif-item.sev-warning .ad-notif-icon{
+    background:#FEF3C7;
+    color:#B45309;
+}
+
+.ad-notif-item.sev-danger .ad-notif-icon{
+    background:#FEE2E2;
+    color:#B91C1C;
+}
+
+.ad-notif-body p{
+    margin:0 0 2px;
+    color:#1E293B;
+    font-size:13px;
+    line-height:1.4;
+}
+
+.ad-notif-body small{
+    color:#94A3B8;
+    font-size:11.5px;
 }

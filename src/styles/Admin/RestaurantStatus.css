@@ -1,0 +1,95 @@
+/* ==========================================================================
+   Restaurant Status
+   ========================================================================== */
+
+.ad-status-rows{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+
+.ad-status-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:11px 6px;
+    border-bottom:1px solid #F1F5F9;
+}
+
+.ad-status-row:last-child{
+    border-bottom:none;
+}
+
+.ad-status-left{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    min-width:0;
+}
+
+.ad-status-icon{
+    flex:0 0 auto;
+    width:32px;
+    height:32px;
+    border-radius:9px;
+    background:#EFF6FF;
+    color:#2563EB;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+}
+
+.ad-status-label{
+    color:#475569;
+    font-size:13.5px;
+    font-weight:600;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.ad-status-value{
+    font-size:14px;
+    font-weight:600;
+    white-space:nowrap;
+}
+
+.ad-status-value.tone-good{ color:#16A34A; }
+.ad-status-value.tone-info{ color:#2563EB; }
+.ad-status-value.tone-warn{ color:#F59E0B; }
+
+/* Open / Closed pill */
+.ad-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    padding:4px 12px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+}
+
+.ad-pill .ad-dot{
+    width:7px;
+    height:7px;
+}
+
+.ad-pill-success{
+    background:#ECFDF5;
+    color:#047857;
+}
+
+.ad-pill-success .ad-dot{
+    background:#16A34A;
+}
+
+.ad-pill-danger{
+    background:#FEF2F2;
+    color:#B91C1C;
+}
+
+.ad-pill-danger .ad-dot{
+    background:#EF4444;
+}

@@ -16,6 +16,7 @@ function Sidebar({ isOpen }) {
     { name: "Orders", path: "/admin/orders" },
     { name: "Charges & Settings", path: "/admin/charges" },
     { name: "Billing", path: "/admin/billing" },
+    { name: "Kitchen Template", path: "/admin/kitchen-template" },
     { name: "Reports", path: "/admin/reports" },
     { name: "Settings", path: "/admin/settings" }
   ];

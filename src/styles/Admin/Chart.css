@@ -1,38 +1,78 @@
-.chart-card{
-    background:#fff;
-    border-radius:12px;
-    padding:20px;
-    box-shadow:0 4px 12px rgba(0,0,0,.08);
-    margin-bottom:25px;
-}
+/* ==========================================================================
+   Sales Overview chart
+   ========================================================================== */
 
-.chart-header{
+.ad-chart{
     display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:20px;
+    flex-direction:column;
 }
 
-.chart-header h3{
-    margin:0;
+.ad-chart-body{
+    flex:1;
+    min-height:300px;
+    display:flex;
+    align-items:center;
+}
+
+.ad-chart-loading{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+/* ── Period switcher ───────────────────────────────────────── */
+
+.ad-period-switch{
+    display:flex;
+    gap:4px;
+    background:#F1F5F9;
+    padding:4px;
+    border-radius:10px;
+}
+
+.ad-period-switch button{
+    border:none;
+    background:transparent;
+    color:#64748B;
+    font-size:13px;
+    font-weight:600;
+    padding:7px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:background .15s,color .15s,box-shadow .15s;
+    font-family:inherit;
+    white-space:nowrap;
+}
+
+.ad-period-switch button:hover{
     color:#0F172A;
 }
 
-.chart-header select{
-    padding:8px 12px;
-    border:1px solid #ddd;
-    border-radius:6px;
-    outline:none;
+.ad-period-switch button.active{
+    background:#fff;
+    color:#2563EB;
+    box-shadow:0 1px 4px rgba(15,23,42,.12);
 }
 
-.chart-placeholder{
-    height:300px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background:#F8FAFC;
-    border:2px dashed #CBD5E1;
+/* ── Tooltip ───────────────────────────────────────────────── */
+
+.ad-chart-tip{
+    background:#0F172A;
+    color:#fff;
     border-radius:10px;
-    color:#64748B;
-    font-size:18px;
+    padding:8px 12px;
+    box-shadow:0 8px 24px rgba(15,23,42,.25);
+    font-size:12px;
+}
+
+.ad-chart-tip-label{
+    color:#94A3B8;
+    margin-bottom:2px;
+}
+
+.ad-chart-tip-value{
+    color:#fff;
+    font-weight:700;
+    font-size:14px;
 }
