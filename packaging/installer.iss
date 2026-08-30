@@ -16,10 +16,16 @@
 [Setup]
 AppName={#AppName}
 AppVersion={#AppVer}
-DefaultDirName={autopf}\InWallz
+; Install to a no-spaces path so MySQL/NSSM never mis-parse the datadir, and it
+; works regardless of whether 8.3 short names are enabled on the machine.
+DefaultDirName={sd}\InWallz
 DefaultGroupName=InWallz
 DisableProgramGroupPage=yes
+DisableDirPage=yes
 PrivilegesRequired=admin
+; Bundled MySQL/Node are 64-bit — only install on 64-bit Windows.
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 OutputBaseFilename=InWallzSetup
 Compression=lzma2
 SolidCompression=yes
