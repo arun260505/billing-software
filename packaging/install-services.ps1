@@ -66,7 +66,9 @@ $baseShort = $fso.GetFolder($mysqlBd).ShortPath
 
 Say "Registering InWallzMySQL service"
 & $nssm install InWallzMySQL $mysqld
-& $nssm set InWallzMySQL AppParameters "--datadir=$dataShort --basedir=$baseShort --port=3306"
+# bind-address=0.0.0.0 so the backend can reach MySQL over IPv4 loopback
+# (mysqld otherwise binds '::' / IPv6, and the backend's 127.0.0.1 times out).
+& $nssm set InWallzMySQL AppParameters "--datadir=$dataShort --basedir=$baseShort --port=3306 --bind-address=0.0.0.0"
 & $nssm set InWallzMySQL Start SERVICE_AUTO_START
 & $nssm set InWallzMySQL AppStdout (Join-Path $logs "mysql.log")
 & $nssm set InWallzMySQL AppStderr (Join-Path $logs "mysql.log")
