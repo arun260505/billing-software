@@ -11,7 +11,9 @@ param(
     [int]$Port = 5000
 )
 
-$ErrorActionPreference = "Stop"
+# Native tools (nssm, mysql) write harmless notices to stderr; under "Stop" those
+# abort the script. Use "Continue" and validate the critical steps explicitly.
+$ErrorActionPreference = "Continue"
 function Say($m) { Write-Host ("== " + $m + " ==") -ForegroundColor Cyan }
 
 $nssm    = Join-Path $InstallDir "nssm.exe"
@@ -33,11 +35,12 @@ if (Test-Path $vc) {
     Start-Process $vc -ArgumentList "/install", "/quiet", "/norestart" -Wait
 }
 
-# 0b) Clean any previous (possibly paused/failed) services.
+# 0b) Clean any previous (possibly paused/failed) services. These fail loudly
+# when the service doesn't exist yet - expected, so swallow it.
 Say "Removing any previous InWallz services"
 foreach ($svc in "InWallzServer", "InWallzMySQL") {
-    & $nssm stop $svc 2>$null | Out-Null
-    & $nssm remove $svc confirm 2>$null | Out-Null
+    try { & $nssm stop $svc 2>&1 | Out-Null } catch {}
+    try { & $nssm remove $svc confirm 2>&1 | Out-Null } catch {}
 }
 Start-Sleep -Seconds 2
 
@@ -111,5 +114,10 @@ Say "Registering InWallzServer service"
 Say "Opening firewall port $Port (Private)"
 netsh advfirewall firewall delete rule name="InWallz $Port" 2>$null | Out-Null
 netsh advfirewall firewall add rule name="InWallz $Port" dir=in action=allow protocol=TCP localport=$Port profile=private | Out-Null
+
+Start-Sleep -Seconds 3
+Say "Service status"
+Get-Service InWallzMySQL, InWallzServer -ErrorAction SilentlyContinue |
+    Format-Table Name, Status, StartType -AutoSize
 
 Say "Done. Till at http://localhost:$Port . Logs in $logs"
