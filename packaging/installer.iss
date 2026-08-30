@@ -29,9 +29,11 @@ WizardStyle=modern
 Source: "staging\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
 [Icons]
-; Kiosk shortcut: open the till full-screen in the default browser.
+; Till shortcut: fullscreen but ESCAPABLE — Alt+F4 closes, the Windows key shows
+; the taskbar, F11 toggles. (For a locked-down production kiosk, swap
+; --start-fullscreen for: --kiosk --edge-kiosk-type=fullscreen)
 Name: "{commondesktop}\InWallz Till"; Filename: "{cmd}"; \
-  Parameters: "/c start msedge --kiosk http://localhost:5000 --edge-kiosk-type=fullscreen"; \
+  Parameters: "/c start msedge --start-fullscreen http://localhost:5000"; \
   IconFilename: "{app}\app\build\favicon.ico"
 
 [Code]
