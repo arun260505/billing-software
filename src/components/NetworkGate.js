@@ -6,7 +6,8 @@ import {
     exitApp,
     currentApiBase
 } from "../services/networkGuard";
-import { clearStoredServer } from "../services/serverConfig";
+import { clearStoredServer, setManualMode } from "../services/serverConfig";
+import { discoverAndStoreTill } from "../services/discovery";
 
 import "../styles/NetworkGate.css";
 
@@ -20,16 +21,25 @@ import "../styles/NetworkGate.css";
  */
 function NetworkGate({ children }) {
 
-    // "checking" | "online" | "offline"
+    // "checking" | "searching" | "online" | "offline"
     const [status, setStatus] = useState("checking");
 
     const runCheck = useCallback(async () => {
 
         setStatus("checking");
 
-        const reachable = await isServerReachable();
+        // 1) Do we already know the till (remembered from a prior launch)?
+        if (await isServerReachable()) {
+            setStatus("online");
+            return;
+        }
 
-        setStatus(reachable ? "online" : "offline");
+        // 2) Not known / moved (DHCP) / different network: auto-scan this WiFi.
+        //    Finds the till by itself — the waiter never types an IP. On a
+        //    different network nothing answers and we fall through to offline.
+        setStatus("searching");
+        const found = await discoverAndStoreTill();
+        setStatus(found ? "online" : "offline");
 
     }, []);
 
@@ -66,13 +76,17 @@ function NetworkGate({ children }) {
         return children;
     }
 
-    if (status === "checking") {
+    if (status === "checking" || status === "searching") {
+
+        const message = status === "searching"
+            ? "Searching for the restaurant server on this WiFi…"
+            : "Connecting to restaurant server…";
 
         return (
             <div className="netgate-page">
                 <div className="netgate-card">
                     <div className="netgate-spinner" />
-                    <p className="netgate-checking">Connecting to restaurant server…</p>
+                    <p className="netgate-checking">{message}</p>
                 </div>
             </div>
         );
@@ -115,15 +129,19 @@ function NetworkGate({ children }) {
 
                 </div>
 
-                {/* Escape hatch: if the server IP is simply wrong, let them
-                    re-enter it instead of reinstalling the app. */}
+                {/* Escape hatch for an unusual network the scan can't cover:
+                    let a manager type the address instead of reinstalling. */}
                 {isNativeApp() && (
                     <button
                         type="button"
                         className="netgate-link"
-                        onClick={() => { clearStoredServer(); window.location.reload(); }}
+                        onClick={() => {
+                            setManualMode(true);
+                            clearStoredServer();
+                            window.location.reload();
+                        }}
                     >
-                        Change server address
+                        Enter server manually
                     </button>
                 )}
 

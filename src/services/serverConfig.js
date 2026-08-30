@@ -41,6 +41,29 @@ export function clearStoredServer() {
     }
 }
 
+// Manual-entry escape hatch. By default the waiter app auto-discovers the till
+// on the WiFi (no IP typing); this flag is set only when the user taps
+// "Enter server manually" on the offline screen, to force the ServerConfig
+// screen for an unusual network the scan could not cover.
+const MANUAL_KEY = "inwallz_manual_server";
+
+export function isManualMode() {
+    try {
+        return localStorage.getItem(MANUAL_KEY) === "1";
+    } catch {
+        return false;
+    }
+}
+
+export function setManualMode(on) {
+    try {
+        if (on) localStorage.setItem(MANUAL_KEY, "1");
+        else localStorage.removeItem(MANUAL_KEY);
+    } catch {
+        /* ignore */
+    }
+}
+
 // "192.168.0.50" -> "http://192.168.0.50:5000/api"
 // "192.168.0.50:8080" -> "http://192.168.0.50:8080/api"
 function authorityToBase(host) {
