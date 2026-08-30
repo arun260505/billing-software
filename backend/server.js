@@ -95,6 +95,20 @@ db.query(`
     if (err) console.error("sync_state table migration error:", err.message);
 });
 
+// Local side: this machine's activation state (restaurant identity + sync key
+// obtained from the cloud on first run). Single row (id = 1).
+db.query(`
+    CREATE TABLE IF NOT EXISTS activation (
+        id              TINYINT PRIMARY KEY,
+        machine_id      VARCHAR(128) DEFAULT NULL,
+        restaurant_uuid CHAR(36) DEFAULT NULL,
+        sync_key        VARCHAR(80) DEFAULT NULL,
+        activated_at    TIMESTAMP NULL DEFAULT NULL
+    )
+`, (err) => {
+    if (err) console.error("activation table migration error:", err.message);
+});
+
 // Cloud side: per-restaurant activation key + machine sync credential.
 db.query(`
     CREATE TABLE IF NOT EXISTS restaurant_activations (

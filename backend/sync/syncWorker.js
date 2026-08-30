@@ -7,13 +7,21 @@ const {
     markSynced
 } = require("./syncEngine");
 const cfg = require("./syncConfig");
+const localActivation = require("./localActivation");
 
 let lastSyncAt = null;
 let lastError = null;
 let restaurantUuid = null;
+let activeSyncKey = cfg.syncKey; // overridden by the activated key at startup
 
 async function getRestaurantUuid() {
     if (restaurantUuid) return restaurantUuid;
+    // Prefer the identity from activation; fall back to the local restaurants row.
+    const stored = await localActivation.getStored();
+    if (stored && stored.restaurant_uuid) {
+        restaurantUuid = stored.restaurant_uuid;
+        return restaurantUuid;
+    }
     const [[r]] = await db.query("SELECT uuid FROM restaurants ORDER BY id LIMIT 1");
     restaurantUuid = r ? r.uuid : null;
     return restaurantUuid;
@@ -52,7 +60,7 @@ function toDbDate(v) {
 async function apiPost(path, body) {
     const resp = await fetch(cfg.cloudUrl + path, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-sync-key": cfg.syncKey },
+        headers: { "Content-Type": "application/json", "x-sync-key": activeSyncKey },
         body: JSON.stringify(body)
     });
     return resp.json();
@@ -61,7 +69,7 @@ async function apiPost(path, body) {
 async function apiGet(path, params) {
     const qs = new URLSearchParams(params).toString();
     const resp = await fetch(`${cfg.cloudUrl}${path}?${qs}`, {
-        headers: { "x-sync-key": cfg.syncKey }
+        headers: { "x-sync-key": activeSyncKey }
     });
     return resp.json();
 }
@@ -119,12 +127,31 @@ async function cycle() {
     }
 }
 
-function start() {
+async function start() {
     if (!cfg.isLocal) return;
-    if (!cfg.cloudUrl || !cfg.syncKey) {
-        console.warn("Sync worker not started: CLOUD_SYNC_URL / SYNC_KEY missing.");
+    if (!cfg.cloudUrl) {
+        console.warn("Sync worker not started: CLOUD_SYNC_URL missing.");
         return;
     }
+
+    // First run: activate this machine, which yields the restaurant identity and
+    // the machine sync key. Then the first cycle's pull (empty cursors) brings
+    // the whole catalog down.
+    try {
+        const act = await localActivation.ensureActivated();
+        if (act && act.sync_key) {
+            activeSyncKey = act.sync_key;
+            restaurantUuid = act.restaurant_uuid;
+        }
+    } catch (e) {
+        console.error("Activation error (will retry on next boot):", e.message);
+    }
+
+    if (!activeSyncKey) {
+        console.warn("Sync worker idle: not activated and no dev SYNC_KEY set.");
+        return;
+    }
+
     console.log(`🔁 Sync worker started (every ${cfg.intervalMs / 1000}s -> ${cfg.cloudUrl})`);
     cycle();
     setInterval(cycle, cfg.intervalMs);
