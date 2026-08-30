@@ -32,6 +32,16 @@ const roleMiddleware = require("./middleware/roleMiddleware");
 */
 
 const db = require("./config/db");
+const { runSyncSchema } = require("./migrations/syncColumns");
+
+// Add the sync columns (uuid / deleted_at / synced_at / updated_at) after the
+// inline table migrations below have had a moment to create their tables.
+// Idempotent and self-skipping, so the exact delay is not critical.
+setTimeout(() => {
+    runSyncSchema().catch((err) =>
+        console.error("Sync schema migration error:", err.message)
+    );
+}, 4000);
 
 db.query(`
     CREATE TABLE IF NOT EXISTS charges (
