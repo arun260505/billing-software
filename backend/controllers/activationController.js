@@ -1,20 +1,5 @@
-const crypto = require("crypto");
 const db = require("../config/db").promise();
-
-// Human-typable activation key, e.g. INWZ-4K2P-9XQR.
-function genActivationKey() {
-    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I,O,0,1
-    const block = () =>
-        Array.from({ length: 4 }, () =>
-            alphabet[crypto.randomInt(alphabet.length)]
-        ).join("");
-    return `INWZ-${block()}-${block()}`;
-}
-
-// Long random machine credential used on the sync channel (x-sync-key).
-function genSyncKey() {
-    return crypto.randomBytes(32).toString("hex");
-}
+const { ensureActivationRecord } = require("../utils/activationKeys");
 
 // POST /api/activate/generate  (super_admin)  { restaurant_id }
 // Creates (or returns the existing) activation key for a restaurant.
@@ -32,27 +17,17 @@ exports.generate = async (req, res) => {
             return res.status(404).json({ success: false, message: "Restaurant not found." });
         }
 
-        const [[existing]] = await db.query(
-            "SELECT activation_key, activated_at FROM restaurant_activations WHERE restaurant_id = ? LIMIT 1",
+        const activationKey = await ensureActivationRecord(db, rid);
+        const [[a]] = await db.query(
+            "SELECT activated_at FROM restaurant_activations WHERE restaurant_id = ? LIMIT 1",
             [rid]
         );
-
-        let activationKey;
-        if (existing) {
-            activationKey = existing.activation_key;
-        } else {
-            activationKey = genActivationKey();
-            await db.query(
-                "INSERT INTO restaurant_activations (restaurant_id, activation_key, sync_key) VALUES (?, ?, ?)",
-                [rid, activationKey, genSyncKey()]
-            );
-        }
 
         res.json({
             success: true,
             restaurant: r.restaurant_name,
             activation_key: activationKey,
-            activated: Boolean(existing && existing.activated_at)
+            activated: Boolean(a && a.activated_at)
         });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });

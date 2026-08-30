@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
+const { ensureActivationRecord } = require("../utils/activationKeys");
 
 // Creating an admin also creates that admin's restaurant and links them, so
 // the admin is a proper tenant and can manage employees/menu/tables/etc.
@@ -73,15 +74,25 @@ const createAdmin = async (req, res) => {
 
                                 [restaurantId, username, hashedPassword, fullName, mobile],
 
-                                (err) => {
+                                async (err) => {
 
                                     if (err) {
                                         return res.status(500).json({ success: false, message: err.message });
                                     }
 
+                                    // Auto-issue an activation key for the new
+                                    // restaurant so it can be installed on a PC.
+                                    let activationKey = null;
+                                    try {
+                                        activationKey = await ensureActivationRecord(db.promise(), restaurantId);
+                                    } catch (keyErr) {
+                                        console.error("Activation key generation failed:", keyErr.message);
+                                    }
+
                                     return res.json({
                                         success: true,
-                                        message: "Admin & Restaurant created successfully."
+                                        message: "Admin & Restaurant created successfully.",
+                                        activation_key: activationKey
                                     });
 
                                 }
