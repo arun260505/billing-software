@@ -1,17 +1,7 @@
 <#
-  install-services.ps1 — set up InWallz on a restaurant PC as unattended services.
+  install-services.ps1 - set up InWallz on a restaurant PC as unattended services.
   Runs elevated (invoked by the Inno Setup installer, or by hand for testing).
-
-  Layout under -InstallDir:
-    node\node.exe            portable Node runtime
-    app\backend\             backend + node_modules + .env.template
-    app\build\               React UI
-    app\inwallz_schema.sql   schema-only dump
-    mysql\bin\mysqld.exe     MySQL runtime (bin + share + lib\plugin)
-    nssm.exe                 service manager
-    vc_redist.x64.exe        Microsoft VC++ runtime (MySQL depends on it)
-    data\                    (created here) MySQL data directory
-    logs\                    (created here) service stdout/stderr
+  ASCII-only and here-string-free so it parses cleanly under Windows PowerShell 5.1.
 #>
 
 param(
@@ -22,7 +12,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-function Say($m) { Write-Host "== $m ==" -ForegroundColor Cyan }
+function Say($m) { Write-Host ("== " + $m + " ==") -ForegroundColor Cyan }
 
 $nssm    = Join-Path $InstallDir "nssm.exe"
 $node    = Join-Path $InstallDir "node\node.exe"
@@ -36,14 +26,14 @@ $schema  = Join-Path $InstallDir "app\inwallz_schema.sql"
 
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
 
-# --- 0) MySQL needs the Microsoft VC++ runtime; install it (idempotent) ------
+# 0) MySQL needs the Microsoft VC++ runtime; install it (idempotent).
 Say "Installing VC++ runtime (MySQL dependency)"
 $vc = Join-Path $InstallDir "vc_redist.x64.exe"
 if (Test-Path $vc) {
     Start-Process $vc -ArgumentList "/install", "/quiet", "/norestart" -Wait
 }
 
-# --- 0b) Clean any previous (possibly paused/failed) services ----------------
+# 0b) Clean any previous (possibly paused/failed) services.
 Say "Removing any previous InWallz services"
 foreach ($svc in "InWallzServer", "InWallzMySQL") {
     & $nssm stop $svc 2>$null | Out-Null
@@ -51,13 +41,13 @@ foreach ($svc in "InWallzServer", "InWallzMySQL") {
 }
 Start-Sleep -Seconds 2
 
-# --- 1) Per-machine secrets --------------------------------------------------
+# 1) Per-machine secrets.
 Say "Generating per-machine secrets"
 Add-Type -AssemblyName System.Web
 $dbPass = ([System.Web.Security.Membership]::GeneratePassword(24, 0) -replace '[^A-Za-z0-9]', 'x') + "Aa1"
 $jwt    = -join ((1..64) | ForEach-Object { "{0:x}" -f (Get-Random -Max 16) })
 
-# --- 2) Initialise MySQL, register + start its service -----------------------
+# 2) Initialise MySQL, register + start its service.
 Say "Initialising MySQL"
 if (-not (Test-Path (Join-Path $dataDir "mysql"))) {
     New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
@@ -80,32 +70,33 @@ for ($i = 0; $i -lt 40; $i++) {
     if ($LASTEXITCODE -eq 0) { $ready = $true; break }
     Start-Sleep -Seconds 2
 }
-if (-not $ready) { throw "MySQL did not become ready — see $logs\mysql.log" }
-
-# --- 3) Create app DB, user, import schema -----------------------------------
-Say "Creating database + app user"
-& $mysql -u root -e @"
-CREATE DATABASE IF NOT EXISTS inwallz_billing CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-CREATE USER IF NOT EXISTS 'inwallz'@'localhost' IDENTIFIED BY '$dbPass';
-ALTER USER 'inwallz'@'localhost' IDENTIFIED BY '$dbPass';
-GRANT ALL PRIVILEGES ON inwallz_billing.* TO 'inwallz'@'localhost';
-FLUSH PRIVILEGES;
-"@
-if (Test-Path $schema) {
-    & $mysql -u inwallz "-p$dbPass" inwallz_billing -e "source $schema"
+if (-not $ready) {
+    throw ("MySQL did not become ready. See " + (Join-Path $logs "mysql.log"))
 }
 
-# --- 4) Write backend\.env from the template ---------------------------------
-Say "Writing backend\.env"
+# 3) Create app DB, user, import schema. Single-line SQL (no here-string).
+Say "Creating database + app user"
+$sql = "CREATE DATABASE IF NOT EXISTS inwallz_billing CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;" +
+       " CREATE USER IF NOT EXISTS 'inwallz'@'localhost' IDENTIFIED BY '$dbPass';" +
+       " ALTER USER 'inwallz'@'localhost' IDENTIFIED BY '$dbPass';" +
+       " GRANT ALL PRIVILEGES ON inwallz_billing.* TO 'inwallz'@'localhost';" +
+       " FLUSH PRIVILEGES;"
+& $mysql -u root -e $sql
+if (Test-Path $schema) {
+    Get-Content $schema -Raw | & $mysql -u inwallz "--password=$dbPass" inwallz_billing
+}
+
+# 4) Write backend\.env from the template.
+Say "Writing backend .env"
 $tpl = Get-Content (Join-Path $backend ".env.template") -Raw
 $tpl = $tpl -replace "__DB_PASSWORD__", $dbPass
 $tpl = $tpl -replace "__JWT_SECRET__", $jwt
 $tpl = $tpl -replace "__ACTIVATION_KEY__", $ActivationKey
-$tpl = $tpl -replace "CLOUD_SYNC_URL=.*", "CLOUD_SYNC_URL=$CloudUrl"
-$tpl = $tpl -replace "PORT=.*", "PORT=$Port"
-$tpl | Out-File (Join-Path $backend ".env") -Encoding utf8
+$tpl = $tpl -replace "CLOUD_SYNC_URL=.*", ("CLOUD_SYNC_URL=" + $CloudUrl)
+$tpl = $tpl -replace "PORT=.*", ("PORT=" + $Port)
+$tpl | Out-File (Join-Path $backend ".env") -Encoding ascii
 
-# --- 5) Register the backend service (depends on MySQL) ----------------------
+# 5) Register the backend service (depends on MySQL).
 Say "Registering InWallzServer service"
 & $nssm install InWallzServer $node (Join-Path $backend "server.js")
 & $nssm set InWallzServer AppDirectory $backend
@@ -116,10 +107,9 @@ Say "Registering InWallzServer service"
 & $nssm set InWallzServer DependOnService InWallzMySQL
 & $nssm start InWallzServer
 
-# --- 6) Firewall: allow the LAN to reach the till on $Port (Private only) -----
+# 6) Firewall: allow the LAN to reach the till on $Port (Private only).
 Say "Opening firewall port $Port (Private)"
 netsh advfirewall firewall delete rule name="InWallz $Port" 2>$null | Out-Null
-netsh advfirewall firewall add rule name="InWallz $Port" dir=in action=allow `
-    protocol=TCP localport=$Port profile=private | Out-Null
+netsh advfirewall firewall add rule name="InWallz $Port" dir=in action=allow protocol=TCP localport=$Port profile=private | Out-Null
 
-Say "Done. Till at http://localhost:$Port  (waiters: http://<this-PC-IP>:$Port). Logs in $logs"
+Say "Done. Till at http://localhost:$Port . Logs in $logs"
