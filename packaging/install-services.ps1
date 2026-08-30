@@ -131,10 +131,12 @@ $backendShort = $fso.GetFolder($backend).ShortPath
 & $nssm set InWallzServer DependOnService InWallzMySQL
 & $nssm start InWallzServer
 
-# 6) Firewall: allow the LAN to reach the till on $Port (Private only).
-Say "Opening firewall port $Port (Private)"
+# 6) Firewall: allow the LAN (waiter phones) to reach the till on $Port.
+# Open on ALL profiles - restaurant Wi-Fi often registers as Public, and a
+# Private-only rule would silently block the phones there.
+Say "Opening firewall port $Port (all profiles)"
 netsh advfirewall firewall delete rule name="InWallz $Port" 2>$null | Out-Null
-netsh advfirewall firewall add rule name="InWallz $Port" dir=in action=allow protocol=TCP localport=$Port profile=private | Out-Null
+netsh advfirewall firewall add rule name="InWallz $Port" dir=in action=allow protocol=TCP localport=$Port profile=any | Out-Null
 
 Start-Sleep -Seconds 3
 Say "Service status"
