@@ -95,8 +95,16 @@ $sql = "CREATE DATABASE IF NOT EXISTS inwallz_billing CHARACTER SET utf8mb4 COLL
        " GRANT ALL PRIVILEGES ON inwallz_billing.* TO 'inwallz'@'localhost';" +
        " FLUSH PRIVILEGES;"
 & $mysql -u root -e $sql
-if (Test-Path $schema) {
+# Import the schema ONLY on a fresh, empty database. On a reinstall the tables
+# already exist (with pulled/local data), and the dump's DROP TABLE would wipe
+# them - so skip it.
+$tableCount = & $mysql -u inwallz "--password=$dbPass" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='inwallz_billing'" 2>$null
+$tableCount = [int]($tableCount | Select-Object -First 1)
+if ((Test-Path $schema) -and ($tableCount -eq 0)) {
     Get-Content $schema -Raw | & $mysql -u inwallz "--password=$dbPass" inwallz_billing
+    Say "Schema imported (fresh DB)"
+} else {
+    Say "Existing database kept ($tableCount tables) - schema import skipped"
 }
 
 # 4) Write backend\.env from the template.
