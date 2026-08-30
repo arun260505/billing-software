@@ -116,14 +116,24 @@ async function pullDown() {
 }
 
 async function cycle() {
+    // Push and pull independently: a failing push (e.g. one bad order) must not
+    // block pulling the admin's menu/category/table changes down.
+    let ok = true;
     try {
         await pushUp();
+    } catch (e) {
+        lastError = "push: " + e.message;
+        ok = false;
+    }
+    try {
         await pullDown();
+    } catch (e) {
+        lastError = "pull: " + e.message;
+        ok = false;
+    }
+    if (ok) {
         lastSyncAt = new Date();
         lastError = null;
-    } catch (e) {
-        // Offline or transient — stay quiet, the next cycle retries.
-        lastError = e.message;
     }
 }
 
