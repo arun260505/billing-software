@@ -75,6 +75,26 @@ db.query(`
     else console.log("restaurant_networks table ready.");
 });
 
+// Cloud side: when a restaurant last pushed (drives the admin "last synced" badge).
+db.query(`
+    CREATE TABLE IF NOT EXISTS sync_status (
+        restaurant_uuid CHAR(36) PRIMARY KEY,
+        last_sync_at    TIMESTAMP NULL DEFAULT NULL
+    )
+`, (err) => {
+    if (err) console.error("sync_status table migration error:", err.message);
+});
+
+// Local side: per-table high-water mark for pulling down-tables from the cloud.
+db.query(`
+    CREATE TABLE IF NOT EXISTS sync_state (
+        table_name     VARCHAR(64) PRIMARY KEY,
+        last_pulled_at TIMESTAMP NULL DEFAULT NULL
+    )
+`, (err) => {
+    if (err) console.error("sync_state table migration error:", err.message);
+});
+
 db.query(`
     CREATE TABLE IF NOT EXISTS bill_formats (
         id                   INT AUTO_INCREMENT PRIMARY KEY,
@@ -262,6 +282,7 @@ const menuRoutes = require("./routes/menuRoutes");
 const chargeRoutes = require("./routes/chargeRoutes");
 const billingFormatRoutes = require("./routes/billingFormatRoutes");
 const systemRoutes = require("./routes/systemRoutes");
+const syncRoutes = require("./routes/syncRoutes");
 const kitchenFormatRoutes = require("./routes/kitchenFormatRoutes");
 
 
@@ -301,6 +322,7 @@ app.use("/api/menu", menuRoutes);
 app.use("/api/charges", chargeRoutes);
 app.use("/api/billing", billingFormatRoutes);
 app.use("/api/system", systemRoutes);
+app.use("/api/sync", syncRoutes);
 app.use("/api/kitchen-format", kitchenFormatRoutes);
 /*
 |--------------------------------------------------------------------------
@@ -364,4 +386,7 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
     console.log(`🚀 Server Running on Port ${PORT}`);
+    // Only the local node (SYNC_ROLE=local) runs the sync worker; the cloud
+    // just exposes the /api/sync endpoints.
+    require("./sync/syncWorker").start();
 });

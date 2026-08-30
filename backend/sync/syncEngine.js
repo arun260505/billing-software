@@ -15,6 +15,20 @@
 // Columns never copied verbatim between databases.
 const SKIP_COLS = new Set(["id", "synced_at"]);
 
+// mysql2 returns DATETIME/TIMESTAMP as JS Date objects; JSON would turn those
+// into ISO strings ("…T…Z") that MySQL rejects on insert. Convert to MySQL's
+// "YYYY-MM-DD HH:MM:SS" in the same wall-clock the driver read, so the value
+// round-trips unchanged.
+function toMysqlDate(d) {
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ` +
+           `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function normalizeValue(v) {
+    return v instanceof Date ? toMysqlDate(v) : v;
+}
+
 async function serializeRows(dbp, def, rows) {
     // Resolve each FK int id -> parent uuid, in one query per FK column.
     const parentUuidByCol = {};
@@ -33,7 +47,7 @@ async function serializeRows(dbp, def, rows) {
     return rows.map((row) => {
         const out = {};
         for (const [k, v] of Object.entries(row)) {
-            if (!SKIP_COLS.has(k)) out[k] = v;
+            if (!SKIP_COLS.has(k)) out[k] = normalizeValue(v);
         }
         for (const fkCol of Object.keys(def.fks)) {
             out[`${fkCol}__uuid`] =
@@ -112,13 +126,22 @@ async function markSynced(dbp, table, uuids) {
     );
 }
 
-// DOWN / pull: rows changed on the source since the receiver's high-water mark.
-async function getChangedSince(dbp, def, since) {
+// DOWN / pull: rows changed on the source since the receiver's high-water mark,
+// scoped to one restaurant (the cloud holds many; a node pulls only its own).
+async function getChangedSince(dbp, def, since, scope = {}) {
     const cutoff = since || "1970-01-01 00:00:00";
-    const [rows] = await dbp.query(
-        `SELECT * FROM \`${def.table}\` WHERE updated_at > ?`,
-        [cutoff]
-    );
+    let sql = `SELECT * FROM \`${def.table}\` WHERE updated_at > ?`;
+    const params = [cutoff];
+
+    if (def.table === "restaurants" && scope.restaurantUuid) {
+        sql += ` AND uuid = ?`;
+        params.push(scope.restaurantUuid);
+    } else if (scope.restaurantId != null) {
+        sql += ` AND restaurant_id = ?`;
+        params.push(scope.restaurantId);
+    }
+
+    const [rows] = await dbp.query(sql, params);
     return rows;
 }
 
