@@ -185,6 +185,7 @@ exports.getMenuCategories = (restaurantId, callback) => {
         FROM categories c
         WHERE c.restaurant_id = ?
           AND c.status = 'Active'
+          AND c.deleted_at IS NULL
         ORDER BY c.category_name ASC
     `;
 
