@@ -68,13 +68,23 @@ exports.pull = async (req, res) => {
     }
 };
 
-// GET /api/sync/status?restaurant_uuid=U  — for the admin "last synced" badge.
+// GET /api/sync/status — for the admin "last synced" badge. Scoped to the
+// logged-in user's restaurant. last_sync_at is null when no local node has ever
+// synced (e.g. a pure cloud deployment), so the UI can hide the badge.
 exports.status = async (req, res) => {
-    const { restaurant_uuid } = req.query;
     try {
+        const rid = req.user && req.user.restaurant_id;
+        if (!rid) return res.json({ success: true, last_sync_at: null });
+
+        const [[r]] = await db.query(
+            "SELECT uuid FROM restaurants WHERE id = ? LIMIT 1",
+            [rid]
+        );
+        if (!r) return res.json({ success: true, last_sync_at: null });
+
         const [[row]] = await db.query(
             "SELECT last_sync_at FROM sync_status WHERE restaurant_uuid = ? LIMIT 1",
-            [restaurant_uuid]
+            [r.uuid]
         );
         res.json({ success: true, last_sync_at: row ? row.last_sync_at : null });
     } catch (e) {

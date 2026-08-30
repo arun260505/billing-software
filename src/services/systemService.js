@@ -8,3 +8,6 @@ export const getNetworkStatus = () => api.get("/system/network-status");
 
 // Server LAN IP detection (used by the cashier Server IP page).
 export const getServerIp = () => api.get("/system/server-ip");
+
+// When this restaurant's local node last synced to the cloud (admin badge).
+export const getSyncStatus = () => api.get("/sync/status");

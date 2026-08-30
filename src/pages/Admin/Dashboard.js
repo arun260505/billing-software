@@ -21,6 +21,7 @@ import {
 } from "../../services/dashboardService";
 
 import authService from "../../services/authService";
+import { getSyncStatus } from "../../services/systemService";
 
 import "../../styles/Admin/Dashboard.css";
 import "../../styles/Admin/DashboardCard.css";
@@ -57,7 +58,8 @@ function Dashboard() {
   const [topItems, setTopItems] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [health, setHealth] = useState(null);
-  const [lastSync, setLastSync] = useState(null);
+  // Real cloud-sync time reported by the backend (null = no local node syncing).
+  const [syncAt, setSyncAt] = useState(null);
 
   const [period, setPeriod] = useState("today");
   const [chartData, setChartData] = useState([]);
@@ -84,7 +86,6 @@ function Dashboard() {
       if (ordersRes.data.success) setRecentOrders(ordersRes.data.data || []);
 
       if (healthRes.data.success) setHealth(healthRes.data.data);
-      setLastSync(new Date());
     } catch (err) {
       console.error("Dashboard load error:", err);
       setError(true);
@@ -112,6 +113,18 @@ function Dashboard() {
   useEffect(() => {
     loadCore();
   }, [loadCore]);
+
+  // Poll the real cloud-sync time for the "Last Sync" badge.
+  useEffect(() => {
+    let active = true;
+    const load = () =>
+      getSyncStatus()
+        .then((res) => { if (active && res.data?.success) setSyncAt(res.data.last_sync_at); })
+        .catch(() => {});
+    load();
+    const t = setInterval(load, 30000);
+    return () => { active = false; clearInterval(t); };
+  }, []);
 
   useEffect(() => {
     loadChart(period);
@@ -255,7 +268,7 @@ function Dashboard() {
                 <ConnectionStatus
                   health={health}
                   loading={loading}
-                  lastSync={lastSync}
+                  syncAt={syncAt}
                   onRetry={loadCore}
                 />
               </div>
