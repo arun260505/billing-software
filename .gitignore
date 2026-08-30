@@ -9,6 +9,12 @@ backend/.env
 # Build
 build/
 
+# Packaging artifacts
+dist/
+packaging/staging/
+packaging/Output/
+backend/.env.template
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

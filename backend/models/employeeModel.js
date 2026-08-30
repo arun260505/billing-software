@@ -46,7 +46,7 @@ exports.getEmployees = (restaurantId, callback) => {
 
 };
 
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
 
 exports.addEmployee = (data, callback) => {

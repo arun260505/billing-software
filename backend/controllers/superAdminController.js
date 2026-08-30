@@ -1,5 +1,5 @@
 const db = require("../config/db");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
 // Creating an admin also creates that admin's restaurant and links them, so
 // the admin is a proper tenant and can manage employees/menu/tables/etc.
