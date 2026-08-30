@@ -57,8 +57,16 @@ if (-not (Test-Path (Join-Path $dataDir "mysql"))) {
     & $mysqld "--datadir=$dataDir" "--basedir=$mysqlBd" --initialize-insecure
 }
 
+# NSSM passes AppParameters verbatim; spaces in "Program Files (x86)" would chop
+# the paths (mysqld saw datadir as 'C:\Program'). Use short 8.3 paths, which have
+# no spaces, so no quoting is needed.
+$fso = New-Object -ComObject Scripting.FileSystemObject
+$dataShort = $fso.GetFolder($dataDir).ShortPath
+$baseShort = $fso.GetFolder($mysqlBd).ShortPath
+
 Say "Registering InWallzMySQL service"
-& $nssm install InWallzMySQL $mysqld "--datadir=$dataDir" "--basedir=$mysqlBd" "--port=3306"
+& $nssm install InWallzMySQL $mysqld
+& $nssm set InWallzMySQL AppParameters "--datadir=$dataShort --basedir=$baseShort --port=3306"
 & $nssm set InWallzMySQL Start SERVICE_AUTO_START
 & $nssm set InWallzMySQL AppStdout (Join-Path $logs "mysql.log")
 & $nssm set InWallzMySQL AppStderr (Join-Path $logs "mysql.log")
@@ -101,8 +109,10 @@ $tpl | Out-File (Join-Path $backend ".env") -Encoding ascii
 
 # 5) Register the backend service (depends on MySQL).
 Say "Registering InWallzServer service"
-& $nssm install InWallzServer $node (Join-Path $backend "server.js")
-& $nssm set InWallzServer AppDirectory $backend
+$backendShort = $fso.GetFolder($backend).ShortPath
+& $nssm install InWallzServer $node
+& $nssm set InWallzServer AppParameters (Join-Path $backendShort "server.js")
+& $nssm set InWallzServer AppDirectory $backendShort
 & $nssm set InWallzServer Start SERVICE_AUTO_START
 & $nssm set InWallzServer AppStdout (Join-Path $logs "server.log")
 & $nssm set InWallzServer AppStderr (Join-Path $logs "server.log")
