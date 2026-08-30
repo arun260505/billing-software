@@ -16,7 +16,7 @@ const getAllTables = (restaurantId, callback) => {
                 AND o.order_status IN ('Pending','Preparing','Ready','Served')
                 AND oi.served = 1) AS served_items
         FROM dining_tables dt
-        WHERE dt.restaurant_id = ?
+        WHERE dt.restaurant_id = ? AND dt.deleted_at IS NULL
         ORDER BY dt.table_name ASC
     `;
 
@@ -26,7 +26,7 @@ const getAllTables = (restaurantId, callback) => {
 // Get table by ID (tenant-scoped)
 const getTableById = (id, restaurantId, callback) => {
     db.query(
-        "SELECT * FROM dining_tables WHERE id = ? AND restaurant_id = ?",
+        "SELECT * FROM dining_tables WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL",
         [id, restaurantId],
         callback
     );
@@ -95,8 +95,9 @@ const updateTable = (id, restaurantId, table, callback) => {
 // Delete table (tenant-scoped)
 const deleteTable = (id, restaurantId, callback) => {
 
+    // Soft delete so the removal syncs to the cloud.
     db.query(
-        "DELETE FROM dining_tables WHERE id=? AND restaurant_id=?",
+        "UPDATE dining_tables SET deleted_at = NOW() WHERE id=? AND restaurant_id=? AND deleted_at IS NULL",
         [id, restaurantId],
         callback
     );
@@ -115,7 +116,7 @@ const getDashboardStats = (restaurantId, callback) => {
             SUM(status='Billing') AS billing,
             SUM(status='Cleaning') AS cleaning
         FROM dining_tables
-        WHERE restaurant_id = ?
+        WHERE restaurant_id = ? AND deleted_at IS NULL
     `;
 
     db.query(sql, [restaurantId], callback);

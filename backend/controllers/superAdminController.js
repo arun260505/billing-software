@@ -26,7 +26,7 @@ const createAdmin = async (req, res) => {
 
         db.query(
 
-            "SELECT id FROM users WHERE username=?",
+            "SELECT id FROM users WHERE username=? AND deleted_at IS NULL",
 
             [username],
 
@@ -124,7 +124,7 @@ const getAdmins = (req, res) => {
             status,
             created_at
         FROM users
-        WHERE role='admin'
+        WHERE role='admin' AND deleted_at IS NULL
         ORDER BY id DESC`,
 
         (err, result) => {
@@ -155,7 +155,8 @@ const deleteAdmin = (req, res) => {
 
     db.query(
 
-        "DELETE FROM users WHERE id=?",
+        // Soft delete so the removal syncs to the cloud.
+        "UPDATE users SET deleted_at = NOW() WHERE id=? AND deleted_at IS NULL",
 
         [id],
 

@@ -14,6 +14,7 @@ exports.getEmployees = (restaurantId, callback) => {
         FROM users
         WHERE restaurant_id = ?
           AND role <> 'super_admin'
+          AND deleted_at IS NULL
         ORDER BY id DESC
     `;
 
@@ -32,6 +33,7 @@ exports.getEmployees = (restaurantId, callback) => {
         FROM users
         WHERE restaurant_id = ?
           AND role <> 'super_admin'
+          AND deleted_at IS NULL
     `;
 
     db.query(sql, [restaurantId], (err, results) => {
@@ -74,7 +76,7 @@ exports.addEmployee = (data, callback) => {
 
     // Check if username already exists
     db.query(
-        "SELECT COUNT(*) AS total FROM users WHERE username = ?",
+        "SELECT COUNT(*) AS total FROM users WHERE username = ? AND deleted_at IS NULL",
         [baseUsername],
         (err, result) => {
 

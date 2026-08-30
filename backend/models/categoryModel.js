@@ -17,7 +17,7 @@ exports.getCategories = (restaurantId, callback) => {
             end_time,
             created_at
         FROM categories
-        WHERE restaurant_id = ?
+        WHERE restaurant_id = ? AND deleted_at IS NULL
         ORDER BY display_order ASC, category_name ASC
     `;
 
@@ -36,7 +36,7 @@ exports.getSummary = (restaurantId, callback) => {
             SUM(CASE WHEN status='Active' THEN 1 ELSE 0 END) AS active,
             SUM(CASE WHEN status='Inactive' THEN 1 ELSE 0 END) AS inactive
         FROM categories
-        WHERE restaurant_id = ?
+        WHERE restaurant_id = ? AND deleted_at IS NULL
     `;
 
     db.query(sql, [restaurantId], (err, results) => {
@@ -56,7 +56,7 @@ exports.addCategory = (data, callback) => {
 
     // Duplicate-name check is scoped to the caller's restaurant.
     db.query(
-        "SELECT id FROM categories WHERE category_name = ? AND restaurant_id = ?",
+        "SELECT id FROM categories WHERE category_name = ? AND restaurant_id = ? AND deleted_at IS NULL",
         [data.category_name, data.restaurant_id],
         (err, rows) => {
 
@@ -160,8 +160,9 @@ exports.updateCategoryTiming = (id, restaurantId, startTime, endTime, callback) 
 // ===============================
 exports.deleteCategory = (id, restaurantId, callback) => {
 
+    // Soft delete: mark deleted_at so the removal can sync to the cloud.
     db.query(
-        "DELETE FROM categories WHERE id = ? AND restaurant_id = ?",
+        "UPDATE categories SET deleted_at = NOW() WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL",
         [id, restaurantId],
         callback
     );

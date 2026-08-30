@@ -9,7 +9,7 @@ const getAllPayments = (restaurantId, callback) => {
             o.order_number
         FROM payments p
         INNER JOIN orders o ON p.order_id = o.id
-        WHERE p.restaurant_id = ?
+        WHERE p.restaurant_id = ? AND p.deleted_at IS NULL
         ORDER BY p.payment_date DESC
     `;
 
@@ -20,7 +20,7 @@ const getAllPayments = (restaurantId, callback) => {
 const getPaymentById = (id, restaurantId, callback) => {
 
     db.query(
-        "SELECT * FROM payments WHERE id = ? AND restaurant_id = ?",
+        "SELECT * FROM payments WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL",
         [id, restaurantId],
         callback
     );
@@ -61,8 +61,9 @@ const createPayment = (payment, callback) => {
 // Delete payment (tenant-scoped)
 const deletePayment = (id, restaurantId, callback) => {
 
+    // Soft delete so the removal syncs to the cloud.
     db.query(
-        "DELETE FROM payments WHERE id=? AND restaurant_id=?",
+        "UPDATE payments SET deleted_at = NOW() WHERE id=? AND restaurant_id=? AND deleted_at IS NULL",
         [id, restaurantId],
         callback
     );

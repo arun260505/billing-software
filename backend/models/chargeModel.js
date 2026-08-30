@@ -1,12 +1,12 @@
 const db = require("../config/db");
 
 const getAllCharges = (restaurantId, callback) => {
-    const sql = "SELECT * FROM charges WHERE restaurant_id = ? ORDER BY updated_at DESC";
+    const sql = "SELECT * FROM charges WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC";
     db.query(sql, [restaurantId], callback);
 };
 
 const getChargeById = (id, restaurantId, callback) => {
-    const sql = "SELECT * FROM charges WHERE id = ? AND restaurant_id = ?";
+    const sql = "SELECT * FROM charges WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL";
     db.query(sql, [id, restaurantId], callback);
 };
 
@@ -51,7 +51,8 @@ const updateCharge = (id, restaurantId, charge, callback) => {
 };
 
 const deleteCharge = (id, restaurantId, callback) => {
-    db.query("DELETE FROM charges WHERE id=? AND restaurant_id=?", [id, restaurantId], callback);
+    // Soft delete so the removal syncs to the cloud.
+    db.query("UPDATE charges SET deleted_at = NOW() WHERE id=? AND restaurant_id=? AND deleted_at IS NULL", [id, restaurantId], callback);
 };
 
 const getChargeSummary = (restaurantId, callback) => {
@@ -63,7 +64,7 @@ const getChargeSummary = (restaurantId, callback) => {
             SUM(applies_dinein = 1) AS dinein_count,
             SUM(applies_takeaway = 1) AS takeaway_count,
             SUM(applies_delivery = 1) AS delivery_count
-        FROM charges WHERE restaurant_id = ?
+        FROM charges WHERE restaurant_id = ? AND deleted_at IS NULL
     `;
     db.query(sql, [restaurantId], callback);
 };

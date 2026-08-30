@@ -9,6 +9,7 @@ const getAllMenuItems = (callback) => {
         FROM menu_items m
         INNER JOIN categories c
             ON m.category_id = c.id
+        WHERE m.deleted_at IS NULL
         ORDER BY m.display_order ASC, m.item_name ASC
     `;
 
@@ -18,7 +19,7 @@ const getAllMenuItems = (callback) => {
 // Get menu item by ID
 const getMenuItemById = (id, callback) => {
     db.query(
-        "SELECT * FROM menu_items WHERE id = ?",
+        "SELECT * FROM menu_items WHERE id = ? AND deleted_at IS NULL",
         [id],
         callback
     );
@@ -119,8 +120,9 @@ const updateMenuItem = (id, item, callback) => {
 
 // Delete menu item
 const deleteMenuItem = (id, callback) => {
+    // Soft delete so the removal syncs to the cloud.
     db.query(
-        "DELETE FROM menu_items WHERE id = ?",
+        "UPDATE menu_items SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL",
         [id],
         callback
     );

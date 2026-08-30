@@ -14,7 +14,7 @@ const getAllOrders = (restaurantId, callback) => {
         LEFT JOIN customers c ON o.customer_id = c.id
         LEFT JOIN dining_tables dt ON o.table_id = dt.id
         LEFT JOIN users u ON o.employee_id = u.id
-        WHERE o.restaurant_id = ?
+        WHERE o.restaurant_id = ? AND o.deleted_at IS NULL
         ORDER BY o.created_at DESC
     `;
 
@@ -27,7 +27,7 @@ const getOrderById = (id, restaurantId, callback) => {
     const sql = `
         SELECT *
         FROM orders
-        WHERE id = ? AND restaurant_id = ?
+        WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL
     `;
 
     db.query(sql, [id, restaurantId], callback);
@@ -78,8 +78,9 @@ const createOrder = (order, callback) => {
 // Delete order (tenant-scoped)
 const deleteOrder = (id, restaurantId, callback) => {
 
+    // Soft delete so the removal syncs to the cloud.
     db.query(
-        "DELETE FROM orders WHERE id=? AND restaurant_id=?",
+        "UPDATE orders SET deleted_at = NOW() WHERE id=? AND restaurant_id=? AND deleted_at IS NULL",
         [id, restaurantId],
         callback
     );

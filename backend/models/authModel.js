@@ -17,7 +17,7 @@ exports.login = (username, password, callback) => {
         FROM users u
         LEFT JOIN restaurants r
             ON u.restaurant_id = r.id
-        WHERE u.username = ?
+        WHERE u.username = ? AND u.deleted_at IS NULL
         LIMIT 1
     `;
 

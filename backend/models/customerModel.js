@@ -3,7 +3,7 @@ const db = require("../config/db");
 // Get all customers (tenant-scoped)
 const getAllCustomers = (restaurantId, callback) => {
     db.query(
-        "SELECT * FROM customers WHERE restaurant_id = ? ORDER BY customer_name ASC",
+        "SELECT * FROM customers WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY customer_name ASC",
         [restaurantId],
         callback
     );
@@ -12,7 +12,7 @@ const getAllCustomers = (restaurantId, callback) => {
 // Get customer by ID (tenant-scoped)
 const getCustomerById = (id, restaurantId, callback) => {
     db.query(
-        "SELECT * FROM customers WHERE id = ? AND restaurant_id = ?",
+        "SELECT * FROM customers WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL",
         [id, restaurantId],
         callback
     );
@@ -95,8 +95,9 @@ const updateCustomer = (id, restaurantId, customer, callback) => {
 
 // Delete customer (tenant-scoped)
 const deleteCustomer = (id, restaurantId, callback) => {
+    // Soft delete so the removal syncs to the cloud.
     db.query(
-        "DELETE FROM customers WHERE id = ? AND restaurant_id = ?",
+        "UPDATE customers SET deleted_at = NOW() WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL",
         [id, restaurantId],
         callback
     );

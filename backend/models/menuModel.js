@@ -35,7 +35,7 @@ exports.getAllMenuItems = (restaurantId, callback) => {
         FROM menu_items m
         JOIN categories c
             ON m.category_id = c.id
-        WHERE m.restaurant_id = ?
+        WHERE m.restaurant_id = ? AND m.deleted_at IS NULL
         ORDER BY m.display_order ASC, m.item_name ASC
     `;
 
@@ -54,7 +54,7 @@ exports.getSummary = (restaurantId, callback) => {
             COALESCE(SUM(is_today_special = 1), 0) AS todaySpecialItems
         FROM menu_items m
         INNER JOIN categories c ON m.category_id = c.id
-        WHERE m.restaurant_id = ?
+        WHERE m.restaurant_id = ? AND m.deleted_at IS NULL
     `;
 
     db.query(sql, [restaurantId], callback);
@@ -161,8 +161,9 @@ exports.updateMenuItem = (id, restaurantId, data, callback) => {
 // Delete Menu Item (tenant-scoped)
 exports.deleteMenuItem = (id, restaurantId, callback) => {
 
+    // Soft delete so the removal syncs to the cloud.
     db.query(
-        "DELETE FROM menu_items WHERE id=? AND restaurant_id=?",
+        "UPDATE menu_items SET deleted_at = NOW() WHERE id=? AND restaurant_id=? AND deleted_at IS NULL",
         [id, restaurantId],
         callback
     );
@@ -209,7 +210,7 @@ exports.getWaiterItems = (restaurantId, callback) => {
             (${timingAvailabilitySql}) AS is_category_timing_active
         FROM menu_items m
         INNER JOIN categories c ON m.category_id = c.id
-        WHERE m.restaurant_id = ?
+        WHERE m.restaurant_id = ? AND m.deleted_at IS NULL
         ORDER BY m.item_name ASC
     `;
 
@@ -246,7 +247,7 @@ exports.getWaiterItemsByCategory = (categoryId, restaurantId, callback) => {
             (${timingAvailabilitySql}) AS is_category_timing_active
         FROM menu_items m
         INNER JOIN categories c ON m.category_id = c.id
-        WHERE m.category_id = ? AND m.restaurant_id = ?
+        WHERE m.category_id = ? AND m.restaurant_id = ? AND m.deleted_at IS NULL
         ORDER BY m.item_name ASC
     `;
 

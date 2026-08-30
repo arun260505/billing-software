@@ -2,13 +2,13 @@ const db = require("../config/db");
 
 // Get all restaurants
 const getAllRestaurants = (callback) => {
-    const sql = "SELECT * FROM restaurants ORDER BY id DESC";
+    const sql = "SELECT * FROM restaurants WHERE deleted_at IS NULL ORDER BY id DESC";
     db.query(sql, callback);
 };
 
 // Get restaurant by ID
 const getRestaurantById = (id, callback) => {
-    const sql = "SELECT * FROM restaurants WHERE id = ?";
+    const sql = "SELECT * FROM restaurants WHERE id = ? AND deleted_at IS NULL";
     db.query(sql, [id], callback);
 };
 
@@ -101,8 +101,9 @@ const updateRestaurant = (id, restaurant, callback) => {
 
 // Delete restaurant
 const deleteRestaurant = (id, callback) => {
+    // Soft delete so the removal syncs to the cloud.
     db.query(
-        "DELETE FROM restaurants WHERE id = ?",
+        "UPDATE restaurants SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL",
         [id],
         callback
     );
