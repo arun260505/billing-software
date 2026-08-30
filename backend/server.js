@@ -95,6 +95,20 @@ db.query(`
     if (err) console.error("sync_state table migration error:", err.message);
 });
 
+// Cloud side: per-restaurant activation key + machine sync credential.
+db.query(`
+    CREATE TABLE IF NOT EXISTS restaurant_activations (
+        restaurant_id  INT PRIMARY KEY,
+        activation_key VARCHAR(32) UNIQUE NOT NULL,
+        sync_key       VARCHAR(80) NOT NULL,
+        machine_id     VARCHAR(128) DEFAULT NULL,
+        activated_at   TIMESTAMP NULL DEFAULT NULL,
+        created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`, (err) => {
+    if (err) console.error("restaurant_activations table migration error:", err.message);
+});
+
 db.query(`
     CREATE TABLE IF NOT EXISTS bill_formats (
         id                   INT AUTO_INCREMENT PRIMARY KEY,
@@ -283,6 +297,7 @@ const chargeRoutes = require("./routes/chargeRoutes");
 const billingFormatRoutes = require("./routes/billingFormatRoutes");
 const systemRoutes = require("./routes/systemRoutes");
 const syncRoutes = require("./routes/syncRoutes");
+const activationRoutes = require("./routes/activationRoutes");
 const kitchenFormatRoutes = require("./routes/kitchenFormatRoutes");
 
 
@@ -323,6 +338,7 @@ app.use("/api/charges", chargeRoutes);
 app.use("/api/billing", billingFormatRoutes);
 app.use("/api/system", systemRoutes);
 app.use("/api/sync", syncRoutes);
+app.use("/api/activate", activationRoutes);
 app.use("/api/kitchen-format", kitchenFormatRoutes);
 /*
 |--------------------------------------------------------------------------
