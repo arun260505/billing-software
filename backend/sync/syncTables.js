@@ -19,7 +19,9 @@ const SYNC_ORDER = [
     { table: "restaurants",     direction: "down", fks: {} },
     { table: "categories",      direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "customers",       direction: "up",   fks: { restaurant_id: "restaurants" } },
-    { table: "dining_tables",   direction: "up",   fks: { restaurant_id: "restaurants" } },
+    // Tables are managed centrally (admin) and pulled down, so a fresh node
+    // inherits them. Occupancy status is set locally and simply isn't pushed up.
+    { table: "dining_tables",   direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "roles",           direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "settings",        direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "charges",         direction: "down", fks: { restaurant_id: "restaurants" } },

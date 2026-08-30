@@ -74,6 +74,7 @@ function Dashboard() {
             loadTables();
             loadRunningOrders();
             loadTodaysOrderCount();
+            loadCategories();   // pick up menu categories synced from the cloud
         }, 10000);
 
         const refreshOnFocus = () => {
@@ -201,7 +202,9 @@ function Dashboard() {
         try {
             const res = await getCategories();
             setCategories(res.data.data);
-            if (res.data.data.length > 0) setSelectedCategory(res.data.data[0].id);
+            // Only default the selection on first load; keep it on live re-polls
+            // so a synced-in category doesn't yank the waiter's current tab.
+            setSelectedCategory((cur) => cur || (res.data.data[0]?.id ?? null));
         } catch (e) { console.error(e); }
     };
 

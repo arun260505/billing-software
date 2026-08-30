@@ -120,6 +120,7 @@ function Dashboard() {
             loadTables();
             loadRunningOrders();
             loadTodaysOrderCount();
+            loadCategories();   // pick up menu categories synced from the cloud
         }, 10000);
         const refreshOnFocus = () => {
             loadTables();
@@ -242,7 +243,8 @@ function Dashboard() {
         try {
             const res = await getCategories();
             setCategories(res.data.data);
-            if (res.data.data.length > 0) setSelectedCategory(res.data.data[0].id);
+            // Keep the current tab on live re-polls; only default on first load.
+            setSelectedCategory((cur) => cur || (res.data.data[0]?.id ?? null));
         } catch (e) { console.error(e); }
     };
 
