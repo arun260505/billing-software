@@ -106,7 +106,8 @@ $tpl = $tpl -replace "__DB_PASSWORD__", $dbPass
 $tpl = $tpl -replace "__JWT_SECRET__", $jwt
 $tpl = $tpl -replace "__ACTIVATION_KEY__", $ActivationKey
 $tpl = $tpl -replace "CLOUD_SYNC_URL=.*", ("CLOUD_SYNC_URL=" + $CloudUrl)
-$tpl = $tpl -replace "PORT=.*", ("PORT=" + $Port)
+# Anchor to line start so this does NOT also match DB_PORT=3306.
+$tpl = $tpl -replace "(?m)^PORT=.*", ("PORT=" + $Port)
 $tpl | Out-File (Join-Path $backend ".env") -Encoding ascii
 
 # 5) Register the backend service (depends on MySQL).
