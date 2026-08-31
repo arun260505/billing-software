@@ -138,6 +138,21 @@ Say "Opening firewall port $Port (all profiles)"
 netsh advfirewall firewall delete rule name="InWallz $Port" 2>$null | Out-Null
 netsh advfirewall firewall add rule name="InWallz $Port" dir=in action=allow protocol=TCP localport=$Port profile=any | Out-Null
 
+# 7) Register the till as a real installed app, not a browser window. Edge's
+# WebAppInstallForceList policy auto-installs the till as a PWA the first time
+# Edge runs (i.e. when the desktop shortcut is clicked): it gets its own
+# taskbar identity and the InWallz icon from the app manifest, and is pinnable.
+# Best-effort - if Edge is absent the app-mode shortcut still works.
+try {
+    Say "Registering the till as an app (Edge)"
+    $pol = "HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebAppInstallForceList"
+    if (-not (Test-Path $pol)) { New-Item -Path $pol -Force | Out-Null }
+    $entry = '{"url":"http://localhost:' + $Port + '/","default_launch_container":"window","create_desktop_shortcut":true,"custom_name":"InWallz Till"}'
+    New-ItemProperty -Path $pol -Name "1" -Value $entry -PropertyType String -Force | Out-Null
+} catch {
+    Say "App registration skipped: $($_.Exception.Message)"
+}
+
 Start-Sleep -Seconds 3
 Say "Service status"
 Get-Service InWallzMySQL, InWallzServer -ErrorAction SilentlyContinue |

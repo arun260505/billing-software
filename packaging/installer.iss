@@ -83,3 +83,5 @@ Filename: "{app}\nssm.exe"; Parameters: "stop InWallzServer";  Flags: runhidden;
 Filename: "{app}\nssm.exe"; Parameters: "remove InWallzServer confirm"; Flags: runhidden; RunOnceId: "rmsrv"
 Filename: "{app}\nssm.exe"; Parameters: "stop InWallzMySQL";   Flags: runhidden; RunOnceId: "stopdb"
 Filename: "{app}\nssm.exe"; Parameters: "remove InWallzMySQL confirm";  Flags: runhidden; RunOnceId: "rmdb"
+; Remove the Edge app-install policy added by install-services.ps1.
+Filename: "reg.exe"; Parameters: "delete ""HKLM\SOFTWARE\Policies\Microsoft\Edge\WebAppInstallForceList"" /f"; Flags: runhidden; RunOnceId: "rmedgepol"
