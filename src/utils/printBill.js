@@ -1,6 +1,8 @@
 // One receipt printer, used for the first print and every reprint, so a
 // corrected bill can never come out looking different from the original.
 
+import { sanitizeCharges } from "./charges";
+
 const GST_PERCENT = 5;
 const SERVICE_PERCENT = 2;
 
@@ -41,6 +43,8 @@ export function printBill({
     method = "",
     isReprint = false
 }) {
+
+    charges = sanitizeCharges(charges);
 
     const w = window.open("", "PrintBill", "width=340,height=640");
     if (!w) return false;

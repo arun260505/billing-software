@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createPayment } from "../../services/paymentService";
 import chargeService from "../../services/chargeService";
 import { printBill } from "../../utils/billPrinter";
+import { isValidCharge } from "../../utils/charges";
 
 function BillModal({ order, restaurant, format, onClose, onSuccess }) {
     const [paymentMethod, setPaymentMethod] = useState("Cash");
@@ -11,7 +12,7 @@ function BillModal({ order, restaurant, format, onClose, onSuccess }) {
 
     useEffect(() => {
         chargeService.getCharges().then((res) => {
-            setCharges((res.data.data || []).filter((c) => c.status === "Active"));
+            setCharges((res.data.data || []).filter((c) => c.status === "Active" && isValidCharge(c)));
         }).catch(() => {});
     }, []);
 

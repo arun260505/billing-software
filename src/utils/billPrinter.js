@@ -3,6 +3,8 @@
  * Dynamically formats and prints restaurant bills based on the saved bill_formats configuration.
  */
 
+import { sanitizeCharges } from "./charges";
+
 export const DEFAULT_BILL_FORMAT = {
     paper_size: "thermal",
     show_logo: 0,
@@ -43,7 +45,7 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
     const subtotal = Number(order.subtotal || 0);
     const tax = Number(order.tax || order.gst || 0);
     const serviceCharge = Number(order.service_charge || order.serviceCharge || 0);
-    const charges = order.charges || order.selectedCharges || [];
+    const charges = sanitizeCharges(order.charges || order.selectedCharges);
     const chargesTotal = charges.reduce((sum, c) => {
         if (c.charge_type === "Percentage") return sum + Math.round(subtotal * Number(c.amount) / 100);
         return sum + Number(c.amount || 0);

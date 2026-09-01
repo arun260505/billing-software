@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import chargeService from "../../services/chargeService";
+import { isValidCharge } from "../../utils/charges";
 
 function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup, onAddItem, onGenerate, onClose }) {
 
@@ -11,7 +12,7 @@ function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup
 
     useEffect(() => {
         chargeService.getCharges().then((res) => {
-            setCharges((res.data.data || []).filter((c) => c.status === "Active"));
+            setCharges((res.data.data || []).filter((c) => c.status === "Active" && isValidCharge(c)));
         }).catch(() => {});
     }, []);
 
