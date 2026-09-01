@@ -337,6 +337,7 @@ function Dashboard() {
         }
         setSelectedTable(null);
         setCart([]);
+        setShowCart(false);
         setEditingOrder(null);
         setPreviousItems([]);
         await loadTables();

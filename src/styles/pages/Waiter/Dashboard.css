@@ -467,11 +467,14 @@
     max-width: 440px;
     margin: 0 auto;
     width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
     background: #f4f6f9;
     border-left: 1px solid #e5e7eb;
     border-right: 1px solid #e5e7eb;
     box-shadow: 0 0 50px rgba(16, 24, 40, 0.08);
     font-size: 14px;
+    overflow-x: clip;
 }
 
 /* ── Compact app header ─────────────────────────────────────────────── */
@@ -507,7 +510,7 @@
 .waiter-app .tft-btn { flex: 0 0 auto; border-radius: 20px; padding: 7px 14px; font-size: 12px; white-space: nowrap; }
 
 .waiter-app .table-status-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
     padding: 0 12px 12px; margin: 0;
 }
 
@@ -574,7 +577,7 @@
 
 /* ── Menu grid + clean cards (image 2) ──────────────────────────────── */
 .waiter-app .menu-items {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
     padding: 4px 12px 20px; margin: 0;
 }
 .waiter-app .menu-card {
@@ -775,7 +778,7 @@
     background: rgba(255,255,255,.25); border-radius: 999px; font-size: 13px; font-weight: 800;
 }
 /* reserve space so the fixed bar never hides the last menu row */
-.waiter-app .wc-send-spacer { order: 4; height: 78px; width: 100%; }
+.waiter-app .wc-send-spacer { order: 4; height: calc(88px + env(safe-area-inset-bottom)); width: 100%; }
 
 /* ── Back-bar Bill chip ─────────────────────────────────────────────── */
 .waiter-app .ws-backbar { justify-content: flex-start; }
@@ -836,6 +839,63 @@
 .waiter-app .cs-clear, .waiter-app .cs-cancel {
     width: 100%; margin-top: 10px; padding: 10px; border-radius: 10px; cursor: pointer;
     background: #fff; border: 1px solid #fecaca; color: #dc2626; font-size: 13px; font-weight: 700;
+}
+
+@media (max-width: 440px) {
+    .waiter-app {
+        max-width: none;
+        border-left: none;
+        border-right: none;
+        box-shadow: none;
+    }
+
+    .waiter-app .bill-sheet,
+    .waiter-app .cs-sheet,
+    .waiter-app .wc-sticky-send {
+        max-width: none;
+    }
+}
+
+@media (max-width: 360px) {
+    .waiter-app .app-navbar {
+        padding: 0 10px;
+    }
+
+    .waiter-app .nav-right {
+        gap: 8px;
+    }
+
+    .waiter-app .nav-brand-name {
+        max-width: 124px;
+        font-size: 14px;
+    }
+
+    .waiter-app .nav-open-badge,
+    .waiter-app .nav-logout {
+        font-size: 11px;
+    }
+
+    .waiter-app .table-status-grid,
+    .waiter-app .menu-items {
+        gap: 10px;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .waiter-app .tsc,
+    .waiter-app .menu-card {
+        padding: 12px;
+    }
+
+    .waiter-app .menu-name {
+        font-size: 14px;
+    }
+
+    .waiter-app .mc-add {
+        width: 32px;
+        height: 32px;
+        flex-basis: 32px;
+    }
 }
 
 /* ── Bill modal: add-an-item control ────────────────────────────────── */
