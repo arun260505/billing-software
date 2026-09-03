@@ -30,6 +30,12 @@ function RunningOrders({
                         >
                             <h3>{order.order_number}</h3>
 
+                            {order.table_name && (
+                                <p>
+                                    Table: <strong>{order.table_name}</strong>
+                                </p>
+                            )}
+
                             <p>
                                 Status:
                                 <strong> {order.status}</strong>

@@ -57,6 +57,10 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
     const orderNumber = order.order_number || "ORD-1001";
     const tableName = order.tableName || order.table_name || (order.table_number ? `Table ${order.table_number}` : "Counter");
     const paymentMethod = order.payment_method || order.paymentMethod || "Cash";
+    // Optional split-payment breakdown: array of { method, amount }.
+    const paymentList = Array.isArray(order.payments) && order.payments.length
+        ? order.payments
+        : null;
 
     // Styles based on paper size
     const isA4 = paperSize === "a4";
@@ -243,12 +247,28 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
     // ── 5. PAYMENT SECTION ─────────────────────────────────
     let paymentHtml = "";
     if (cfg.show_payment_method) {
-        paymentHtml += `
-            <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: ${isA4 ? "12px" : is58mm ? "10px" : "11px"}; font-weight: 500;">
-                <span>Payment Mode:</span>
-                <span>${escapeHtml(paymentMethod)}</span>
-            </div>
-        `;
+        if (paymentList && paymentList.length > 1) {
+            // Split payment — show each method with its amount.
+            const rowsHtml = paymentList.map((p) => `
+                <div style="display: flex; justify-content: space-between; margin-top: 3px;">
+                    <span>${escapeHtml(p.method || "Cash")}</span>
+                    <span>₹${Number(p.amount || 0).toFixed(2)}</span>
+                </div>
+            `).join("");
+            paymentHtml = `
+                <div style="margin-top: 6px; font-size: ${isA4 ? "12px" : is58mm ? "10px" : "11px"}; font-weight: 500;">
+                    <div style="font-weight: 600;">Payment Split:</div>
+                    ${rowsHtml}
+                </div>
+            `;
+        } else {
+            paymentHtml += `
+                <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: ${isA4 ? "12px" : is58mm ? "10px" : "11px"}; font-weight: 500;">
+                    <span>Payment Mode:</span>
+                    <span>${escapeHtml(paymentMethod)}</span>
+                </div>
+            `;
+        }
     }
 
     // ── 6. FOOTER & TERMS ──────────────────────────────────

@@ -119,7 +119,10 @@ exports.createOrder = (req, res) => {
 // GET /api/orders/running
 exports.getRunningOrders = (req, res) => {
 
-    orderModel.getRunningOrders(req.user.restaurant_id, (err, results) => {
+    // Waiters see only the orders they took; everyone else sees all running orders.
+    const employeeId = req.user.role === "waiter" ? req.user.id : null;
+
+    orderModel.getRunningOrders(req.user.restaurant_id, employeeId, (err, results) => {
 
         if (err) return error(res, err.message, 500);
 
@@ -228,13 +231,28 @@ exports.markTableServed = (req, res) => {
 
 // POST /api/orders/table/:tableId/settle — complete the table's orders + free it
 // Body: { payment_method } — recorded against each settled order.
+//      or { payments: [{method, amount}], final_total } for split payments.
+// `final_total` is the cashier's charged total (may include per-bill charges
+// that are not part of the stored order grand_total).
 exports.settleTable = (req, res) => {
+
+    // Support split payments: body may contain either a single
+    // { payment_method } or an array of { method, amount } splits.
+    const payments = Array.isArray(req.body.payments) && req.body.payments.length
+        ? req.body.payments.map((p) => ({
+              method: p.method,
+              amount: Number(p.amount)
+          }))
+        : [{ method: req.body.payment_method || "Cash", amount: null }];
+
+    const finalTotal = req.body.final_total == null ? null : Number(req.body.final_total);
 
     orderModel.settleTable(
         req.params.tableId,
         req.user.restaurant_id,
-        req.body.payment_method || "Cash",
+        payments,
         req.user.id,
+        finalTotal,
         (err) => {
 
             if (err) return error(res, err.message, 500);

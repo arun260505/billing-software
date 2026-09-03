@@ -181,7 +181,12 @@ const updateTableStatus = (tableId, restaurantId, status, callback) => {
 // ---------------------------------------------------------------------------
 
 // Active/running orders for the waiter board
-const getRunningOrders = (restaurantId, callback) => {
+const getRunningOrders = (restaurantId, employeeId, callback) => {
+
+    // Waiters only see the orders they took in their running-orders notification;
+    // cashiers/admins see every table's running orders so they can print bills.
+    const waiterFilter = employeeId ? "AND o.employee_id = ?" : "";
+    const params = employeeId ? [restaurantId, employeeId] : [restaurantId];
 
     const sql = `
         SELECT
@@ -189,6 +194,7 @@ const getRunningOrders = (restaurantId, callback) => {
             o.order_number,
             o.employee_id,
             o.table_id,
+            dt.table_name,
             (SELECT COALESCE(SUM(oi.quantity), 0)
              FROM order_items oi
              WHERE oi.order_id = o.id) AS total_items,
@@ -196,12 +202,14 @@ const getRunningOrders = (restaurantId, callback) => {
             o.order_status AS status,
             o.created_at
         FROM orders o
+        LEFT JOIN dining_tables dt ON o.table_id = dt.id
         WHERE o.restaurant_id = ?
           AND o.order_status IN ('Pending','Preparing','Ready')
+          ${waiterFilter}
         ORDER BY o.created_at DESC
     `;
 
-    db.query(sql, [restaurantId], callback);
+    db.query(sql, params, callback);
 
 };
 
@@ -296,12 +304,26 @@ const getTableActiveItems = (tableId, restaurantId, callback) => {
 // Mark one order Served (waiter delivered it) — leaves the kitchen display.
 const markServed = (orderId, restaurantId, callback) => {
 
+    // Marking a whole order served (from the waiter's notification) must ALSO flag
+    // every line item as served — otherwise the cashier's "all items served" check
+    // stays locked even though the waiter already delivered the food.
     db.query(
-        `UPDATE orders SET order_status='Served'
-         WHERE id=? AND restaurant_id=?
-           AND order_status IN ('Pending','Preparing','Ready')`,
+        `UPDATE order_items oi
+         INNER JOIN orders o ON oi.order_id = o.id
+         SET oi.served = 1
+         WHERE o.id = ? AND o.restaurant_id = ?`,
         [orderId, restaurantId],
-        callback
+        (err) => {
+            if (err) return callback(err);
+
+            db.query(
+                `UPDATE orders SET order_status='Served'
+                 WHERE id=? AND restaurant_id=?
+                   AND order_status IN ('Pending','Preparing','Ready')`,
+                [orderId, restaurantId],
+                callback
+            );
+        }
     );
 
 };
@@ -351,14 +373,28 @@ const markItemServed = (itemId, restaurantId, callback) => {
 };
 
 // Mark all of a table's active orders Served (waiter delivered the table's food).
+// Flags every line item served too, so the cashier's all-items-served billing
+// check can pass after the waiter marks the table served.
 const markTableServed = (tableId, restaurantId, callback) => {
 
     db.query(
-        `UPDATE orders SET order_status='Served'
-         WHERE table_id=? AND restaurant_id=?
-           AND order_status IN ('Pending','Preparing','Ready')`,
+        `UPDATE order_items oi
+         INNER JOIN orders o ON oi.order_id = o.id
+         SET oi.served = 1
+         WHERE o.table_id=? AND o.restaurant_id=?
+           AND o.order_status IN ('Pending','Preparing','Ready')`,
         [tableId, restaurantId],
-        callback
+        (err) => {
+            if (err) return callback(err);
+
+            db.query(
+                `UPDATE orders SET order_status='Served'
+                 WHERE table_id=? AND restaurant_id=?
+                   AND order_status IN ('Pending','Preparing','Ready')`,
+                [tableId, restaurantId],
+                callback
+            );
+        }
     );
 
 };
@@ -369,54 +405,165 @@ const markTableServed = (tableId, restaurantId, callback) => {
 // The payment row is what makes a settled bill auditable — before it existed the
 // cashier picked Cash/Card/UPI, it was printed on the receipt and then thrown
 // away, so dine-in revenue never reached the payments table at all.
-const settleTable = (tableId, restaurantId, paymentMethod, employeeId, callback) => {
+// Settle a table: mark all its active orders Completed/Paid, record payment(s)
+// against each, and free the table.
+//
+// `payments` is an array of { method, amount } supporting split payments. For a
+// single payment, pass [{ method, amount: null }] and the full total is used.
+//
+// The payment row is what makes a settled bill auditable — before it existed the
+// cashier picked Cash/Card/UPI, it was printed on the receipt and then thrown
+// away, so dine-in revenue never reached the payments table at all.
+const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, callback) => {
 
-    // Grab the orders first — after the UPDATE they no longer match "active".
+    // Block settling if ANY item on the table's active orders is not yet served.
     db.query(
-        `SELECT id, grand_total FROM orders
-         WHERE table_id=? AND restaurant_id=?
-           AND order_status IN ('Pending','Preparing','Ready','Served')`,
+        `SELECT COUNT(*) AS unserved
+         FROM order_items oi
+         INNER JOIN orders o ON oi.order_id = o.id
+         WHERE o.table_id=? AND o.restaurant_id=?
+           AND o.order_status IN ('Pending','Preparing','Ready','Served')
+           AND oi.served = 0`,
         [tableId, restaurantId],
-        (err, orders) => {
+        (err, rows) => {
             if (err) return callback(err);
 
+            if (rows[0] && Number(rows[0].unserved) > 0) {
+                return callback(new Error(
+                    `Cannot generate the bill: ${Number(rows[0].unserved)} item(s) not yet served. ` +
+                    `Mark all items as served before billing.`
+                ));
+            }
+
+            // Grab the orders first — after the UPDATE they no longer match "active".
             db.query(
-                `UPDATE orders
-                 SET order_status='Completed', payment_status='Paid'
+                `SELECT id, grand_total FROM orders
                  WHERE table_id=? AND restaurant_id=?
                    AND order_status IN ('Pending','Preparing','Ready','Served')`,
                 [tableId, restaurantId],
-                (err) => {
+                (err, orders) => {
                     if (err) return callback(err);
 
-                    // One payment per settled order, in sequence so the payment
-                    // number generator sees each insert before the next lookup.
-                    const recordNext = (i) => {
+                    const billTotal = money(
+                        orders.reduce((s, o) => s + Number(o.grand_total || 0), 0)
+                    );
 
-                        if (i >= orders.length) {
-                            return db.query(
-                                "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
-                                [tableId, restaurantId],
-                                callback
-                            );
+                    // The cashier's charged total may include per-bill charges
+                    // (packing, AC, …) that are NOT part of the stored order
+                    // grand_total. Use the provided finalTotal when present, so
+                    // the split is validated and recorded against the number the
+                    // cashier actually saw on the receipt.
+                    const payTotal = finalTotal != null ? money(Number(finalTotal)) : billTotal;
+                    const surplus = money(payTotal - billTotal);
+
+                    // Build the list of payment lines, validating split amounts.
+                    const lines = payments.map((p) => ({
+                        method: p.method || "Cash",
+                        amount: p.amount == null ? null : money(Number(p.amount))
+                    }));
+                    const hasExplicitAmounts = lines.some((l) => l.amount != null);
+                    const splitSum = money(lines.reduce((s, l) => s + (l.amount || 0), 0));
+
+                    if (hasExplicitAmounts && money(splitSum) !== payTotal) {
+                        return callback(new Error(
+                            `Split payment amounts (${splitSum.toFixed(2)}) do not match the bill total (${payTotal.toFixed(2)}).`
+                        ));
+                    }
+
+                    // A single line with no amount → pay the full total with it.
+                    if (lines.length === 1 && lines[0].amount == null) {
+                        lines[0].amount = payTotal;
+                    }
+
+                    db.query(
+                        `UPDATE orders
+                         SET order_status='Completed', payment_status='Paid'
+                         WHERE table_id=? AND restaurant_id=?
+                           AND order_status IN ('Pending','Preparing','Ready','Served')`,
+                        [tableId, restaurantId],
+                        (err) => {
+                            if (err) return callback(err);
+
+                            // Distribute the payment lines across the table's orders.
+                            // Each order has a grand_total; a line can span multiple
+                            // orders (and an order can be paid by multiple lines).
+                            orders.forEach((o) => { o.remaining = money(o.grand_total); });
+
+                            const recordOrders = (ordersDone) => {
+
+                                // Ensure every order's grand_total got covered before
+                                // freeing the table.
+                                const anyUnpaid = orders.some((o) => money(o.remaining) !== 0);
+                                if (anyUnpaid) {
+                                    return callback(new Error(
+                                        "Payment distribution did not cover all orders."
+                                    ));
+                                }
+
+                                const freeTable = () =>
+                                    db.query(
+                                        "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
+                                        [tableId, restaurantId],
+                                        callback
+                                    );
+
+                                // Per-bill charges (packing, AC, …) are paid beyond the
+                                // stored order grand_totals — record that surplus as an
+                                // extra payment against the first order.
+                                if (surplus > 0 && orders.length) {
+                                    const method = (lines[0] && lines[0].method) || "Cash";
+                                    return recordPayment(
+                                        orders[0].id,
+                                        restaurantId,
+                                        method,
+                                        surplus,
+                                        `Additional charges (per-bill) by employee ${employeeId}`,
+                                        (err) => {
+                                            if (err) return callback(err);
+                                            return freeTable();
+                                        }
+                                    );
+                                }
+
+                                return freeTable();
+                            };
+
+                            // attrLine(msg, amountLeft, nextOrderIdx, allDone)
+                            const attrLine = (line, amountLeft, orderIdx, allDone) => {
+                                if (amountLeft <= 0) return allDone();   // this line fully placed
+
+                                // Find the next order that still owes money.
+                                let oi = orderIdx;
+                                while (oi < orders.length && money(orders[oi].remaining) === 0) oi++;
+                                if (oi >= orders.length) return allDone();   // no more orders to charge
+
+                                const owed = money(orders[oi].remaining);
+                                const take = money(Math.min(amountLeft, owed));
+                                recordPayment(
+                                    orders[oi].id,
+                                    restaurantId,
+                                    line.method,
+                                    take,
+                                    `Table settled by employee ${employeeId}`,
+                                    (err) => {
+                                        if (err) return callback(err);
+                                        orders[oi].remaining = money(owed - take);
+                                        // Move to that order's next line segment if money remains.
+                                        attrLine(line, money(amountLeft - take), oi, allDone);
+                                    }
+                                );
+                            };
+
+                            const recordLines = (li, orderIdx, allDone) => {
+                                if (li >= lines.length) return allDone();
+                                attrLine(lines[li], money(lines[li].amount || 0), orderIdx, () => {
+                                    recordLines(li + 1, orderIdx, allDone);
+                                });
+                            };
+
+                            recordLines(0, 0, recordOrders);
                         }
-
-                        recordPayment(
-                            orders[i].id,
-                            restaurantId,
-                            paymentMethod,
-                            orders[i].grand_total,
-                            `Table settled by employee ${employeeId}`,
-                            (err) => {
-                                if (err) return callback(err);
-                                recordNext(i + 1);
-                            }
-                        );
-
-                    };
-
-                    recordNext(0);
-
+                    );
                 }
             );
         }

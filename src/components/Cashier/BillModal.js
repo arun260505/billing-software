@@ -6,6 +6,8 @@ import { isValidCharge } from "../../utils/charges";
 
 function BillModal({ order, restaurant, format, onClose, onSuccess }) {
     const [paymentMethod, setPaymentMethod] = useState("Cash");
+    const [splitMode, setSplitMode] = useState(false);
+    const [splitAmounts, setSplitAmounts] = useState({ Cash: "", Card: "", UPI: "", Wallet: "" });
     const [loading, setLoading] = useState(false);
     const [charges, setCharges] = useState([]);
     const [selectedCharges, setSelectedCharges] = useState([]);
@@ -31,23 +33,68 @@ function BillModal({ order, restaurant, format, onClose, onSuccess }) {
 
     const grandTotal = order.total + chargesTotal;
 
+    const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
+    const PAY_METHODS = ["Cash", "Card", "UPI", "Wallet"];
+
+    const parsedSplits = () =>
+        PAY_METHODS
+            .filter((m) => {
+                const v = Number(splitAmounts[m]);
+                return Number.isFinite(v) && v > 0;
+            })
+            .map((m) => ({ payment_method: m, amount: money(Number(splitAmounts[m])) }));
+
+    const splitSum = money(parsedSplits().reduce((s, p) => s + p.amount, 0));
+
+    // Cashiers type whole rupees (matching the bill's rounded total), but the exact
+    // total can carry paise. So we validate against the rounded total, then fold any
+    // paise remainder into the largest line so the payments sum exactly to the total.
+    const splitValid =
+        splitMode &&
+        parsedSplits().length >= 2 &&
+        Math.abs(money(splitSum) - money(grandTotal)) < 0.5;
+
+    const exactSplits = (() => {
+        const list = parsedSplits().map((p) => ({ ...p }));
+        if (list.length === 0) return list;
+        const diff = money(money(grandTotal) - list.reduce((s, p) => s + p.amount, 0));
+        if (money(diff) !== 0) {
+            const idx = list.reduce((bi, p, i, a) => (p.amount >= a[bi].amount ? i : bi), 0);
+            list[idx] = { ...list[idx], amount: money(list[idx].amount + diff) };
+        }
+        return list;
+    })();
+
     const handleConfirm = async () => {
         setLoading(true);
         try {
-            await createPayment({
-                order_id: order.order_id,
-                payment_method: paymentMethod,
-                amount: grandTotal,
-                remarks: order.tableName,
-            });
+            if (splitMode) {
+                // Create one payment per split method; the backend reconciles to Paid
+                // once the split amounts cover the grand total.
+                for (const sp of exactSplits) {
+                    await createPayment({
+                        order_id: order.order_id,
+                        payment_method: sp.payment_method,
+                        amount: sp.amount,
+                        remarks: order.tableName,
+                    });
+                }
+            } else {
+                await createPayment({
+                    order_id: order.order_id,
+                    payment_method: paymentMethod,
+                    amount: money(grandTotal),
+                    remarks: order.tableName,
+                });
+            }
 
             // Automatically print the customized bill
             printBill({
                 order: {
                     ...order,
-                    payment_method: paymentMethod,
+                    payment_method: splitMode ? exactSplits.map((s) => s.payment_method).join(" + ") : paymentMethod,
                     charges: selectedCharges,
-                    grand_total: grandTotal
+                    grand_total: money(grandTotal)
                 },
                 restaurant: restaurant || {},
                 format: format || {}
@@ -145,7 +192,16 @@ function BillModal({ order, restaurant, format, onClose, onSuccess }) {
                 <div className="bill-payment">
                     <label className="bill-pay-label">Payment Method</label>
                     <div className="bill-pay-methods">
-                        {["Cash", "Card", "UPI"].map((method) => (
+                        <button
+                            type="button"
+                            className={`bill-pay-btn bill-split-option${splitMode ? " bill-pay-active" : ""}`}
+                            onClick={() => setSplitMode((s) => !s)}
+                            disabled={loading}
+                        >
+                            {splitMode ? "Split ON" : "Split"}
+                        </button>
+
+                        {!splitMode && PAY_METHODS.map((method) => (
                             <button
                                 key={method}
                                 type="button"
@@ -156,10 +212,37 @@ function BillModal({ order, restaurant, format, onClose, onSuccess }) {
                             </button>
                         ))}
                     </div>
+
+                    {splitMode && (
+                        <div className="tbill-split">
+                            {PAY_METHODS.map((m) => (
+                                <div key={m} className="tbill-split-row">
+                                    <span className="tbill-split-method">{m}</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        className="tbill-split-input"
+                                        placeholder="0"
+                                        value={splitAmounts[m]}
+                                        onChange={(e) => setSplitAmounts((prev) => ({ ...prev, [m]: e.target.value }))}
+                                        disabled={loading}
+                                    />
+                                </div>
+                            ))}
+                            <div className={`tbill-split-total${money(splitSum) === money(grandTotal) ? " ok" : " bad"}`}>
+                                Allocated {money(splitSum).toFixed(0)} / {money(grandTotal).toFixed(0)}
+                            </div>
+                            {!splitValid && (
+                                <div className="tbill-split-error">
+                                    Split amounts must add up to the total (₹{money(grandTotal).toFixed(0)}) and use at least 2 methods.
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
-                <button className="bill-confirm-btn" onClick={handleConfirm} disabled={loading}>
-                    {loading ? "Processing..." : `Confirm Payment & Generate Bill · ₹${grandTotal.toFixed(2)}`}
+                <button className="bill-confirm-btn" onClick={handleConfirm} disabled={loading || (splitMode && !splitValid)}>
+                    {loading ? "Processing..." : `Confirm Payment & Generate Bill · ₹${money(grandTotal).toFixed(2)}`}
                 </button>
             </div>
         </div>

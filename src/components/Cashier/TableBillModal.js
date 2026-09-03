@@ -2,9 +2,13 @@ import { useState, useEffect } from "react";
 import chargeService from "../../services/chargeService";
 import { isValidCharge } from "../../utils/charges";
 
-function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup, onAddItem, onGenerate, onClose }) {
+function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup, onAddItem, onServe, onGenerate, onClose }) {
 
     const [method, setMethod] = useState("Cash");
+    // Split payment: when on, the cashier allocates the total across several
+    // methods (e.g. Cash + UPI). When off, one method covers the whole total.
+    const [splitMode, setSplitMode] = useState(false);
+    const [splitAmounts, setSplitAmounts] = useState({ Cash: "", Card: "", UPI: "", Wallet: "" });
     const [adding, setAdding] = useState(false);
     const [search, setSearch] = useState("");
     const [charges, setCharges] = useState([]);
@@ -51,6 +55,57 @@ function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup
 
     const total = money(subtotal + gst + service + chargesTotal);
 
+    // Every item must be marked served before the cashier can generate the bill.
+    const unservedCount = items.filter((it) => Number(it.served) !== 1).length;
+    const canGenerate = !busy && groups.length > 0 && unservedCount === 0;
+
+    const PAY_METHODS = ["Cash", "Card", "UPI", "Wallet"];
+
+    // When split mode is off, the whole total is paid with the single selected method.
+    // When on, we collect the split {method, amount} lines that have a value > 0.
+    const parsedSplits = () =>
+        PAY_METHODS
+            .filter((m) => {
+                const v = Number(splitAmounts[m]);
+                return Number.isFinite(v) && v > 0;
+            })
+            .map((m) => ({ method: m, amount: money(Number(splitAmounts[m])) }));
+
+    const splitSum = money(parsedSplits().reduce((s, p) => s + p.amount, 0));
+
+    // The cashier enters whole rupees (the same rounded value shown on the bill),
+    // but the exact total can carry paise. So we confirm the split against the
+    // rounded total, and then nudge the largest line to absorb any paise gap so
+    // the payments always sum to the exact total sent to the backend/printer.
+    const splitValid =
+        splitMode &&
+        parsedSplits().length >= 2 &&
+        Math.abs(money(splitSum) - money(total)) < 0.5;
+
+    // Final splits: exact to the paise, with any remainder folded into the
+    // method that was given the largest amount.
+    const exactSplits = (() => {
+        const list = parsedSplits().map((p) => ({ ...p }));
+        if (list.length === 0) return list;
+        const diff = money(total - list.reduce((s, p) => s + p.amount, 0));
+        if (money(diff) !== 0) {
+            const idx = list.reduce((bi, p, i, a) => (p.amount >= a[bi].amount ? i : bi), 0);
+            list[idx] = { ...list[idx], amount: money(list[idx].amount + diff) };
+        }
+        return list;
+    })();
+
+    // The payments reported to the parent: either one full payment, or the splits.
+    const payments = splitMode
+        ? exactSplits
+        : [{ method, amount: total }];
+
+    const setSplitAmount = (m, v) => {
+        setSplitAmounts((prev) => ({ ...prev, [m]: v }));
+    };
+
+    const canGeneratePayments = splitMode ? splitValid : true;
+
     const inc = (g) => onSetQty(g.rows[0].id, Number(g.rows[0].quantity) + 1);
     const dec = (g) => {
         const row = g.rows[g.rows.length - 1];
@@ -92,6 +147,18 @@ function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup
                                         <button className="add" disabled={busy} onClick={() => inc(g)}>+</button>
                                     </div>
                                     <span className="tbill-amt">₹{(g.price * g.qty).toFixed(0)}</span>
+                                    {g.rows.every((r) => Number(r.served) === 1) ? (
+                                        <span className="tbill-served-tag" title="All units of this item are served">✓ Served</span>
+                                    ) : onServe ? (
+                                        <button
+                                            className="tbill-serve"
+                                            disabled={busy}
+                                            onClick={() => onServe(g.rows)}
+                                            title="Mark this item as served"
+                                        >
+                                            {g.rows.every((r) => Number(r.served) === 1) ? "✓ Served" : "Serve"}
+                                        </button>
+                                    ) : null}
                                     <button className="tbill-del" disabled={busy} onClick={() => onRemoveGroup(g.rows)}>✕</button>
                                 </div>
                             </div>
@@ -177,16 +244,66 @@ function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup
                     <div className="tbill-tot grand"><span>Total</span><span>₹{total.toFixed(0)}</span></div>
 
                     <div className="tbill-pay">
-                        <span className="tbill-pay-label">Payment</span>
-                        <div className="tbill-pay-methods">
-                            {["Cash", "Card", "UPI"].map((m) => (
-                                <button key={m} className={`tbill-pay-btn${method === m ? " active" : ""}`} onClick={() => setMethod(m)}>{m}</button>
-                            ))}
+                        <div className="tbill-pay-head">
+                            <span className="tbill-pay-label">Payment</span>
+                            <button
+                                className={`tbill-split-toggle${splitMode ? " active" : ""}`}
+                                onClick={() => setSplitMode((s) => !s)}
+                                disabled={busy}
+                            >
+                                {splitMode ? "Split ON" : "Split"}
+                            </button>
                         </div>
+
+                        {!splitMode && (
+                            <div className="tbill-pay-methods">
+                                {PAY_METHODS.map((m) => (
+                                    <button key={m} className={`tbill-pay-btn${method === m ? " active" : ""}`} onClick={() => setMethod(m)}>{m}</button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    <button className="tbill-generate" disabled={busy || groups.length === 0} onClick={() => onGenerate(method, total, selectedCharges)}>
-                        {busy ? "Working…" : `🖨 Generate Bill · ₹${total.toFixed(0)}`}
+                    {splitMode && (
+                        <div className="tbill-split">
+                            {PAY_METHODS.map((m) => (
+                                <div key={m} className="tbill-split-row">
+                                    <span className="tbill-split-method">{m}</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        className="tbill-split-input"
+                                        placeholder="0"
+                                        value={splitAmounts[m]}
+                                        onChange={(e) => setSplitAmount(m, e.target.value)}
+                                        disabled={busy}
+                                    />
+                                </div>
+                            ))}
+                            <div className={`tbill-split-total${money(splitSum) === money(total) ? " ok" : " bad"}`}>
+                                Allocated {money(splitSum).toFixed(0)} / {total.toFixed(0)}
+                            </div>
+                        </div>
+                    )}
+
+                    {unservedCount > 0 && (
+                        <div className="tbill-unserved-warning">
+                            ⚠ {unservedCount} item{unservedCount > 1 ? "s" : ""} not yet served — mark all items as served before generating the bill.
+                        </div>
+                    )}
+
+                    {splitMode && !splitValid && money(splitSum) !== money(total) && (
+                        <div className="tbill-split-error">
+                            Split amounts must add up to the total (₹{total.toFixed(0)}) and use at least 2 methods.
+                        </div>
+                    )}
+
+                    <button
+                        className="tbill-generate"
+                        disabled={!canGenerate || !canGeneratePayments}
+                        onClick={() => onGenerate(payments, total, selectedCharges)}
+                    >
+                        {busy ? "Working…" : unservedCount > 0 ? `Served ${groups.length - unservedCount}/${groups.length} — Generate Locked` : `🖨 Generate Bill · ₹${total.toFixed(0)}`}
                     </button>
                 </div>
 

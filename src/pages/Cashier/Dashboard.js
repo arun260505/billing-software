@@ -643,6 +643,18 @@ function Dashboard() {
         finally { setTableBillBusy(false); }
     };
 
+    // Cashier can mark an item served from inside the bill modal.
+    const handleTableBillServe = async (rows) => {
+        const list = Array.isArray(rows) ? rows : [rows];
+        setTableBillBusy(true);
+        try {
+            await Promise.all(list.map((r) => markItemServed(r.id)));
+            await loadTableBillItems(tableBillTarget.id);
+        }
+        catch (e) { alert("Could not mark the item as served."); }
+        finally { setTableBillBusy(false); }
+    };
+
     // ── Bills screen: correct a settled bill, then reprint ───────────────
     const openBillForEdit = async (bill) => {
         setEditingBill(bill);
@@ -755,8 +767,9 @@ function Dashboard() {
         setEditingBillCharged(0);
     };
 
-    // Print the receipt (with the chosen method) and settle the table.
-    const generateTableBill = async (method, finalTotal, selectedCharges = []) => {
+    // Print the receipt (with the chosen payments) and settle the table.
+    // `payments` is an array of { method, amount } supporting split payments.
+    const generateTableBill = async (payments, finalTotal, selectedCharges = []) => {
         const table = tableBillTarget;
         setTableBillBusy(true);
         try {
@@ -764,6 +777,8 @@ function Dashboard() {
             // Rounds to paise the same way backend/utils/billing.js does, so the
             // printed receipt and the stored order can never disagree.
             const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
+            const paymentList = Array.isArray(payments) ? payments : [{ method: payments, amount: finalTotal }];
+            const primaryMethod = paymentList[0]?.method || "Cash";
             const sub = money(items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0));
             const gstAmt = money(sub * 0.05);
             const svc = money(sub * 0.02);
@@ -794,7 +809,8 @@ function Dashboard() {
                     service_charge: svc,
                     charges: resolvedCharges,
                     grand_total: total,
-                    payment_method: method,
+                    payment_method: primaryMethod,
+                    payments: paymentList,
                     cashier_name: cashierName,
                     date: currentDate,
                     time: currentTime
@@ -803,9 +819,15 @@ function Dashboard() {
                 format: billFormat || {}
             });
 
-            // Pass the method through — settleTable records it as the payment.
-            await settleTable(table.id, method);
-            alert(`Table ${table.table_number} billed (${method}) & settled — now Available.`);
+            // Pass the payments through — settleTable records each split as a
+            // separate payment row. finalTotal includes per-bill charges (which
+            // are not part of the stored order grand_total), so the backend
+            // validates and records against the same number the cashier sees.
+            await settleTable(table.id, paymentList, total);
+            const label = paymentList.length > 1
+                ? paymentList.map((p) => p.method).join(" + ")
+                : primaryMethod;
+            alert(`Table ${table.table_number} billed (${label}) & settled — now Available.`);
             setShowTableBill(false);
             setTableBillTarget(null);
             setTableBillItems([]);
@@ -824,7 +846,9 @@ function Dashboard() {
     const availableCount = tables.filter((t) => t.status === "FREE").length;
     const serviceCharge  = subtotal * 0.02;
     const displayTotal   = grandTotal + serviceCharge;
-    const billTables     = tables.filter((t) => t.needs_bill);
+    const billTables     = tables
+        .filter((t) => t.needs_bill)
+        .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
 
     // ── Render (desktop POS) ────────────────────────────────────────
     return (
@@ -1040,6 +1064,7 @@ function Dashboard() {
                     onSetQty={handleTableBillSetQty}
                     onRemoveGroup={handleTableBillRemove}
                     onAddItem={handleTableBillAdd}
+                    onServe={handleTableBillServe}
                     onGenerate={generateTableBill}
                     onClose={() => { setShowTableBill(false); setTableBillTarget(null); setTableBillItems([]); }}
                 />

@@ -19,8 +19,16 @@ export const getOrderDetails = (id) =>
 export const getTableItems = (tableId) =>
   api.get(`/orders/table/${tableId}/items`);
 
-export const settleTable = (tableId, paymentMethod = "Cash") =>
-  api.post(`/orders/table/${tableId}/settle`, { payment_method: paymentMethod });
+// Settle a table. `payments` can be a single method string, or an array of
+// { method, amount } for split/multiple payment methods. `finalTotal` is the
+// cashier's charged total — including any per-bill charges (packing, AC, …)
+// that are not part of the stored order grand_total.
+export const settleTable = (tableId, payments, finalTotal) => {
+  const body = Array.isArray(payments)
+    ? { payments, final_total: finalTotal }
+    : { payment_method: payments };
+  return api.post(`/orders/table/${tableId}/settle`, body);
+};
 
 // ---------------------------------------------------------------------------
 // Bills — today's settled bills, so the cashier can correct an item that was
