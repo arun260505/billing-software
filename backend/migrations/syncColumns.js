@@ -29,6 +29,7 @@ const SYNC_TABLES = {
     charges:         { up: false },
     bill_formats:    { up: false },
     kitchen_formats: { up: false },
+    printer_settings: { up: false },
     users:           { up: false },
     roles:           { up: false },
     settings:        { up: false }
@@ -111,6 +112,11 @@ async function runSyncSchema() {
     }
     if (await tableExists("order_items")) {
         await ensureColumn("order_items", "served", "TINYINT(1) NOT NULL DEFAULT 0");
+    }
+    // 007: the printer devices the cashier till prints to.
+    if (await tableExists("printer_settings")) {
+        await ensureColumn("printer_settings", "cashier_printer", "VARCHAR(150) DEFAULT NULL");
+        await ensureColumn("printer_settings", "kitchen_printer", "VARCHAR(150) DEFAULT NULL");
     }
 
     console.log("Sync schema columns ready.");

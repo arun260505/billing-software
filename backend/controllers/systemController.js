@@ -1,6 +1,8 @@
 const os = require("os");
+const { execFile } = require("child_process");
 const db = require("../config/db");
 const systemModel = require("../models/systemModel");
+const syncConfig = require("../sync/syncConfig");
 
 // Strip the IPv6-mapped-IPv4 prefix Node adds (::ffff:192.168.1.5 -> 192.168.1.5).
 function normalizeIp(ip) {
@@ -101,6 +103,82 @@ exports.getServerIp = (req, res) => {
         addresses
     });
 
+};
+
+// List the printers installed on the machine this backend runs on, so the
+// cashier's Printer page can offer the real ones instead of a free-text guess.
+//
+// This is only the till's own printer list when the backend runs ON the till —
+// the exe/local node. A cloud node (Linux EC2) reports detectable:false and the
+// page falls back to typing the name in by hand.
+exports.getPrinters = (req, res) => {
+
+    const meta = {
+        // "local" = this node runs on the restaurant's own PC (see sync/syncConfig.js).
+        server_role: syncConfig.ROLE,
+        server_platform: process.platform
+    };
+
+    if (process.platform !== "win32") {
+        return res.json({
+            success: true,
+            detectable: false,
+            reason: "The server this page talks to is not a Windows PC, so it cannot see the till's printers.",
+            printers: [],
+            ...meta
+        });
+    }
+
+    // Fixed command, no request data interpolated. `@(...)` forces an array so a
+    // single installed printer still comes back as a list. PrinterStatus is an
+    // enum — cast it to a string so it survives ConvertTo-Json readably.
+    const script =
+        "@(Get-Printer | Select-Object Name, " +
+        "@{n='Status';e={[string]$_.PrinterStatus}}, " +
+        "@{n='Offline';e={[bool]$_.WorkOffline}}, " +
+        "@{n='Driver';e={[string]$_.DriverName}}) | ConvertTo-Json -Compress";
+
+    execFile(
+        "powershell.exe",
+        ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+        { timeout: 8000, windowsHide: true, maxBuffer: 1024 * 1024 },
+        (err, stdout) => {
+            if (err) {
+                return res.json({
+                    success: true,
+                    detectable: false,
+                    reason: "Could not read the printer list from Windows.",
+                    printers: [],
+                    ...meta
+                });
+            }
+
+            let parsed;
+            try {
+                parsed = JSON.parse(String(stdout).trim() || "[]");
+            } catch (parseErr) {
+                return res.json({
+                    success: true,
+                    detectable: false,
+                    reason: "Windows returned a printer list that could not be read.",
+                    printers: [],
+                    ...meta
+                });
+            }
+
+            const list = Array.isArray(parsed) ? parsed : [parsed];
+            const printers = list
+                .filter((p) => p && p.Name)
+                .map((p) => ({
+                    name: String(p.Name),
+                    status: String(p.Status || "Unknown"),
+                    offline: Boolean(p.Offline),
+                    driver: p.Driver ? String(p.Driver) : ""
+                }));
+
+            res.json({ success: true, detectable: true, reason: "", printers, ...meta });
+        }
+    );
 };
 
 // Get Settings

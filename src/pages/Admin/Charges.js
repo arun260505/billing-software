@@ -217,7 +217,7 @@ function Charges() {
 
                 <div className="page-header">
                     <div className="page-header-text">
-                        <h2>Charges & Settings</h2>
+                        <h2>Charges</h2>
                         <p>Configure billing charges, pricing rules and additional restaurant fees.</p>
                     </div>
                     <button className="primary-btn" onClick={handleAdd}>

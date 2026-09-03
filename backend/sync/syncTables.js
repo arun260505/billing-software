@@ -27,6 +27,7 @@ const SYNC_ORDER = [
     { table: "charges",         direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "bill_formats",    direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "kitchen_formats", direction: "down", fks: { restaurant_id: "restaurants" } },
+    { table: "printer_settings", direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "menu_items",      direction: "down", fks: { restaurant_id: "restaurants", category_id: "categories" } },
     { table: "users",           direction: "down", fks: { restaurant_id: "restaurants", created_by: "users" } },
     { table: "orders",          direction: "up",   fks: { restaurant_id: "restaurants", customer_id: "customers", table_id: "dining_tables" } },

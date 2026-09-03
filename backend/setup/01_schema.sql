@@ -227,6 +227,23 @@ CREATE TABLE IF NOT EXISTS `role_permissions` (
   CONSTRAINT `role_permissions_ibfk_2` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Which printer setup a restaurant runs (Admin → Settings). Modes:
+-- 'cashier_kds' (cashier printer + kitchen display), 'dual_printer'
+-- (separate cashier and kitchen printers), 'single_printer' (one printer;
+-- a counter order prints the customer bill then the kitchen bill).
+CREATE TABLE IF NOT EXISTS `printer_settings` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `restaurant_id` int NOT NULL,
+  `printer_mode` varchar(30) DEFAULT 'dual_printer',
+  `cashier_printer` varchar(150) DEFAULT NULL,
+  `kitchen_printer` varchar(150) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `restaurant_id` (`restaurant_id`),
+  CONSTRAINT `fk_printer_setting_restaurant` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS `roles` (
   `id` int NOT NULL AUTO_INCREMENT,
   `restaurant_id` int NOT NULL,

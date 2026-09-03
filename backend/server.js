@@ -200,6 +200,27 @@ db.query(`
     else console.log("Kitchen formats table ready.");
 });
 
+// Which printer setup this restaurant runs (Admin → Settings). See
+// backend/models/printerSettingModel.js for what each mode means.
+db.query(`
+    CREATE TABLE IF NOT EXISTS printer_settings (
+        id              INT AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id   INT NOT NULL UNIQUE,
+        printer_mode    VARCHAR(30) DEFAULT 'dual_printer',
+        cashier_printer VARCHAR(150) DEFAULT NULL,
+        kitchen_printer VARCHAR(150) DEFAULT NULL,
+        created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_printer_setting_restaurant
+            FOREIGN KEY (restaurant_id)
+            REFERENCES restaurants(id)
+            ON DELETE CASCADE
+    )
+`, (err) => {
+    if (err) console.error("Printer settings table migration error:", err.message);
+    else console.log("Printer settings table ready.");
+});
+
 db.query(`
     SELECT COLUMN_NAME
     FROM INFORMATION_SCHEMA.COLUMNS
@@ -319,6 +340,7 @@ const systemRoutes = require("./routes/systemRoutes");
 const syncRoutes = require("./routes/syncRoutes");
 const activationRoutes = require("./routes/activationRoutes");
 const kitchenFormatRoutes = require("./routes/kitchenFormatRoutes");
+const printerSettingRoutes = require("./routes/printerSettingRoutes");
 
 
 
@@ -360,6 +382,7 @@ app.use("/api/system", systemRoutes);
 app.use("/api/sync", syncRoutes);
 app.use("/api/activate", activationRoutes);
 app.use("/api/kitchen-format", kitchenFormatRoutes);
+app.use("/api/printer-settings", printerSettingRoutes);
 /*
 |--------------------------------------------------------------------------
 | Test Route

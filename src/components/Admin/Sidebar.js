@@ -14,7 +14,7 @@ function Sidebar({ isOpen }) {
     { name: "Tables", path: "/admin/tables" },
     { name: "Customers", path: "/admin/customers" },
     { name: "Orders", path: "/admin/orders" },
-    { name: "Charges & Settings", path: "/admin/charges" },
+    { name: "Charges", path: "/admin/charges" },
     { name: "Billing", path: "/admin/billing" },
     { name: "Kitchen Template", path: "/admin/kitchen-template" },
     { name: "Reports", path: "/admin/reports" },

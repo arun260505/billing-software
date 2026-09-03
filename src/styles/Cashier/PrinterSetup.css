@@ -1,0 +1,288 @@
+/* Cashier → Printer page (prn-*). Matches the ServerIP panel's card styling. */
+
+.prn-wrap {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    overflow-y: auto;
+}
+
+.prn-card {
+    width: 100%;
+    max-width: 620px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 26px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .06);
+}
+
+.prn-title {
+    font-size: 22px;
+    color: #1e3a8a;
+    margin-bottom: 6px;
+}
+
+.prn-sub {
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.prn-alert {
+    padding: 11px 14px;
+    border-radius: 9px;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.prn-alert.warn {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+}
+
+/* ── Which setup the admin chose ───────────────────────────── */
+
+.prn-mode {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+}
+
+.prn-mode-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #94a3b8;
+}
+
+.prn-mode-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.prn-mode-body strong {
+    color: #0f172a;
+    font-size: 14px;
+}
+
+.prn-mode-sub {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.prn-mode-count {
+    flex: 0 0 auto;
+    background: #e0e7ff;
+    color: #3730a3;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+/* ── Where the status comes from ───────────────────────────── */
+
+.prn-detect {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 9px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    margin-bottom: 20px;
+}
+
+.prn-detect.ok {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.prn-detect-text {
+    flex: 1;
+    font-size: 12.5px;
+    color: #475569;
+    line-height: 1.45;
+}
+
+/* ── One printer slot ──────────────────────────────────────── */
+
+.prn-slot {
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+    padding: 16px;
+    margin-bottom: 14px;
+}
+
+.prn-slot-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.prn-slot-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.prn-slot-title strong {
+    color: #0f172a;
+    font-size: 15px;
+}
+
+.prn-slot-role {
+    color: #64748b;
+    font-size: 12px;
+}
+
+/* Status pill */
+
+.prn-status {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.prn-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.prn-status.ok       { background: #dcfce7; color: #166534; }
+.prn-status.offline  { background: #fee2e2; color: #991b1b; }
+.prn-status.missing  { background: #ffedd5; color: #9a3412; }
+.prn-status.unknown  { background: #e0e7ff; color: #3730a3; }
+.prn-status.unset    { background: #f1f5f9; color: #64748b; }
+
+/* Entry row */
+
+.prn-entry {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.prn-select,
+.prn-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 11px 13px;
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    font-size: 14px;
+    background: #fff;
+    color: #0f172a;
+}
+
+.prn-select:focus,
+.prn-input:focus {
+    outline: none;
+    border-color: #1e3a8a;
+}
+
+.prn-btn {
+    padding: 11px 16px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.prn-btn.primary { background: #1e3a8a; color: #fff; }
+.prn-btn.ghost   { background: #f1f5f9; color: #334155; border-color: #e2e8f0; }
+
+.prn-btn:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+@media (hover: hover) {
+    .prn-btn.primary:not(:disabled):hover { background: #1e40af; }
+    .prn-btn.ghost:not(:disabled):hover   { background: #e2e8f0; }
+}
+
+.prn-orphan {
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: #9a3412;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 8px;
+    padding: 8px 11px;
+    line-height: 1.5;
+}
+
+.prn-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: #1e3a8a;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.prn-hint {
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+/* ── Save row ──────────────────────────────────────────────── */
+
+.prn-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+.prn-flash {
+    font-size: 13px;
+    color: #059669;
+    font-weight: 600;
+}
+
+.prn-loading {
+    padding: 26px 0;
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.prn-note {
+    margin: 20px 0 0;
+    padding-top: 16px;
+    border-top: 1px solid #f1f5f9;
+    font-size: 12.5px;
+    color: #64748b;
+    line-height: 1.55;
+}

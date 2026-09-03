@@ -4,7 +4,10 @@ import chargeService from "../../services/chargeService";
 import { printBill } from "../../utils/billPrinter";
 import { isValidCharge } from "../../utils/charges";
 
-function BillModal({ order, restaurant, format, onClose, onSuccess }) {
+// `onPrinted` (optional) fires with the order as it was printed, right after the
+// customer bill goes to the printer. Option 3 of the printer setup uses it to
+// send the kitchen copy out of the same printer straight after the bill.
+function BillModal({ order, restaurant, format, onClose, onSuccess, onPrinted }) {
     const [paymentMethod, setPaymentMethod] = useState("Cash");
     const [splitMode, setSplitMode] = useState(false);
     const [splitAmounts, setSplitAmounts] = useState({ Cash: "", Card: "", UPI: "", Wallet: "" });
@@ -89,16 +92,20 @@ function BillModal({ order, restaurant, format, onClose, onSuccess }) {
             }
 
             // Automatically print the customized bill
+            const printedOrder = {
+                ...order,
+                payment_method: splitMode ? exactSplits.map((s) => s.payment_method).join(" + ") : paymentMethod,
+                charges: selectedCharges,
+                grand_total: money(grandTotal)
+            };
+
             printBill({
-                order: {
-                    ...order,
-                    payment_method: splitMode ? exactSplits.map((s) => s.payment_method).join(" + ") : paymentMethod,
-                    charges: selectedCharges,
-                    grand_total: money(grandTotal)
-                },
+                order: printedOrder,
                 restaurant: restaurant || {},
                 format: format || {}
             });
+
+            if (onPrinted) onPrinted(printedOrder);
 
             onSuccess();
         } catch (error) {

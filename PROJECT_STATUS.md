@@ -4,7 +4,7 @@ A multi-tenant restaurant POS (Point of Sale). Each restaurant's data is isolate
 by `restaurant_id`, taken from the logged-in user's JWT and never trusted from the
 request body.
 
-_Last updated: 2026-08-16_
+_Last updated: 2026-09-03_
 
 ---
 
@@ -120,6 +120,46 @@ Full-window "docked bill panel" layout:
   **Send & Bill →** creates the order (sends it to the kitchen) **and** opens
   payment in one step. No "Update Order" in counter mode.
 
+## Admin → Settings (printer setup)
+
+The sidebar's old "Charges & Settings" is now just **Charges**; **Settings**
+(`/admin/settings`) is its own page. It holds one choice — which printer setup this
+restaurant runs — saved per restaurant in `printer_settings.printer_mode` and read
+by the cashier and waiter screens (they re-read it every 10s):
+
+| Mode | Setup | Table orders | Counter / walk-in orders |
+|------|-------|--------------|--------------------------|
+| `cashier_kds`    | Cashier printer + Kitchen Display | bill only, no KOT | bill only, no KOT |
+| `dual_printer`   | Cashier printer + kitchen printer | KOT on send, bill at settle | KOT on send, bill at settle |
+| `single_printer` | One printer for everything | bill only (kitchen told by hand) | **customer bill, then kitchen bill** |
+
+`dual_printer` is the default, so an existing restaurant keeps behaving as before
+until an admin changes it. The rules live in one place —
+`src/utils/printerMode.js` (`shouldPrintKotOnSend` / `shouldPrintKotWithBill`) —
+so the cashier and waiter screens can't drift apart.
+
+## Cashier → Printer (connecting the devices)
+
+The admin picks the *setup*; the cashier's **🖨 Printer** sidebar page connects the
+actual printers that setup calls for — **two boxes** for `dual_printer` (cashier +
+kitchen), **one** for the other two modes. `src/utils/printerMode.js`
+(`requiredPrinters`) is what decides which boxes appear. Names are saved to
+`printer_settings.cashier_printer` / `.kitchen_printer` per restaurant, so a
+browser reset or reinstall doesn't lose them.
+
+**Status is real, not decorative.** `GET /api/system/printers` shells out to
+`Get-Printer` and returns what Windows actually has installed on the machine
+running the backend — in exe mode that *is* the till, so a printer shows
+Connected / Offline / Not installed on this PC honestly. When the backend is a
+cloud (Linux) node it cannot see the till's printers: the endpoint returns
+`detectable: false`, the page says so, and the name falls back to a text box
+instead of a dropdown. A **Test print** button per printer prints a short slip
+(`src/utils/testPrint.js`) for a physical check either way.
+
+Printing still goes through the browser's print dialog, so the recorded name does
+not yet *route* the job — set the printer as the Windows default, or pick it in
+the dialog. Routing by name needs the print path to move out of the browser.
+
 ## Kitchen page (display)
 
 - **Grouped by table** (T1/T2/T3 fixed at the top) **plus counter orders** (each a
@@ -143,6 +183,10 @@ Full-window "docked bill panel" layout:
 | `POST /api/orders/table/:tableId/settle`| Settle a table (mark paid, free it)     |
 | `GET  /api/kitchen/tables`             | Kitchen board (by table + counter)       |
 | `PUT  /api/kitchen/item/:itemId/serve` | Kitchen marks an item served             |
+| `GET  /api/printer-settings`           | Read the printer setup (any staff role)  |
+| `PUT  /api/printer-settings`           | Change the printer setup (admin only)    |
+| `PUT  /api/printer-settings/devices`   | Set the till's printers (cashier/admin)  |
+| `GET  /api/system/printers`            | Printers installed on the server PC      |
 
 All are tenant-scoped (`restaurant_id` from the JWT).
 
@@ -154,6 +198,8 @@ All are tenant-scoped (`restaurant_id` from the JWT).
 |----------------------------------------|-------------------------------------------|
 | `001_multitenant_users.sql`            | Adds `restaurant_id`/`mobile`/`email` to users |
 | `002_order_items_served.sql`           | Adds `order_items.served TINYINT(1)`      |
+| `006_printer_settings.sql`             | Adds `printer_settings` (the printer setup) |
+| `007_printer_devices.sql`              | Adds `cashier_printer`/`kitchen_printer` to it |
 
 Apply any not already in the DB dump.
 

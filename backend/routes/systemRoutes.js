@@ -12,6 +12,10 @@ router.get("/server-ip", systemController.getServerIp);
 router.post("/register-network", authMiddleware, systemController.registerNetwork);
 router.get("/network-status", authMiddleware, systemController.networkStatus);
 
+// Printers installed on the server PC (the till, in exe mode) — used by the
+// cashier's Printer page to offer the real printer names.
+router.get("/printers", authMiddleware, systemController.getPrinters);
+
 // Settings
 router.get("/settings/:restaurantId", systemController.getSettings);
 

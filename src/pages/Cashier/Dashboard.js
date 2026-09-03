@@ -16,12 +16,20 @@ import BillModal from "../../components/Cashier/BillModal";
 import TableBillModal from "../../components/Cashier/TableBillModal";
 import MenuAvailability from "../../components/Cashier/MenuAvailability";
 import BillsHistory from "../../components/Cashier/BillsHistory";
+import PrinterSetup from "../../components/Cashier/PrinterSetup";
 import BillEditModal from "../../components/Cashier/BillEditModal";
 import { registerNetwork } from "../../services/systemService";
 import billingFormatService from "../../services/billingFormatService";
 import kitchenFormatService from "../../services/kitchenFormatService";
+import printerSettingService from "../../services/printerSettingService";
 import { printBill, DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
 import { printKitchenTicket, DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
+import {
+    DEFAULT_PRINTER_MODE,
+    normalizePrinterMode,
+    shouldPrintKotOnSend,
+    shouldPrintKotWithBill
+} from "../../utils/printerMode";
 
 function Dashboard() {
     // ── State ───────────────────────────────────────────────────────
@@ -46,7 +54,7 @@ function Dashboard() {
 
     // Left sidebar + which full-screen view is showing.
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeView, setActiveView] = useState("dashboard");   // "dashboard" | "menu" | "bills"
+    const [activeView, setActiveView] = useState("dashboard");   // "dashboard" | "menu" | "bills" | "printer"
     // Bills screen: a settled bill opened for correction + reprint.
     const [editingBill, setEditingBill] = useState(null);        // the bill row
     const [editingBillItems, setEditingBillItems] = useState([]);
@@ -68,6 +76,9 @@ function Dashboard() {
     const [currentTime, setCurrentTime] = useState("");
     const [billFormat, setBillFormat] = useState(DEFAULT_BILL_FORMAT);
     const [kitchenFormat, setKitchenFormat] = useState(DEFAULT_KITCHEN_FORMAT);
+    // Which printer setup the admin chose (Admin → Settings). It decides whether a
+    // kitchen ticket prints when the order is sent, follows the bill, or never prints.
+    const [printerMode, setPrinterMode] = useState(DEFAULT_PRINTER_MODE);
     const [restaurantInfo, setRestaurantInfo] = useState(null);
 
     // ── Functions ───────────────────────────────────────────────────
@@ -100,6 +111,18 @@ function Dashboard() {
         }
     };
 
+    const loadPrinterMode = async () => {
+        try {
+            const res = await printerSettingService.getPrinterSetting();
+            if (res.data?.success) {
+                setPrinterMode(normalizePrinterMode(res.data?.data?.setting?.printer_mode));
+            }
+        } catch (e) {
+            // Fall back to the default setup rather than blocking the till.
+            console.error("Failed to load printer mode in cashier:", e);
+        }
+    };
+
     useEffect(() => {
         updateDateTime();
         loadTables();
@@ -109,6 +132,7 @@ function Dashboard() {
         loadTodaysOrderCount();
         loadBillingFormat();
         loadKitchenFormat();
+        loadPrinterMode();
 
         // Register this restaurant's WAN IP so waiter phones on the same WiFi
         // are recognised as "on the restaurant network" (cloud model).
@@ -121,6 +145,7 @@ function Dashboard() {
             loadRunningOrders();
             loadTodaysOrderCount();
             loadCategories();   // pick up menu categories synced from the cloud
+            loadPrinterMode();  // pick up a printer setup changed in Admin → Settings
         }, 10000);
         const refreshOnFocus = () => {
             loadTables();
@@ -465,22 +490,26 @@ function Dashboard() {
                 }
             }
 
-            // Print KOT to kitchen printer
-            printKitchenTicket({
-                order: {
-                    order_number: assignedOrderNumber,
-                    order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
-                    isParcel: Boolean(selectedTable?.isParcel),
-                    tableName: selectedTable?.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`,
-                    table_number: selectedTable?.table_number,
-                    items: orderData.items,
-                    cashier_name: cashierName,
-                    date: currentDate,
-                    time: currentTime
-                },
-                restaurant: restaurantInfo || {},
-                format: kitchenFormat || {}
-            });
+            // Print the KOT to the kitchen printer — only the two-printer setup has
+            // one. The other setups use the Kitchen Display or print the kitchen
+            // copy behind the bill instead (see utils/printerMode.js).
+            if (shouldPrintKotOnSend(printerMode)) {
+                printKitchenTicket({
+                    order: {
+                        order_number: assignedOrderNumber,
+                        order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
+                        isParcel: Boolean(selectedTable?.isParcel),
+                        tableName: selectedTable?.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`,
+                        table_number: selectedTable?.table_number,
+                        items: orderData.items,
+                        cashier_name: cashierName,
+                        date: currentDate,
+                        time: currentTime
+                    },
+                    restaurant: restaurantInfo || {},
+                    format: kitchenFormat || {}
+                });
+            }
 
             if (!selectedTable?.isParcel) {
                 setCart([]);
@@ -529,10 +558,13 @@ function Dashboard() {
         let orderId = editingOrder?.id;
         let assignedOrderNumber = editingOrder ? editingOrder.order_number : `ORD-${orderNumber}`;
 
+        // A counter / walk-in order: no table, or a parcel. The printer setup treats
+        // these differently from dine-in (option 3 prints their kitchen copy).
+        const isTakeaway = !selectedTable || Boolean(selectedTable?.isParcel);
+
         // No existing order yet → create it now (this also sends it to the kitchen).
         if (!orderId) {
             setOrderBusy(true);
-            const isTakeaway = !selectedTable || Boolean(selectedTable?.isParcel);
             const orderData = {
                 order_number: `ORD-${Date.now()}`,
                 waiter_id: 1,
@@ -548,22 +580,26 @@ function Dashboard() {
                     await updateTableStatus(selectedTable.id, "OCCUPIED");
                 }
 
-                // Print KOT to kitchen printer
-                printKitchenTicket({
-                    order: {
-                        order_number: assignedOrderNumber,
-                        order_type: isTakeaway ? "Takeaway" : "Dine-In",
-                        isParcel: isTakeaway,
-                        tableName: selectedTable ? (selectedTable.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`) : "Counter",
-                        table_number: selectedTable?.table_number,
-                        items: orderData.items,
-                        cashier_name: cashierName,
-                        date: currentDate,
-                        time: currentTime
-                    },
-                    restaurant: restaurantInfo || {},
-                    format: kitchenFormat || {}
-                });
+                // Print the KOT to the kitchen printer — only the two-printer setup
+                // has one. Option 3 prints the kitchen copy behind the bill instead
+                // (see handleBillPrinted), option 1 uses the Kitchen Display.
+                if (shouldPrintKotOnSend(printerMode)) {
+                    printKitchenTicket({
+                        order: {
+                            order_number: assignedOrderNumber,
+                            order_type: isTakeaway ? "Takeaway" : "Dine-In",
+                            isParcel: isTakeaway,
+                            tableName: selectedTable ? (selectedTable.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`) : "Counter",
+                            table_number: selectedTable?.table_number,
+                            items: orderData.items,
+                            cashier_name: cashierName,
+                            date: currentDate,
+                            time: currentTime
+                        },
+                        restaurant: restaurantInfo || {},
+                        format: kitchenFormat || {}
+                    });
+                }
             } catch (error) {
                 console.error("Order Error:", error);
                 alert(error.response?.data?.message || "Failed to place order.");
@@ -580,6 +616,8 @@ function Dashboard() {
             order_id: orderId,
             order_number: assignedOrderNumber,
             tableName: selectedTable ? (selectedTable.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`) : "Counter",
+            isCounter: isTakeaway,
+            table_number: selectedTable?.table_number,
             items: mergeCartItems(cart),
             subtotal: Number(subtotal.toFixed(2)),
             gst: Number(gst.toFixed(2)),
@@ -587,6 +625,34 @@ function Dashboard() {
             total: Number((subtotal + gst + serviceCharge).toFixed(2)),
         });
         setShowBill(true);
+    };
+
+    // Option 3 of the printer setup: one printer prints two bills for a counter
+    // order — the customer bill, then the kitchen bill. BillModal calls this the
+    // moment the customer bill goes out; the short delay lets that print land
+    // first so the two come out in order.
+    const handleBillPrinted = (printedOrder) => {
+        if (!shouldPrintKotWithBill(printerMode, printedOrder?.isCounter)) return;
+
+        const kot = {
+            order_number: printedOrder.order_number,
+            order_type: "Takeaway",
+            isParcel: true,
+            tableName: printedOrder.tableName || "Counter",
+            table_number: printedOrder.table_number,
+            items: printedOrder.items || [],
+            cashier_name: cashierName,
+            date: currentDate,
+            time: currentTime
+        };
+
+        setTimeout(() => {
+            printKitchenTicket({
+                order: kot,
+                restaurant: restaurantInfo || {},
+                format: kitchenFormat || {}
+            });
+        }, 900);
     };
 
     const handlePaymentSuccess = () => {
@@ -880,6 +946,12 @@ function Dashboard() {
                     >
                         🧾 Bills
                     </button>
+                    <button
+                        className={`pos-nav-item${activeView === "printer" ? " active" : ""}`}
+                        onClick={() => { setActiveView("printer"); setSidebarOpen(false); }}
+                    >
+                        🖨 Printer
+                    </button>
                 </nav>
             </aside>
 
@@ -913,7 +985,8 @@ function Dashboard() {
             </header>
 
             {activeView === "menu" ? <MenuAvailability /> :
-             activeView === "bills" ? <BillsHistory onOpenBill={openBillForEdit} /> : (
+             activeView === "bills" ? <BillsHistory onOpenBill={openBillForEdit} /> :
+             activeView === "printer" ? <PrinterSetup /> : (
             <>
             {/* ══ TABLE BAR ══ */}
             <div className="pos-tablebar">
@@ -1076,6 +1149,7 @@ function Dashboard() {
                     format={billFormat}
                     onClose={() => setShowBill(false)}
                     onSuccess={handlePaymentSuccess}
+                    onPrinted={handleBillPrinted}
                 />
             )}
             {editingBill && (

@@ -10,7 +10,13 @@ import MenuCard from "../../components/Waiter/MenuCard";
 import CartSheet from "../../components/Waiter/CartSheet";
 import BillModal from "../../components/Waiter/BillModal";
 import kitchenFormatService from "../../services/kitchenFormatService";
+import printerSettingService from "../../services/printerSettingService";
 import { printKitchenTicket, DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
+import {
+    DEFAULT_PRINTER_MODE,
+    normalizePrinterMode,
+    shouldPrintKotOnSend
+} from "../../utils/printerMode";
 
 function Dashboard() {
     // ── Existing state (unchanged) ──────────────────────────────────
@@ -35,6 +41,9 @@ function Dashboard() {
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
     const [kitchenFormat, setKitchenFormat] = useState(DEFAULT_KITCHEN_FORMAT);
+    // Which printer setup the admin chose (Admin → Settings). A waiter only prints
+    // a kitchen ticket when the restaurant actually has a kitchen printer.
+    const [printerMode, setPrinterMode] = useState(DEFAULT_PRINTER_MODE);
     const [restaurantInfo, setRestaurantInfo] = useState(null);
     const [orderBusy, setOrderBusy] = useState(false);
 
@@ -61,6 +70,18 @@ function Dashboard() {
         }
     };
 
+    const loadPrinterMode = async () => {
+        try {
+            const res = await printerSettingService.getPrinterSetting();
+            if (res.data?.success) {
+                setPrinterMode(normalizePrinterMode(res.data?.data?.setting?.printer_mode));
+            }
+        } catch (e) {
+            // Fall back to the default setup rather than blocking order taking.
+            console.error("Failed to load printer mode in waiter:", e);
+        }
+    };
+
     useEffect(() => {
         updateDateTime();
         loadTables();
@@ -69,12 +90,14 @@ function Dashboard() {
         loadAllItems();
         loadTodaysOrderCount();
         loadKitchenFormat();
+        loadPrinterMode();
 
         const statsTimer = setInterval(() => {
             loadTables();
             loadRunningOrders();
             loadTodaysOrderCount();
             loadCategories();   // pick up menu categories synced from the cloud
+            loadPrinterMode();  // pick up a printer setup changed in Admin → Settings
         }, 10000);
 
         const refreshOnFocus = () => {
@@ -481,22 +504,26 @@ function Dashboard() {
                 alert(selectedTable?.isParcel ? "Parcel Order Sent To Kitchen" : "Order Sent To Kitchen");
             }
 
-            // Print KOT to kitchen printer
-            printKitchenTicket({
-                order: {
-                    order_number: assignedOrderNumber,
-                    order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
-                    isParcel: Boolean(selectedTable?.isParcel),
-                    tableName: selectedTable?.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`,
-                    table_number: selectedTable?.table_number,
-                    items: mergedItems,
-                    waiter_name: waiterName,
-                    date: currentDate,
-                    time: currentTime
-                },
-                restaurant: restaurantInfo || {},
-                format: kitchenFormat || {}
-            });
+            // Print the KOT to the kitchen printer — only the two-printer setup has
+            // one. With a kitchen display, or a single shared printer, the waiter
+            // prints nothing (see utils/printerMode.js).
+            if (shouldPrintKotOnSend(printerMode)) {
+                printKitchenTicket({
+                    order: {
+                        order_number: assignedOrderNumber,
+                        order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
+                        isParcel: Boolean(selectedTable?.isParcel),
+                        tableName: selectedTable?.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`,
+                        table_number: selectedTable?.table_number,
+                        items: mergedItems,
+                        waiter_name: waiterName,
+                        date: currentDate,
+                        time: currentTime
+                    },
+                    restaurant: restaurantInfo || {},
+                    format: kitchenFormat || {}
+                });
+            }
 
             setCart([]);
             setShowCart(false);
