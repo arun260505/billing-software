@@ -101,6 +101,18 @@ async function runSyncSchema() {
             );
         }
     }
+
+    // Feature columns from later migrations (002 served, 003 service_charge).
+    // A DB set up before those migrations is missing them, which breaks order
+    // creation / billing with "Unknown column '...'". Add them idempotently so
+    // any older database self-heals on boot.
+    if (await tableExists("orders")) {
+        await ensureColumn("orders", "service_charge", "DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+    }
+    if (await tableExists("order_items")) {
+        await ensureColumn("order_items", "served", "TINYINT(1) NOT NULL DEFAULT 0");
+    }
+
     console.log("Sync schema columns ready.");
 }
 
