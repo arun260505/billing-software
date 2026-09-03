@@ -293,8 +293,14 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Serve the built React app so ONE machine (the cashier PC) hosts both the UI
 // and the API on http://<lan-ip>:5000. On the cloud, nginx serves the build and
 // only proxies /api here, so this static layer is dormant there — harmless.
+//
+// In development the frontend runs separately on :3000, so set SERVE_CLIENT=false
+// in backend/.env to keep :5000 API-only (no stale login page served here).
 const buildDir = path.join(__dirname, "..", "build");
-app.use(express.static(buildDir));
+const serveClient = process.env.SERVE_CLIENT !== "false";
+if (serveClient) {
+    app.use(express.static(buildDir));
+}
 
 const adminRoutes = require("./routes/adminRoutes");
 
@@ -401,7 +407,7 @@ app.get("/api/health", (req, res) => {
 // (e.g. /cashier) work on a refresh. Must come after all API routes. Written as
 // middleware rather than app.get("*") for Express 5 path-matching compatibility.
 app.use((req, res, next) => {
-    if (req.method === "GET" && !req.path.startsWith("/api")) {
+    if (serveClient && req.method === "GET" && !req.path.startsWith("/api")) {
         return res.sendFile(path.join(buildDir, "index.html"), (err) => {
             if (err) next();
         });
