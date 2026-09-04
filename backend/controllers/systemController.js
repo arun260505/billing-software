@@ -207,7 +207,11 @@ exports.getSettings = (req, res) => {
 // Create Settings
 exports.createSettings = (req, res) => {
 
-    systemModel.createSettings(req.body, (err, result) => {
+    // The tenant comes from the token, never the body — otherwise any staff
+    // login could create settings rows against another restaurant's id.
+    const payload = { ...req.body, restaurant_id: req.user.restaurant_id };
+
+    systemModel.createSettings(payload, (err, result) => {
 
         if (err) {
             return res.status(500).json({
@@ -248,7 +252,9 @@ exports.getRoles = (req, res) => {
 // Create Role
 exports.createRole = (req, res) => {
 
-    systemModel.createRole(req.body, (err, result) => {
+    const payload = { ...req.body, restaurant_id: req.user.restaurant_id };
+
+    systemModel.createRole(payload, (err, result) => {
 
         if (err)
             return res.status(500).json({
@@ -291,6 +297,7 @@ exports.assignPermissions = (req, res) => {
 
     systemModel.assignPermissions(
         req.params.roleId,
+        req.user.restaurant_id,
         req.body.permissions,
         (err) => {
 
@@ -312,7 +319,15 @@ exports.assignPermissions = (req, res) => {
 // Save Activity Log
 exports.createActivityLog = (req, res) => {
 
-    systemModel.createActivityLog(req.body, (err, result) => {
+    // Both the restaurant and the actor are taken from the token, so an audit
+    // entry cannot be forged against someone else's name or restaurant.
+    const payload = {
+        ...req.body,
+        restaurant_id: req.user.restaurant_id,
+        user_id: req.user.id
+    };
+
+    systemModel.createActivityLog(payload, (err, result) => {
 
         if (err) {
             return res.status(500).json({

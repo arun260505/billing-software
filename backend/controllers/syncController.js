@@ -7,13 +7,17 @@ const { syncKey } = require("../sync/syncConfig");
 // A request is authorised if it presents either the global dev key (SYNC_KEY
 // env, used in single-tenant/testing) OR the per-restaurant sync key issued at
 // activation for the restaurant it names.
+//
+// Returns null when the request is rejected (the response has already been
+// sent), otherwise { restaurantId } — the restaurant this key actually speaks
+// for, or null for the global dev key, which is not tied to one restaurant.
 async function keyOk(req, res, restaurantUuid) {
     const provided = req.headers["x-sync-key"];
     if (!provided) {
         res.status(401).json({ success: false, message: "Missing sync key." });
-        return false;
+        return null;
     }
-    if (syncKey && provided === syncKey) return true;
+    if (syncKey && provided === syncKey) return { restaurantId: null };
 
     if (restaurantUuid) {
         const [[r]] = await db.query(
@@ -25,12 +29,12 @@ async function keyOk(req, res, restaurantUuid) {
                 "SELECT sync_key FROM restaurant_activations WHERE restaurant_id = ? LIMIT 1",
                 [r.id]
             );
-            if (a && a.sync_key === provided) return true;
+            if (a && a.sync_key === provided) return { restaurantId: r.id };
         }
     }
 
     res.status(401).json({ success: false, message: "Invalid sync key." });
-    return false;
+    return null;
 }
 
 async function recordHeartbeat(restaurantUuid) {
@@ -46,13 +50,18 @@ async function recordHeartbeat(restaurantUuid) {
 // POST /api/sync/push  { table, rows, restaurant_uuid }
 exports.push = async (req, res) => {
     const { table, rows, restaurant_uuid } = req.body || {};
-    if (!(await keyOk(req, res, restaurant_uuid))) return;
+    const auth = await keyOk(req, res, restaurant_uuid);
+    if (!auth) return;
     const def = BY_TABLE[table];
     if (!def || def.direction !== "up") {
         return res.status(400).json({ success: false, message: "Not an up-sync table." });
     }
     try {
-        const result = await applyRows(db, def, rows || []);
+        // Scoped to the restaurant the key belongs to, so a node can only ever
+        // write its own tenant's rows.
+        const result = await applyRows(db, def, rows || [], {
+            restaurantId: auth.restaurantId
+        });
         await recordHeartbeat(restaurant_uuid);
         res.json({ success: true, ...result });
     } catch (e) {

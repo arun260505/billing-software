@@ -15,6 +15,30 @@
 // Columns never copied verbatim between databases.
 const SKIP_COLS = new Set(["id", "synced_at"]);
 
+/*
+| Real column names for a table, cached after the first lookup.
+|
+| An incoming push is a JSON object from another machine, and its KEYS used to
+| go straight into the INSERT column list. Backticks alone don't make that safe
+| (a key containing a backtick escapes the quoting), and a key that isn't a
+| column at all just produces a confusing error. So: ask the database what the
+| columns are and drop anything else on the floor.
+*/
+const columnCache = new Map();
+
+async function allowedColumns(dbp, table) {
+    if (columnCache.has(table)) return columnCache.get(table);
+
+    const [rows] = await dbp.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
+        [table]
+    );
+    const cols = new Set(rows.map((r) => r.COLUMN_NAME));
+    columnCache.set(table, cols);
+    return cols;
+}
+
 // mysql2 returns DATETIME/TIMESTAMP as JS Date objects; JSON would turn those
 // into ISO strings ("…T…Z") that MySQL rejects on insert. Convert to MySQL's
 // "YYYY-MM-DD HH:MM:SS" in the same wall-clock the driver read, so the value
@@ -57,12 +81,28 @@ async function serializeRows(dbp, def, rows) {
     });
 }
 
-async function applyRows(dbp, def, rows) {
+/*
+| Apply pushed rows.
+|
+| `scope.restaurantId`, when given, is the restaurant the caller's sync key
+| actually authorises. Rows are pinned to it, so a node holding restaurant A's
+| key cannot write rows into restaurant B — the key proves which restaurant is
+| talking, and that is the only restaurant it may write.
+*/
+async function applyRows(dbp, def, rows, scope = {}) {
     let applied = 0;
     let deferred = 0;
+    let rejected = 0;
+
+    const cols_ok = await allowedColumns(dbp, def.table);
 
     for (const incoming of rows) {
-        const data = { ...incoming };
+        const data = {};
+        // Keep the FK __uuid helper keys (resolved below); drop anything that
+        // is not a real column of this table.
+        for (const [k, v] of Object.entries(incoming || {})) {
+            if (k.endsWith("__uuid") || cols_ok.has(k)) data[k] = v;
+        }
         let missingParent = false;
 
         for (const [fkCol, parentTable] of Object.entries(def.fks)) {
@@ -88,6 +128,18 @@ async function applyRows(dbp, def, rows) {
             continue; // parent not synced yet — retried next cycle
         }
 
+        // Pin the row to the restaurant the sync key belongs to. A row that
+        // claims a different restaurant is refused rather than rewritten, so a
+        // misconfigured node fails loudly instead of quietly merging tenants.
+        if (scope.restaurantId != null && cols_ok.has("restaurant_id")) {
+            if (data.restaurant_id != null &&
+                Number(data.restaurant_id) !== Number(scope.restaurantId)) {
+                rejected++;
+                continue;
+            }
+            data.restaurant_id = scope.restaurantId;
+        }
+
         for (const c of SKIP_COLS) delete data[c];
 
         const cols = Object.keys(data);
@@ -106,7 +158,7 @@ async function applyRows(dbp, def, rows) {
         applied++;
     }
 
-    return { applied, deferred };
+    return { applied, deferred, rejected };
 }
 
 // UP: rows changed locally but not yet pushed (or changed since last push).

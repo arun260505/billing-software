@@ -9,15 +9,8 @@ const { success, error } = require("../utils/response");
 // receipt and the database have to agree, and only one of them can be right.
 const computeTotals = totalsFromItems;
 
-// Normalise cart items into the order_items shape (adds `total`).
-const toOrderItems = (items = []) =>
-    items.map((it) => ({
-        menu_item_id: it.menu_item_id,
-        quantity: it.quantity,
-        price: it.price,
-        total: Number(it.price) * Number(it.quantity),
-        notes: it.notes || null
-    }));
+// Cart items are normalised (and priced from menu_items) by
+// orderModel.priceCartItems — the client's own price is never used.
 
 // Get all orders
 exports.getAllOrders = (req, res) => {
@@ -53,58 +46,67 @@ exports.createOrder = (req, res) => {
     const restaurantId = req.user.restaurant_id;   // tenant from JWT, never the body
     const { items } = req.body;
 
-    const { subtotal, tax, service_charge, grand_total } = computeTotals(items);
+    // Price the cart from menu_items before totalling anything. The client's
+    // price field is ignored: the receipt and the database have to agree, and
+    // a cart posted by a phone is not a source of truth about money.
+    orderModel.priceCartItems(items, restaurantId, (err, pricedItems) => {
 
-    generateOrderNumber(restaurantId, (err, orderNumber) => {
+        if (err) return error(res, err.message, 400);
 
-        if (err) return error(res, err.message, 500);
+        const { subtotal, tax, service_charge, grand_total } = computeTotals(pricedItems);
 
-        const order = {
-            ...req.body,
-            restaurant_id: restaurantId,
-            employee_id: req.user.id,               // the logged-in waiter/cashier
-            order_number: orderNumber,
-            order_type: req.body.order_type || "Dine-In",
-            // Orders auto-start as Preparing — the kitchen is display-only.
-            order_status: req.body.order_status || "Preparing",
-            payment_status: req.body.payment_status || "Pending",
-            subtotal,
-            discount: req.body.discount || 0,
-            tax,
-            service_charge,
-            grand_total
-        };
-
-        orderModel.createOrder(order, (err, result) => {
+        generateOrderNumber(restaurantId, (err, orderNumber) => {
 
             if (err) return error(res, err.message, 500);
 
-            const orderId = result.insertId;
+            const order = {
+                ...req.body,
+                restaurant_id: restaurantId,
+                employee_id: req.user.id,           // the logged-in waiter/cashier
+                order_number: orderNumber,
+                order_type: req.body.order_type || "Dine-In",
+                // Orders auto-start as Preparing — the kitchen is display-only.
+                order_status: req.body.order_status || "Preparing",
+                payment_status: req.body.payment_status || "Pending",
+                subtotal,
+                discount: req.body.discount || 0,
+                tax,
+                service_charge,
+                grand_total
+            };
 
-            orderModel.createOrderItems(toOrderItems(items), orderId, (err) => {
+            orderModel.createOrder(order, (err, result) => {
 
                 if (err) return error(res, err.message, 500);
 
-                const respond = () => success(
-                    res,
-                    "Order created successfully.",
-                    { order_id: orderId, order_number: orderNumber },
-                    201
-                );
+                const orderId = result.insertId;
 
-                if (order.order_type === "Dine-In" && order.table_id) {
-                    orderModel.updateTableStatus(
-                        order.table_id,
-                        restaurantId,
-                        "Occupied",
-                        (err) => {
-                            if (err) return error(res, err.message, 500);
-                            return respond();
-                        }
+                orderModel.createOrderItems(pricedItems, orderId, (err) => {
+
+                    if (err) return error(res, err.message, 500);
+
+                    const respond = () => success(
+                        res,
+                        "Order created successfully.",
+                        { order_id: orderId, order_number: orderNumber },
+                        201
                     );
-                } else {
-                    return respond();
-                }
+
+                    if (order.order_type === "Dine-In" && order.table_id) {
+                        orderModel.updateTableStatus(
+                            order.table_id,
+                            restaurantId,
+                            "Occupied",
+                            (err) => {
+                                if (err) return error(res, err.message, 500);
+                                return respond();
+                            }
+                        );
+                    } else {
+                        return respond();
+                    }
+
+                });
 
             });
 
@@ -377,21 +379,29 @@ exports.updateOrder = (req, res) => {
         return error(res, "Order must contain at least one item.", 400);
     }
 
-    const totals = computeTotals(items);
+    // Re-price from menu_items, exactly as createOrder does — an edit must not
+    // be a way around the price the menu says.
+    orderModel.priceCartItems(items, restaurantId, (err, pricedItems) => {
 
-    orderModel.updateOrderTotals(orderId, restaurantId, totals, (err) => {
+        if (err) return error(res, err.message, 400);
 
-        if (err) return error(res, err.message, 500);
+        const totals = computeTotals(pricedItems);
 
-        orderModel.deleteOrderItems(orderId, restaurantId, (err) => {
+        orderModel.updateOrderTotals(orderId, restaurantId, totals, (err) => {
 
             if (err) return error(res, err.message, 500);
 
-            orderModel.createOrderItems(toOrderItems(items), orderId, (err) => {
+            orderModel.deleteOrderItems(orderId, restaurantId, (err) => {
 
                 if (err) return error(res, err.message, 500);
 
-                return success(res, "Order updated successfully.");
+                orderModel.createOrderItems(pricedItems, orderId, (err) => {
+
+                    if (err) return error(res, err.message, 500);
+
+                    return success(res, "Order updated successfully.");
+
+                });
 
             });
 

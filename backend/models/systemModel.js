@@ -125,27 +125,43 @@ const getPermissions = (callback) => {
 };
 
 // Assign Permissions
-const assignPermissions = (roleId, permissions, callback) => {
+//
+// Scoped to the caller's restaurant: the role id arrives in the URL, so without
+// this check an admin of one restaurant could rewrite another's role.
+const assignPermissions = (roleId, restaurantId, permissions, callback) => {
+
+    const list = Array.isArray(permissions) ? permissions : [];
 
     db.query(
-        "DELETE FROM role_permissions WHERE role_id=?",
-        [roleId],
-        (err) => {
+        "SELECT id FROM roles WHERE id=? AND restaurant_id=? LIMIT 1",
+        [roleId, restaurantId],
+        (err, rows) => {
 
             if (err) return callback(err);
-
-            if (permissions.length === 0)
-                return callback(null);
-
-            const values = permissions.map(permissionId => [
-                roleId,
-                permissionId
-            ]);
+            if (!rows.length) return callback(new Error("Role not found."));
 
             db.query(
-                "INSERT INTO role_permissions (role_id, permission_id) VALUES ?",
-                [values],
-                callback
+                "DELETE FROM role_permissions WHERE role_id=?",
+                [roleId],
+                (err) => {
+
+                    if (err) return callback(err);
+
+                    if (list.length === 0)
+                        return callback(null);
+
+                    const values = list.map(permissionId => [
+                        roleId,
+                        permissionId
+                    ]);
+
+                    db.query(
+                        "INSERT INTO role_permissions (role_id, permission_id) VALUES ?",
+                        [values],
+                        callback
+                    );
+
+                }
             );
 
         }
@@ -204,6 +220,11 @@ module.exports = {
     getSettings,
     createSettings,
     updateSettings,
+
+    getRoles,
+    createRole,
+    getPermissions,
+    assignPermissions,
 
     createActivityLog,
     getActivityLogs

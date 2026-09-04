@@ -33,6 +33,56 @@ const getOrderById = (id, restaurantId, callback) => {
     db.query(sql, [id, restaurantId], callback);
 };
 
+/*
+| Look up the real menu price for a cart, scoped to the restaurant.
+|
+| The cart arrives from a browser or an APK, so the price it carries is a
+| suggestion, not a fact — a tampered client could post price: 0 and the till
+| would print (and bank) a free bill. addBillItem already priced its item from
+| menu_items; this does the same for a whole cart so order creation agrees.
+|
+| Callback gets (err, pricedItems). An item whose menu_item_id does not belong
+| to this restaurant is an error, not a silently-dropped line.
+*/
+const priceCartItems = (items, restaurantId, callback) => {
+
+    const cart = Array.isArray(items) ? items : [];
+    if (cart.length === 0) return callback(null, []);
+
+    const ids = [...new Set(cart.map((it) => it.menu_item_id).filter((v) => v != null))];
+    if (ids.length === 0) return callback(new Error("Order has no valid menu items."));
+
+    db.query(
+        "SELECT id, price FROM menu_items WHERE id IN (?) AND restaurant_id = ?",
+        [ids, restaurantId],
+        (err, rows) => {
+
+            if (err) return callback(err);
+
+            const priceById = new Map(rows.map((r) => [Number(r.id), Number(r.price)]));
+
+            const priced = [];
+            for (const it of cart) {
+                const price = priceById.get(Number(it.menu_item_id));
+                if (price === undefined) {
+                    return callback(new Error("Menu item not found on this menu."));
+                }
+                const qty = Math.max(1, Number(it.quantity) || 1);
+                priced.push({
+                    menu_item_id: it.menu_item_id,
+                    quantity: qty,
+                    price,
+                    total: money(price * qty),
+                    notes: it.notes || null
+                });
+            }
+
+            callback(null, priced);
+        }
+    );
+
+};
+
 // Create order (restaurant_id + employee_id set by controller from JWT)
 const createOrder = (order, callback) => {
 
@@ -1007,6 +1057,7 @@ const getTodaysOrderCount = (restaurantId, callback) => {
 module.exports = {
     getAllOrders,
     getOrderById,
+    priceCartItems,
     createOrder,
     createOrderItems,
     deleteOrder,
