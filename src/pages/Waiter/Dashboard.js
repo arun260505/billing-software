@@ -470,7 +470,7 @@ function Dashboard() {
             cart.reduce((acc, item) => {
                 const note = (item.note || "").trim();
                 const k = `${item.id}|${note}`;
-                if (!acc[k]) acc[k] = { menu_item_id: item.id, quantity: 0, price: item.price, gst: item.gst, notes: note || null };
+                if (!acc[k]) acc[k] = { menu_item_id: item.id, item_name: item.item_name, category_name: item.category_name, quantity: 0, price: item.price, gst: item.gst, notes: note || null };
                 acc[k].quantity += normalizeQuantity(item.quantity);
                 return acc;
             }, {})
