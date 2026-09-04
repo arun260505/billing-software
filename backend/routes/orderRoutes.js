@@ -4,6 +4,7 @@ const router = express.Router();
 const orderController = require("../controllers/orderController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
+const { requireApproval } = require("../middleware/approvalMiddleware");
 
 router.use(authMiddleware);
 
@@ -20,7 +21,7 @@ router.get("/table/:tableId/items", staff, orderController.getTableActiveItems);
 router.put("/table/:tableId/serve", staff, orderController.markTableServed);
 router.put("/item/:itemId/serve", staff, orderController.markItemServed);
 router.put("/item/:itemId/qty", staff, orderController.setItemQuantity);   // edit bill quantity
-router.delete("/item/:itemId", staff, orderController.removeItem);   // cancel one bill item
+router.delete("/item/:itemId", staff, requireApproval("cancel_order"), orderController.removeItem);   // cancel one bill item
 router.post("/table/:tableId/settle", roleMiddleware(["admin", "cashier"]), orderController.settleTable);
 router.post("/table/:tableId/item", staff, orderController.addBillItem);   // add an item to the bill
 router.get("/today-count", staff, orderController.getTodaysOrderCount);
@@ -39,8 +40,8 @@ router.get("/:id", staff, orderController.getOrderById);
 router.put("/:id/serve", roleMiddleware(["admin", "waiter", "cashier"]), orderController.markServed);
 
 // Writes.
-router.post("/", takers, orderController.createOrder);
-router.put("/:id", takers, orderController.updateOrder);
-router.delete("/:id", staff, orderController.cancelOrder);   // soft cancel
+router.post("/", takers, requireApproval("discount", (req) => Number(req.body.discount) > 0), orderController.createOrder);
+router.put("/:id", takers, requireApproval("discount", (req) => Number(req.body.discount) > 0), orderController.updateOrder);
+router.delete("/:id", staff, requireApproval("cancel_order"), orderController.cancelOrder);   // soft cancel
 
 module.exports = router;

@@ -1,0 +1,15 @@
+◇ injected env (9) from .env // tip: ⌘ override existing { override: true }
+🚀 Server Running on Port 5000
+✅ MySQL Connected Successfully (pool)
+Kitchen formats table ready.
+Charges table ready.
+restaurant_networks table ready.
+Bill formats table ready.
+Printer settings table ready.
+Categories timing columns ready.
+Restaurants logo column ready.
+payment_settings table ready.
+security_settings table ready.
+Printer settings extended columns added.
+Settings columns added.
+Sync schema columns ready.

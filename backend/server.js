@@ -285,6 +285,109 @@ db.query(`
     }
 });
 
+// ── Settings table: add missing columns if they don't exist ─────
+db.query(`
+    SELECT COLUMN_NAME
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'settings'
+      AND COLUMN_NAME IN ('time_zone', 'opening_time', 'closing_time', 'restaurant_status')
+`, (err, rows) => {
+    if (err) { console.error("Settings column check error:", err.message); return; }
+    const existing = new Set((rows || []).map((r) => r.COLUMN_NAME));
+    const clauses = [];
+    if (!existing.has("time_zone"))         clauses.push("ADD COLUMN time_zone VARCHAR(50) DEFAULT 'Asia/Kolkata' AFTER invoice_footer");
+    if (!existing.has("opening_time"))      clauses.push("ADD COLUMN opening_time TIME NULL AFTER time_zone");
+    if (!existing.has("closing_time"))      clauses.push("ADD COLUMN closing_time TIME NULL AFTER opening_time");
+    if (!existing.has("restaurant_status")) clauses.push("ADD COLUMN restaurant_status VARCHAR(10) DEFAULT 'Open' AFTER closing_time");
+    if (clauses.length === 0) { console.log("Settings columns ready."); return; }
+    db.query(`ALTER TABLE settings ${clauses.join(", ")}`, (e) => {
+        if (e) console.error("Settings column migration error:", e.message);
+        else console.log("Settings columns added.");
+    });
+});
+
+// ── Payment settings table ─────────────────────────────────────
+db.query(`
+    CREATE TABLE IF NOT EXISTS payment_settings (
+        id              INT AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id   INT NOT NULL UNIQUE,
+        cash_enabled    TINYINT(1) DEFAULT 1,
+        upi_enabled     TINYINT(1) DEFAULT 1,
+        card_enabled    TINYINT(1) DEFAULT 1,
+        other_enabled   TINYINT(1) DEFAULT 0,
+        upi_id          VARCHAR(120) DEFAULT NULL,
+        created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_payment_settings_restaurant
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+    )
+`, (err) => {
+    if (err) console.error("Payment settings table migration error:", err.message);
+    else console.log("Payment settings table ready.");
+});
+
+// ── Security settings table ────────────────────────────────────
+db.query(`
+    CREATE TABLE IF NOT EXISTS security_settings (
+        id                          INT AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id               INT NOT NULL UNIQUE,
+        session_timeout_hours       INT DEFAULT 8,
+        discount_approval           TINYINT(1) DEFAULT 0,
+        refund_approval             TINYINT(1) DEFAULT 0,
+        cancel_order_approval       TINYINT(1) DEFAULT 0,
+        menu_price_change_approval  TINYINT(1) DEFAULT 0,
+        created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_security_settings_restaurant
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+    )
+`, (err) => {
+    if (err) console.error("Security settings table migration error:", err.message);
+    else console.log("Security settings table ready.");
+});
+
+// ── Seed default permissions if the table is empty ─────────────
+db.query("SELECT COUNT(*) AS cnt FROM permissions", (err, rows) => {
+    if (err) return;
+    if (rows[0].cnt > 0) return;
+    const defaults = [
+        ["View Orders", "Orders"], ["Create Orders", "Orders"], ["Edit Orders", "Orders"], ["Cancel Orders", "Orders"],
+        ["View Tables", "Tables"], ["Manage Tables", "Tables"],
+        ["View Payments", "Payments"], ["Process Payments", "Payments"], ["Refund Payment", "Payments"],
+        ["View Reports", "Reports"], ["Export Reports", "Reports"],
+        ["View Menu", "Menu"], ["Manage Menu", "Menu"],
+        ["View Employees", "Employees"], ["Manage Employees", "Employees"],
+        ["View Categories", "Categories"], ["Manage Categories", "Categories"],
+        ["View Customers", "Customers"], ["Manage Customers", "Customers"],
+        ["Manage Settings", "Settings"], ["Manage Printer Settings", "Settings"],
+        ["View Kitchen Display", "Kitchen"], ["Manage Kitchen", "Kitchen"],
+        ["View Charges", "Charges"], ["Manage Charges", "Charges"],
+        ["View Billing Format", "Billing"], ["Manage Billing Format", "Billing"]
+    ];
+    db.query("INSERT INTO permissions (permission_name, module_name) VALUES ?", [defaults], (e) => {
+        if (e) console.error("Permission seed error:", e.message);
+        else console.log("Default permissions seeded.");
+    });
+});
+
+// ── Seed default roles for restaurants that have none ───────────
+db.query(`
+    SELECT r.id FROM restaurants r
+    LEFT JOIN roles ro ON ro.restaurant_id = r.id
+    WHERE ro.id IS NULL AND r.deleted_at IS NULL
+`, (err, rows) => {
+    if (err || !rows || rows.length === 0) return;
+    const roleNames = ["Admin", "Cashier", "Waiter", "Kitchen"];
+    rows.forEach(({ id }) => {
+        const vals = roleNames.map((name) => [id, name, `${name} role`]);
+        db.query("INSERT INTO roles (restaurant_id, role_name, description) VALUES ?", [vals], (e) => {
+            if (e) console.error(`Role seed error for restaurant ${id}:`, e.message);
+        });
+    });
+    console.log("Default roles seeded for restaurants without roles.");
+});
+
 /*
 |--------------------------------------------------------------------------
 | Global Middleware
@@ -341,8 +444,7 @@ const syncRoutes = require("./routes/syncRoutes");
 const activationRoutes = require("./routes/activationRoutes");
 const kitchenFormatRoutes = require("./routes/kitchenFormatRoutes");
 const printerSettingRoutes = require("./routes/printerSettingRoutes");
-
-
+const settingsRoutes = require("./routes/settingsRoutes");
 
 /*
 |--------------------------------------------------------------------------
@@ -383,6 +485,7 @@ app.use("/api/sync", syncRoutes);
 app.use("/api/activate", activationRoutes);
 app.use("/api/kitchen-format", kitchenFormatRoutes);
 app.use("/api/printer-settings", printerSettingRoutes);
+app.use("/api/settings", settingsRoutes);
 /*
 |--------------------------------------------------------------------------
 | Test Route
