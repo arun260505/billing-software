@@ -2,11 +2,14 @@ const orderModel = require("../models/orderModel");
 const generateOrderNumber = require("../utils/orderNumber");
 const auditLog = require("../utils/auditLog");
 const { totalsFromItems } = require("../utils/billing");
+const { getRates } = require("../utils/taxRates");
 const { success, error } = require("../utils/response");
 
 // Totals come from utils/billing so a bill adds up the same way whether it is
 // being created, edited or reprinted. Client-sent totals are ignored — the
 // receipt and the database have to agree, and only one of them can be right.
+// Rates are the restaurant's own (Admin → Settings), falling back to the
+// historical 5% / 2% when it has never set them.
 const computeTotals = totalsFromItems;
 
 // Cart items are normalised (and priced from menu_items) by
@@ -53,7 +56,11 @@ exports.createOrder = (req, res) => {
 
         if (err) return error(res, err.message, 400);
 
-        const { subtotal, tax, service_charge, grand_total } = computeTotals(pricedItems);
+        getRates(restaurantId, (err, rates) => {
+
+        if (err) return error(res, err.message, 500);
+
+        const { subtotal, tax, service_charge, grand_total } = computeTotals(pricedItems, rates);
 
         generateOrderNumber(restaurantId, (err, orderNumber) => {
 
@@ -109,6 +116,8 @@ exports.createOrder = (req, res) => {
                 });
 
             });
+
+        });
 
         });
 
@@ -249,15 +258,23 @@ exports.settleTable = (req, res) => {
 
     const finalTotal = req.body.final_total == null ? null : Number(req.body.final_total);
 
+    // Per-bill charges the cashier picked. Only the name/type/amount are read —
+    // the rupee value is resolved server-side against the real subtotal, so a
+    // charge cannot be worth whatever the screen says it is.
+    const charges = Array.isArray(req.body.charges) ? req.body.charges : [];
+
     orderModel.settleTable(
         req.params.tableId,
         req.user.restaurant_id,
         payments,
         req.user.id,
         finalTotal,
+        charges,
         (err) => {
 
-            if (err) return error(res, err.message, 500);
+            // A refused settle is the cashier's problem to act on (unserved
+            // items, a total that no longer matches), not an internal fault.
+            if (err) return error(res, err.message, 400);
 
             return success(res, "Table settled and freed.");
 
@@ -385,7 +402,11 @@ exports.updateOrder = (req, res) => {
 
         if (err) return error(res, err.message, 400);
 
-        const totals = computeTotals(pricedItems);
+        getRates(restaurantId, (err, rates) => {
+
+        if (err) return error(res, err.message, 500);
+
+        const totals = computeTotals(pricedItems, rates);
 
         orderModel.updateOrderTotals(orderId, restaurantId, totals, (err) => {
 
@@ -404,6 +425,8 @@ exports.updateOrder = (req, res) => {
                 });
 
             });
+
+        });
 
         });
 

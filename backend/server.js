@@ -221,6 +221,52 @@ db.query(`
     else console.log("Printer settings table ready.");
 });
 
+// Per-bill charges, itemised against the order that carries them. See
+// migrations/008_order_charges.sql for why they are stored rather than living
+// only on the receipt.
+db.query(`
+    CREATE TABLE IF NOT EXISTS order_charges (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        order_id    INT NOT NULL,
+        charge_name VARCHAR(100) NOT NULL,
+        amount      DECIMAL(10,2) NOT NULL DEFAULT 0,
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_order_charges_order (order_id),
+        CONSTRAINT fk_order_charges_order
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+    )
+`, (err) => {
+    if (err) console.error("order_charges table migration error:", err.message);
+    else console.log("Order charges table ready.");
+});
+
+// orders.charges_total — the rolled-up per-bill charges, so grand_total is the
+// whole amount owed and no report has to join to find it.
+db.query(`
+    SELECT COLUMN_NAME
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'orders'
+      AND COLUMN_NAME = 'charges_total'
+`, (err, rows) => {
+    if (err) {
+        console.error("orders.charges_total check error:", err.message);
+        return;
+    }
+    if (rows && rows.length) {
+        console.log("Orders charges_total column ready.");
+        return;
+    }
+    db.query(
+        `ALTER TABLE orders
+         ADD COLUMN charges_total DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER service_charge`,
+        (alterErr) => {
+            if (alterErr) console.error("orders.charges_total migration error:", alterErr.message);
+            else console.log("Orders charges_total column added.");
+        }
+    );
+});
+
 db.query(`
     SELECT COLUMN_NAME
     FROM INFORMATION_SCHEMA.COLUMNS

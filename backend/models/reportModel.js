@@ -154,15 +154,19 @@ const getOverview = async ({ restaurantId, from, to }) => {
           AND DATE(o.created_at) BETWEEN ? AND ?
     `;
 
-    // Charges are applied at billing time (payment amount = grand_total +
-    // charges), so actual collected charges are the payment surplus.
+    // Per-bill charges are stored on the order (orders.charges_total, itemised
+    // in order_charges) and included in its grand_total.
+    //
+    // This used to read the payment surplus — SUM(p.amount - o.grand_total) —
+    // because charges were paid beyond the stored total. That surplus is now
+    // always zero, so reading it would report no charges at all.
     const chargesCollectedSql = `
-        SELECT IFNULL(SUM(p.amount - o.grand_total), 0) AS charges_collected
-        FROM payments p
-        INNER JOIN orders o ON p.order_id = o.id
+        SELECT IFNULL(SUM(o.charges_total), 0) AS charges_collected
+        FROM orders o
         WHERE o.restaurant_id = ?
-          AND p.payment_status = 'Success'
-          AND DATE(p.payment_date) BETWEEN ? AND ?
+          AND o.payment_status = 'Paid'
+          AND o.order_status <> 'Cancelled'
+          AND DATE(o.created_at) BETWEEN ? AND ?
     `;
 
     const seriesSql = `

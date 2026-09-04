@@ -23,6 +23,7 @@ import billingFormatService from "../../services/billingFormatService";
 import kitchenFormatService from "../../services/kitchenFormatService";
 import printerSettingService from "../../services/printerSettingService";
 import { DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
+import { billTotals, resolveCharges, money as roundMoney } from "../../utils/rates";
 import { DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
 // Prints straight to the configured printer; falls back to the browser dialog
 // only when the till cannot print directly.
@@ -196,9 +197,15 @@ function Dashboard() {
         item.item_name.toLowerCase().includes(term)
     );
 
+    // One calculation for the whole screen — utils/rates mirrors
+    // backend/utils/billing.js, so what the cashier sees is what gets stored.
+    // The rates ride along on restaurantInfo (Admin → Settings), falling back
+    // to 5% / 2% for a restaurant that has never set them.
     const subtotal   = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const gst        = subtotal * 0.05;
-    const grandTotal = subtotal + gst;
+    const cartTotals = billTotals(subtotal, restaurantInfo);
+    const gst        = cartTotals.tax;
+    const serviceCharge = cartTotals.service_charge;
+    const grandTotal = cartTotals.grand_total;
 
     const normalizeQuantity = (value) => {
         const parsed = Number(value);
@@ -613,8 +620,6 @@ function Dashboard() {
             }
         }
 
-        const serviceCharge = subtotal * 0.02;
-
         setBillData({
             order_id: orderId,
             order_number: assignedOrderNumber,
@@ -847,30 +852,33 @@ function Dashboard() {
         setTableBillBusy(true);
         try {
             const items = tableBillItems;
-            // Rounds to paise the same way backend/utils/billing.js does, so the
-            // printed receipt and the stored order can never disagree.
-            const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
             const paymentList = Array.isArray(payments) ? payments : [{ method: payments, amount: finalTotal }];
             const primaryMethod = paymentList[0]?.method || "Cash";
-            const sub = money(items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0));
-            const gstAmt = money(sub * 0.05);
-            const svc = money(sub * 0.02);
 
-            // Per-bill charges (packing, delivery, …) resolve to rupees here so
-            // the receipt and the total agree on one number each.
-            const resolvedCharges = selectedCharges.map((c) => ({
-                charge_name: c.charge_name,
-                amount: c.charge_type === "Percentage"
-                    ? money(sub * c.amount / 100)
-                    : money(c.amount)
-            }));
-            const chargesTotal = money(
-                resolvedCharges.reduce((s, c) => s + c.amount, 0)
-            );
+            // Same calculation the backend will run (utils/rates mirrors
+            // backend/utils/billing.js), at the restaurant's own rates.
+            const sub = roundMoney(items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0));
+            const resolvedCharges = resolveCharges(selectedCharges, sub);
+            const {
+                tax: gstAmt,
+                service_charge: svc,
+                grand_total: computedTotal
+            } = billTotals(sub, restaurantInfo, resolvedCharges);
 
-            const total = finalTotal || money(sub + gstAmt + svc + chargesTotal);
+            const total = finalTotal || computedTotal;
 
-            // Print the receipt using the admin-configured bill format.
+            // Settle BEFORE printing. The backend re-derives the total from what
+            // it has stored and can refuse (an item changed under the cashier,
+            // something still unserved) — printing first would put a receipt in
+            // the customer's hand for a sale that never got recorded.
+            //
+            // `charges` go up as name/type/amount; the backend resolves them to
+            // rupees itself and stores them on the order, so grand_total is the
+            // whole amount owed and the payment lines reconcile against it.
+            await settleTable(table.id, paymentList, total, selectedCharges);
+
+            // Sale is recorded — now print. A print failure from here on cannot
+            // lose the sale, which is the whole point of the ordering.
             printBillNow({
                 order: {
                     order_number: `TBL-${table.table_number}-${Date.now().toString().slice(-4)}`,
@@ -891,12 +899,6 @@ function Dashboard() {
                 restaurant: restaurantInfo || {},
                 format: billFormat || {}
             });
-
-            // Pass the payments through — settleTable records each split as a
-            // separate payment row. finalTotal includes per-bill charges (which
-            // are not part of the stored order grand_total), so the backend
-            // validates and records against the same number the cashier sees.
-            await settleTable(table.id, paymentList, total);
             const label = paymentList.length > 1
                 ? paymentList.map((p) => p.method).join(" + ")
                 : primaryMethod;
@@ -909,7 +911,11 @@ function Dashboard() {
             await loadRunningOrders();
             await loadTodaysOrderCount();
         } catch (e) {
-            alert("Could not generate the bill.");
+            // The backend refuses a settle for reasons the cashier can act on
+            // (items not yet served, a total that no longer matches). Swallowing
+            // that behind "Could not generate the bill" left them with nothing
+            // to go on.
+            alert(e.response?.data?.message || "Could not generate the bill.");
         } finally {
             setTableBillBusy(false);
         }
@@ -917,8 +923,8 @@ function Dashboard() {
 
     // ── UI computed values ──────────────────────────────────────────
     const availableCount = tables.filter((t) => t.status === "FREE").length;
-    const serviceCharge  = subtotal * 0.02;
-    const displayTotal   = grandTotal + serviceCharge;
+    // grandTotal already includes tax and service (see cartTotals above).
+    const displayTotal   = grandTotal;
     const billTables     = tables
         .filter((t) => t.needs_bill)
         .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
@@ -1141,6 +1147,7 @@ function Dashboard() {
                     items={tableBillItems}
                     menuItems={allItems}
                     busy={tableBillBusy}
+                    settings={restaurantInfo}
                     onSetQty={handleTableBillSetQty}
                     onRemoveGroup={handleTableBillRemove}
                     onAddItem={handleTableBillAdd}

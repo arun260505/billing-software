@@ -23,10 +23,14 @@ export const getTableItems = (tableId) =>
 // { method, amount } for split/multiple payment methods. `finalTotal` is the
 // cashier's charged total — including any per-bill charges (packing, AC, …)
 // that are not part of the stored order grand_total.
-export const settleTable = (tableId, payments, finalTotal) => {
+// `charges` are the per-bill charges the cashier selected (packing, delivery…).
+// Only name/type/amount travel — the backend resolves them to rupees against
+// the real subtotal and stores them on the order, so a charge is never worth
+// whatever the screen claims it is.
+export const settleTable = (tableId, payments, finalTotal, charges = []) => {
   const body = Array.isArray(payments)
-    ? { payments, final_total: finalTotal }
-    : { payment_method: payments };
+    ? { payments, final_total: finalTotal, charges }
+    : { payment_method: payments, charges };
   return api.post(`/orders/table/${tableId}/settle`, body);
 };
 

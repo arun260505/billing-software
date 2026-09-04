@@ -30,7 +30,19 @@ const DEFAULT_BILL_FORMAT = {
 };
 
 const getBillFormat = (restaurantId, callback) => {
-    const restaurantSql = "SELECT id, restaurant_name, owner_name, mobile, email, gst_number, fssai_number, address, city, state, pincode, logo FROM restaurants WHERE id = ?";
+    // tax_percentage / service_charge live on `settings`, not `restaurants`, but
+    // the till screens need them to show the same total the backend will store.
+    // Joined in here because the cashier and waiter already poll this endpoint —
+    // it saves them a second round trip just to learn the rates.
+    const restaurantSql = `
+        SELECT r.id, r.restaurant_name, r.owner_name, r.mobile, r.email,
+               r.gst_number, r.fssai_number, r.address, r.city, r.state,
+               r.pincode, r.logo,
+               s.tax_percentage, s.service_charge
+        FROM restaurants r
+        LEFT JOIN settings s ON s.restaurant_id = r.id
+        WHERE r.id = ?
+    `;
     const formatSql = "SELECT * FROM bill_formats WHERE restaurant_id = ?";
 
     db.query(restaurantSql, [restaurantId], (restErr, restResults) => {

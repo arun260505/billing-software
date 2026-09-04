@@ -904,6 +904,7 @@ function Dashboard() {
                     items={previousItems}
                     menuItems={allItems}
                     busy={billBusy}
+                    settings={restaurantInfo}
                     onSetQty={handleSetBillQty}
                     onRemoveGroup={handleRemoveBillGroup}
                     onAddItem={handleAddBillItem}

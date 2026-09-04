@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { billTotals, ratesFrom } from "../../utils/rates";
 
 // Bill preview the waiter reviews BEFORE sending to the cashier. Identical items
 // are merged into one line with a  −  qty  +  stepper, and can be adjusted or
 // removed here. The waiter can also ADD an item that was served but not recorded.
 // None of this touches the kitchen. Only "Confirm & Send" actually sends the bill.
-function BillModal({ tableLabel, items, menuItems, busy, onSetQty, onRemoveGroup, onAddItem, onConfirm, onClose }) {
+function BillModal({ tableLabel, items, menuItems, busy, settings, onSetQty, onRemoveGroup, onAddItem, onConfirm, onClose }) {
 
     const [adding, setAdding] = useState(false);
     const [search, setSearch] = useState("");
@@ -33,9 +34,13 @@ function BillModal({ tableLabel, items, menuItems, busy, onSetQty, onRemoveGroup
         byKey[key].rows.push(it);
     });
 
+    // Was Math.round(subtotal * 0.05) with no service charge — tax rounded to
+    // whole rupees and 2% missing, so this preview quoted a different total
+    // from the cashier screen for the same table. Now the shared calculation.
     const subtotal = groups.reduce((s, g) => s + g.price * g.qty, 0);
-    const gst = Math.round(subtotal * 0.05);
-    const total = subtotal + gst;
+    const { gstPercent, servicePercent } = ratesFrom(settings);
+    const { tax: gst, service_charge: service, grand_total: total } =
+        billTotals(subtotal, settings);
 
     const inc = (g) => onSetQty(g.rows[0].id, Number(g.rows[0].quantity) + 1);
     const dec = (g) => {
@@ -127,9 +132,10 @@ function BillModal({ tableLabel, items, menuItems, busy, onSetQty, onRemoveGroup
                 </div>
 
                 <div className="bill-totals">
-                    <div className="bill-line"><span>Subtotal</span><span>₹{subtotal.toFixed(0)}</span></div>
-                    <div className="bill-line"><span>GST 5%</span><span>₹{gst.toFixed(0)}</span></div>
-                    <div className="bill-line bill-grand"><span>Total</span><span>₹{total.toFixed(0)}</span></div>
+                    <div className="bill-line"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                    <div className="bill-line"><span>GST {gstPercent}%</span><span>₹{gst.toFixed(2)}</span></div>
+                    <div className="bill-line"><span>Service {servicePercent}%</span><span>₹{service.toFixed(2)}</span></div>
+                    <div className="bill-line bill-grand"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
                 </div>
 
                 <div className="bill-actions">

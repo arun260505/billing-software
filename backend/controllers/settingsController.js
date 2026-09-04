@@ -1,4 +1,5 @@
 const settingsModel = require("../models/settingsModel");
+const { invalidate: invalidateRates } = require("../utils/taxRates");
 const { success, error } = require("../utils/response");
 const { validateRestaurant, validatePayments, validateSecurity } = require("../utils/validate");
 const bcrypt = require("bcryptjs");
@@ -26,6 +27,9 @@ exports.saveRestaurant = (req, res) => {
 
     settingsModel.saveRestaurantSettings(rid, req.body, (err) => {
         if (err) return error(res, err.message, 500);
+        // tax_percentage / service_charge live here and are cached by the
+        // biller, so the next bill must see the new rates immediately.
+        invalidateRates(rid);
         settingsModel.getRestaurantSettings(rid, (fetchErr, data) => {
             if (fetchErr) return error(res, fetchErr.message, 500);
             return success(res, "Restaurant settings saved.", data);

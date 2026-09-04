@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import chargeService from "../../services/chargeService";
 import { isValidCharge } from "../../utils/charges";
+import { billTotals, resolveCharges, money } from "../../utils/rates";
 
-function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup, onAddItem, onServe, onGenerate, onClose }) {
+// `settings` carries the restaurant's tax_percentage / service_charge. Omitting
+// it falls back to the historical 5% / 2%, so the modal still totals correctly
+// while the rates are still loading.
+function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onRemoveGroup, onAddItem, onServe, onGenerate, onClose }) {
 
     const [method, setMethod] = useState("Cash");
     // Split payment: when on, the cashier allocates the total across several
@@ -32,14 +36,6 @@ function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup
         byKey[key].rows.push(it);
     });
 
-    // Same paise rounding as backend/utils/billing.js and the receipt printer,
-    // so the total shown here is the total printed and the total stored.
-    const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
-
-    const subtotal = money(groups.reduce((s, g) => s + g.price * g.qty, 0));
-    const gst = money(subtotal * 0.05);
-    const service = money(subtotal * 0.02);
-
     const toggleCharge = (charge) => {
         setSelectedCharges((prev) =>
             prev.find((c) => c.id === charge.id)
@@ -48,12 +44,17 @@ function TableBillModal({ table, items, menuItems, busy, onSetQty, onRemoveGroup
         );
     };
 
-    const chargesTotal = money(selectedCharges.reduce((sum, c) => {
-        if (c.charge_type === "Percentage") return sum + money(subtotal * c.amount / 100);
-        return sum + money(c.amount);
-    }, 0));
-
-    const total = money(subtotal + gst + service + chargesTotal);
+    // utils/rates mirrors backend/utils/billing.js — same rates, same paise
+    // rounding, same order — so the total shown here is the total printed and
+    // the total the backend stores.
+    const subtotal = money(groups.reduce((s, g) => s + g.price * g.qty, 0));
+    const resolvedCharges = resolveCharges(selectedCharges, subtotal);
+    const {
+        tax: gst,
+        service_charge: service,
+        charges_total: chargesTotal,
+        grand_total: total
+    } = billTotals(subtotal, settings, resolvedCharges);
 
     // Every item must be marked served before the cashier can generate the bill.
     const unservedCount = items.filter((it) => Number(it.served) !== 1).length;
