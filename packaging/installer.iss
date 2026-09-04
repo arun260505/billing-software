@@ -40,7 +40,7 @@ Source: "staging\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 ; (For a locked-down production kiosk, swap --app for:
 ;  --kiosk http://localhost:5000 --edge-kiosk-type=fullscreen)
 Name: "{commondesktop}\InWallz Till"; Filename: "{cmd}"; \
-  Parameters: "/c start msedge --app=http://localhost:5000"; \
+  Parameters: "/c start msedge --app=http://localhost:5050"; \
   IconFilename: "{app}\app\build\favicon.ico"
 
 [Code]

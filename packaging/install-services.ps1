@@ -8,7 +8,10 @@ param(
     [Parameter(Mandatory = $true)][string]$InstallDir,
     [Parameter(Mandatory = $true)][string]$ActivationKey,
     [string]$CloudUrl = "https://billing.inwallz.in",
-    [int]$Port = 5000
+    # 5050 + 3307 (not the usual 5000/3306) so the installed till never collides
+    # with a developer's local backend/MySQL on the same machine.
+    [int]$Port = 5050,
+    [int]$DbPort = 3307
 )
 
 # Native tools (nssm, mysql) write harmless notices to stderr; under "Stop" those
@@ -68,7 +71,7 @@ Say "Registering InWallzMySQL service"
 & $nssm install InWallzMySQL $mysqld
 # bind-address=0.0.0.0 so the backend can reach MySQL over IPv4 loopback
 # (mysqld otherwise binds '::' / IPv6, and the backend's 127.0.0.1 times out).
-& $nssm set InWallzMySQL AppParameters "--datadir=$dataShort --basedir=$baseShort --port=3306 --bind-address=0.0.0.0"
+& $nssm set InWallzMySQL AppParameters "--datadir=$dataShort --basedir=$baseShort --port=$DbPort --bind-address=0.0.0.0"
 & $nssm set InWallzMySQL Start SERVICE_AUTO_START
 & $nssm set InWallzMySQL AppStdout (Join-Path $logs "mysql.log")
 & $nssm set InWallzMySQL AppStderr (Join-Path $logs "mysql.log")
@@ -79,7 +82,7 @@ Say "Registering InWallzMySQL service"
 Say "Waiting for MySQL to accept connections"
 $ready = $false
 for ($i = 0; $i -lt 40; $i++) {
-    & $mysql -u root -e "SELECT 1" 2>$null | Out-Null
+    & $mysql -u root "--port=$DbPort" -e "SELECT 1" 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) { $ready = $true; break }
     Start-Sleep -Seconds 2
 }
@@ -94,14 +97,14 @@ $sql = "CREATE DATABASE IF NOT EXISTS inwallz_billing CHARACTER SET utf8mb4 COLL
        " ALTER USER 'inwallz'@'localhost' IDENTIFIED BY '$dbPass';" +
        " GRANT ALL PRIVILEGES ON inwallz_billing.* TO 'inwallz'@'localhost';" +
        " FLUSH PRIVILEGES;"
-& $mysql -u root -e $sql
+& $mysql -u root "--port=$DbPort" -e $sql
 # Import the schema ONLY on a fresh, empty database. On a reinstall the tables
 # already exist (with pulled/local data), and the dump's DROP TABLE would wipe
 # them - so skip it.
-$tableCount = & $mysql -u inwallz "--password=$dbPass" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='inwallz_billing'" 2>$null
+$tableCount = & $mysql -u inwallz "--password=$dbPass" "--port=$DbPort" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='inwallz_billing'" 2>$null
 $tableCount = [int]($tableCount | Select-Object -First 1)
 if ((Test-Path $schema) -and ($tableCount -eq 0)) {
-    Get-Content $schema -Raw | & $mysql -u inwallz "--password=$dbPass" inwallz_billing
+    Get-Content $schema -Raw | & $mysql -u inwallz "--password=$dbPass" "--port=$DbPort" inwallz_billing
     Say "Schema imported (fresh DB)"
 } else {
     Say "Existing database kept ($tableCount tables) - schema import skipped"
@@ -114,8 +117,9 @@ $tpl = $tpl -replace "__DB_PASSWORD__", $dbPass
 $tpl = $tpl -replace "__JWT_SECRET__", $jwt
 $tpl = $tpl -replace "__ACTIVATION_KEY__", $ActivationKey
 $tpl = $tpl -replace "CLOUD_SYNC_URL=.*", ("CLOUD_SYNC_URL=" + $CloudUrl)
-# Anchor to line start so this does NOT also match DB_PORT=3306.
+# Anchor to line start so this does NOT also match DB_PORT.
 $tpl = $tpl -replace "(?m)^PORT=.*", ("PORT=" + $Port)
+$tpl = $tpl -replace "(?m)^DB_PORT=.*", ("DB_PORT=" + $DbPort)
 $tpl | Out-File (Join-Path $backend ".env") -Encoding ascii
 
 # 5) Register the backend service (depends on MySQL).

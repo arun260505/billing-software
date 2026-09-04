@@ -12,7 +12,9 @@
 import axios from "axios";
 import { setStoredServer } from "./serverConfig";
 
-const TILL_PORT = 5000;
+// The till serves on 5050 by default (installer), but older installs used 5000,
+// so probe both. First match wins.
+const TILL_PORTS = [5050, 5000];
 const TILL_SIGNATURE = "inwallz-billing";
 
 // Per-host probe budget. Absent hosts on a LAN never answer, so they burn the
@@ -29,18 +31,22 @@ const FALLBACK_PREFIXES = [
     "192.168.2", "192.168.43", "10.0.0", "172.20.10"
 ];
 
-// Ask a single host whether it is the till.
-async function isTill(ip) {
-    try {
-        const res = await probe.get(`http://${ip}:${TILL_PORT}/api/health`);
-        return res?.data?.service === TILL_SIGNATURE;
-    } catch {
-        return false;
+// Ask a single host whether it is the till. Returns the port it answered on
+// (checking 5050 then 5000), or null.
+async function tillPortAt(ip) {
+    for (const port of TILL_PORTS) {
+        try {
+            const res = await probe.get(`http://${ip}:${port}/api/health`);
+            if (res?.data?.service === TILL_SIGNATURE) return port;
+        } catch {
+            /* try next port / host */
+        }
     }
+    return null;
 }
 
 // Scan one "a.b.c" prefix across .1–.254, in bounded-concurrency batches, and
-// return the first host that identifies as the till (or null).
+// return { ip, port } of the first host that identifies as the till (or null).
 async function scanPrefix(prefix) {
     const hosts = [];
     for (let i = 1; i <= 254; i += 1) hosts.push(`${prefix}.${i}`);
@@ -48,7 +54,10 @@ async function scanPrefix(prefix) {
     for (let start = 0; start < hosts.length; start += CONCURRENCY) {
         const batch = hosts.slice(start, start + CONCURRENCY);
         const hits = await Promise.all(
-            batch.map(async (ip) => ((await isTill(ip)) ? ip : null))
+            batch.map(async (ip) => {
+                const port = await tillPortAt(ip);
+                return port ? { ip, port } : null;
+            })
         );
         const found = hits.find(Boolean);
         if (found) return found;
@@ -89,7 +98,7 @@ function getLocalIps(timeout = 1500) {
 }
 
 /**
- * Find the till on the current WiFi. Returns its authority ("192.168.1.14")
+ * Find the till on the current WiFi. Returns its authority ("192.168.1.14:5050")
  * or null if none answered. Scans the phone's own /24 first (fast, exact),
  * then the common fallback prefixes.
  */
@@ -106,8 +115,8 @@ export async function discoverTill() {
     });
 
     for (const prefix of prefixes) {
-        const ip = await scanPrefix(prefix);
-        if (ip) return ip;
+        const hit = await scanPrefix(prefix);
+        if (hit) return `${hit.ip}:${hit.port}`;   // keep the port that answered
     }
     return null;
 }
@@ -116,8 +125,8 @@ export async function discoverTill() {
  * Discover the till and remember it for next launch. Returns true on success.
  */
 export async function discoverAndStoreTill() {
-    const ip = await discoverTill();
-    if (!ip) return false;
-    setStoredServer(ip);
+    const authority = await discoverTill();
+    if (!authority) return false;
+    setStoredServer(authority);   // "ip:port" so the right port is used
     return true;
 }
