@@ -156,9 +156,40 @@ cloud (Linux) node it cannot see the till's printers: the endpoint returns
 instead of a dropdown. A **Test print** button per printer prints a short slip
 (`src/utils/testPrint.js`) for a physical check either way.
 
-Printing still goes through the browser's print dialog, so the recorded name does
-not yet *route* the job — set the printer as the Windows default, or pick it in
-the dialog. Routing by name needs the print path to move out of the browser.
+## Direct (dialog-free) printing
+
+`window.print()` can never print silently, so a receipt is sent to the **local
+backend** instead, which spools it to the configured printer — no dialog:
+
+```
+till screen ──POST /api/print { text, target }──▶ backend
+                                                    │ resolves the printer name
+                                                    ▼
+                        scripts/print-text.ps1 ──▶ Out-Printer ──▶ paper
+```
+
+| Receipt | `dual_printer` | `cashier_kds` / `single_printer` |
+|---------|----------------|----------------------------------|
+| Customer bill  | cashier printer | cashier printer |
+| Kitchen ticket | **kitchen printer** | cashier printer |
+
+- `src/utils/receiptText.js` renders the bill/KOT as monospace text (32 cols on
+  58mm, 48 on 80mm) from the *same* format flags the HTML renderers use.
+- `src/utils/printDispatch.js` is the only thing the till screens call
+  (`printBillNow` / `printKotNow` / `printTestNow`). It tries the printer, and
+  **falls back to the browser dialog** if direct printing is unavailable — a
+  cloud backend, no printer chosen, or a printer that is switched off. A print
+  failure can never break the sale that produced it.
+- Printed money reads `Rs.` not `₹`: Windows spools through a GDI font that
+  often lacks the rupee glyph, and a missing glyph prints as a box on every
+  line. One constant at the top of `receiptText.js` flips it.
+- Direct printing only works when the backend runs **on the till** (exe/local
+  node). A cloud (Linux) node answers `501` and the dialog fallback takes over —
+  which also means **the waiter APK must be the LAN/auto-discovery build**, not
+  a cloud-baked one, for its kitchen tickets to reach the printer.
+
+The admin Billing/KitchenTemplate previews deliberately still use the browser
+dialog — they are previews, not till prints.
 
 ## Kitchen page (display)
 

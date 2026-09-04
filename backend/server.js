@@ -444,6 +444,7 @@ const syncRoutes = require("./routes/syncRoutes");
 const activationRoutes = require("./routes/activationRoutes");
 const kitchenFormatRoutes = require("./routes/kitchenFormatRoutes");
 const printerSettingRoutes = require("./routes/printerSettingRoutes");
+const printRoutes = require("./routes/printRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 
 /*
@@ -485,6 +486,7 @@ app.use("/api/sync", syncRoutes);
 app.use("/api/activate", activationRoutes);
 app.use("/api/kitchen-format", kitchenFormatRoutes);
 app.use("/api/printer-settings", printerSettingRoutes);
+app.use("/api/print", printRoutes);
 app.use("/api/settings", settingsRoutes);
 /*
 |--------------------------------------------------------------------------

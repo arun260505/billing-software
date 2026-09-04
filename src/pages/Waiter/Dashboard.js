@@ -11,7 +11,8 @@ import CartSheet from "../../components/Waiter/CartSheet";
 import BillModal from "../../components/Waiter/BillModal";
 import kitchenFormatService from "../../services/kitchenFormatService";
 import printerSettingService from "../../services/printerSettingService";
-import { printKitchenTicket, DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
+import { DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
+import { printKotNow } from "../../utils/printDispatch";
 import {
     DEFAULT_PRINTER_MODE,
     normalizePrinterMode,
@@ -508,7 +509,7 @@ function Dashboard() {
             // one. With a kitchen display, or a single shared printer, the waiter
             // prints nothing (see utils/printerMode.js).
             if (shouldPrintKotOnSend(printerMode)) {
-                printKitchenTicket({
+                printKotNow({
                     order: {
                         order_number: assignedOrderNumber,
                         order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",

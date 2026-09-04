@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import printerSettingService from "../../services/printerSettingService";
 import { getPrinters } from "../../services/systemService";
-import { printTestSlip } from "../../utils/testPrint";
+import { printTestNow } from "../../utils/printDispatch";
 import {
     DEFAULT_PRINTER_MODE,
     normalizePrinterMode,
@@ -142,13 +142,33 @@ function PrinterSetup() {
         }
     };
 
-    const handleTest = (slot) => {
+    const handleTest = async (slot) => {
         const name = (values[slot.key] || "").trim();
         if (!name) {
             setFlash(`Choose a ${slot.label.toLowerCase()} first.`);
             return;
         }
-        printTestSlip({ printerName: name, role: slot.role });
+
+        // A test print goes to the printer that is actually saved, so test after
+        // saving — otherwise it exercises the previously saved device.
+        if (name !== (saved[slot.key] || "")) {
+            setFlash("Save first, then test — the test prints to the saved printer.");
+            return;
+        }
+
+        setFlash("Sending test print…");
+        const res = await printTestNow({
+            printerName: name,
+            role: slot.role,
+            target: slot.key === "kitchen_printer" ? "kitchen" : "cashier"
+        });
+
+        setFlash(
+            res.direct
+                ? `Test sent to ${res.printer || name}.`
+                : `Could not print directly (${res.reason}) — opened the print dialog instead.`
+        );
+        setTimeout(() => setFlash(""), 6000);
     };
 
     const activeOption = PRINTER_MODE_OPTIONS.find((o) => o.value === mode);

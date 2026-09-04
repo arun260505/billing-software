@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPayment } from "../../services/paymentService";
 import chargeService from "../../services/chargeService";
-import { printBill } from "../../utils/billPrinter";
+import { printBillNow } from "../../utils/printDispatch";
 import { isValidCharge } from "../../utils/charges";
 
 // `onPrinted` (optional) fires with the order as it was printed, right after the
@@ -99,13 +99,15 @@ function BillModal({ order, restaurant, format, onClose, onSuccess, onPrinted })
                 grand_total: money(grandTotal)
             };
 
-            printBill({
+            // Waits for the printer to take it, so anything that follows (the
+            // kitchen copy on a single-printer setup) comes out after the bill.
+            const billResult = await printBillNow({
                 order: printedOrder,
                 restaurant: restaurant || {},
                 format: format || {}
             });
 
-            if (onPrinted) onPrinted(printedOrder);
+            if (onPrinted) onPrinted(printedOrder, billResult);
 
             onSuccess();
         } catch (error) {

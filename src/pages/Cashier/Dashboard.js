@@ -22,8 +22,11 @@ import { registerNetwork } from "../../services/systemService";
 import billingFormatService from "../../services/billingFormatService";
 import kitchenFormatService from "../../services/kitchenFormatService";
 import printerSettingService from "../../services/printerSettingService";
-import { printBill, DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
-import { printKitchenTicket, DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
+import { DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
+import { DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
+// Prints straight to the configured printer; falls back to the browser dialog
+// only when the till cannot print directly.
+import { printBillNow, printKotNow } from "../../utils/printDispatch";
 import {
     DEFAULT_PRINTER_MODE,
     normalizePrinterMode,
@@ -494,7 +497,7 @@ function Dashboard() {
             // one. The other setups use the Kitchen Display or print the kitchen
             // copy behind the bill instead (see utils/printerMode.js).
             if (shouldPrintKotOnSend(printerMode)) {
-                printKitchenTicket({
+                printKotNow({
                     order: {
                         order_number: assignedOrderNumber,
                         order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
@@ -584,7 +587,7 @@ function Dashboard() {
                 // has one. Option 3 prints the kitchen copy behind the bill instead
                 // (see handleBillPrinted), option 1 uses the Kitchen Display.
                 if (shouldPrintKotOnSend(printerMode)) {
-                    printKitchenTicket({
+                    printKotNow({
                         order: {
                             order_number: assignedOrderNumber,
                             order_type: isTakeaway ? "Takeaway" : "Dine-In",
@@ -628,10 +631,9 @@ function Dashboard() {
     };
 
     // Option 3 of the printer setup: one printer prints two bills for a counter
-    // order — the customer bill, then the kitchen bill. BillModal calls this the
-    // moment the customer bill goes out; the short delay lets that print land
-    // first so the two come out in order.
-    const handleBillPrinted = (printedOrder) => {
+    // order — the customer bill, then the kitchen bill. BillModal calls this once
+    // the customer bill has gone out, passing how it went.
+    const handleBillPrinted = (printedOrder, billResult) => {
         if (!shouldPrintKotWithBill(printerMode, printedOrder?.isCounter)) return;
 
         const kot = {
@@ -646,13 +648,18 @@ function Dashboard() {
             time: currentTime
         };
 
-        setTimeout(() => {
-            printKitchenTicket({
-                order: kot,
-                restaurant: restaurantInfo || {},
-                format: kitchenFormat || {}
-            });
-        }, 900);
+        const sendKot = () => printKotNow({
+            order: kot,
+            restaurant: restaurantInfo || {},
+            format: kitchenFormat || {}
+        });
+
+        // A direct print has already finished spooling by the time we get here, so
+        // the kitchen copy can follow immediately. The browser-dialog fallback has
+        // not, hence the pause — it lets the bill's dialog come up first so the two
+        // still come out in order.
+        if (billResult?.direct) sendKot();
+        else setTimeout(sendKot, 900);
     };
 
     const handlePaymentSuccess = () => {
@@ -864,7 +871,7 @@ function Dashboard() {
             const total = finalTotal || money(sub + gstAmt + svc + chargesTotal);
 
             // Print the receipt using the admin-configured bill format.
-            printBill({
+            printBillNow({
                 order: {
                     order_number: `TBL-${table.table_number}-${Date.now().toString().slice(-4)}`,
                     tableName: `Table ${table.table_number}`,
