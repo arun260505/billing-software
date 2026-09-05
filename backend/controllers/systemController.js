@@ -2,7 +2,6 @@ const os = require("os");
 const { execFile } = require("child_process");
 const db = require("../config/db");
 const systemModel = require("../models/systemModel");
-const { invalidate: invalidateRates } = require("../utils/taxRates");
 const syncConfig = require("../sync/syncConfig");
 
 // Strip the IPv6-mapped-IPv4 prefix Node adds (::ffff:192.168.1.5 -> 192.168.1.5).
@@ -374,9 +373,6 @@ exports.updateSettings = (req, res) => {
     const restaurantId = req.params.restaurantId;
 
     systemModel.updateSettings(restaurantId, req.body, (err) => {
-
-        // Same settings row the biller reads its tax rates from.
-        invalidateRates(restaurantId);
 
         if (err) {
             return res.status(500).json({

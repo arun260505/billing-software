@@ -312,6 +312,29 @@
     color: #16A34A;
 }
 
+/* --- Role badge: which line of the bill this charge lands on --- */
+.role-tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.role-tag.tax {
+    background: #FEF3C7;
+    color: #B45309;
+}
+
+.role-tag.service {
+    background: #EDE9FE;
+    color: #6D28D9;
+}
+
 /* --- Tax Indicator --- */
 .tax-yes {
     color: #16A34A;

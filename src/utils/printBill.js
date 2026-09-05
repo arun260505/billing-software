@@ -3,9 +3,6 @@
 
 import { sanitizeCharges } from "./charges";
 
-const GST_PERCENT = 5;
-const SERVICE_PERCENT = 2;
-
 const rupees = (n) => `&#8377;${Number(n || 0).toFixed(2)}`;
 
 const row = (label, value, bold) =>
@@ -22,8 +19,7 @@ const row = (label, value, bold) =>
  * @param {string}  bill.place        "Table 3" / "Counter"
  * @param {Array}   bill.items        [{ item_name, quantity, price }]
  * @param {number}  bill.subtotal
- * @param {number}  bill.gst
- * @param {number}  bill.service
+ * @param {Array}   bill.taxLines     [{ charge_name, amount }] GST / service, already in rupees
  * @param {Array}   bill.charges      [{ charge_name, amount }] already resolved to rupees
  * @param {number}  bill.total
  * @param {string}  bill.method       Payment method
@@ -36,14 +32,18 @@ export function printBill({
     place = "",
     items = [],
     subtotal = 0,
-    gst = 0,
-    service = 0,
+    taxLines = [],
     charges = [],
     total = 0,
     method = "",
     isReprint = false
 }) {
 
+    // The tax and service lines were "GST 5%" and "Service 2%" hardcoded here,
+    // so a reprint at any other rate — or at a restaurant charging no tax at
+    // all — printed figures that did not match the bill being corrected. They
+    // are the restaurant's own charge rows now, and print by their own names.
+    taxLines = sanitizeCharges(taxLines);
     charges = sanitizeCharges(charges);
 
     const w = window.open("", "PrintBill", "width=340,height=640");
@@ -79,15 +79,16 @@ export function printBill({
 
         `<hr>` +
         row("Subtotal", rupees(subtotal)) +
-        row(`GST ${GST_PERCENT}%`, rupees(gst)) +
-        row(`Service ${SERVICE_PERCENT}%`, rupees(service)) +
+        taxLines.map((t) => row(t.charge_name, rupees(t.amount))).join("") +
 
         // Optional per-bill charges (packing, delivery, …). When present the
         // receipt shows what the bill came to BEFORE them, so the customer can
         // see what was added on top.
         (charges.length > 0
             ? `<hr>` +
-              row("Bill Amount", rupees(subtotal + gst + service)) +
+              row("Bill Amount", rupees(
+                  Number(subtotal) + taxLines.reduce((s, t) => s + Number(t.amount || 0), 0)
+              )) +
               `<div style="margin-top:6px;font-weight:bold">Charges</div>` +
               charges.map((c) =>
                   `<div style="display:flex;justify-content:space-between;padding-left:10px">
@@ -112,5 +113,3 @@ export function printBill({
     return true;
 
 }
-
-export { GST_PERCENT, SERVICE_PERCENT };

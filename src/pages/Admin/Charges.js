@@ -176,7 +176,12 @@ function Charges() {
                 ...charge,
                 charge_name: charge.charge_name,
                 charge_type: charge.charge_type,
+                // Update replaces the whole row: leaving these out would demote
+                // a GST row to an ordinary charge just by switching it off and
+                // on again, and the bill would silently lose its tax line.
+                charge_role: charge.charge_role || "Charge",
                 amount: Number(charge.amount),
+                auto_apply: Boolean(Number(charge.auto_apply)),
                 applies_dinein: Boolean(Number(charge.applies_dinein)),
                 applies_takeaway: Boolean(Number(charge.applies_takeaway)),
                 applies_delivery: Boolean(Number(charge.applies_delivery)),

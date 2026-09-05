@@ -254,11 +254,26 @@ One calculation, two mirrored implementations that must not drift:
 | Backend (authoritative — recomputes everything it stores) | `backend/utils/billing.js` |
 | Till screens (has to predict the backend exactly)         | `src/utils/rates.js` |
 
-- **Rates are per-restaurant** — `settings.tax_percentage` / `settings.service_charge`,
-  read via `backend/utils/taxRates.js` (30s cache, dropped when settings are saved).
-  A rate of `0`/null means *never configured* and falls back to **5% GST + 2%
-  service**, the historical hardcoded values — so a restaurant that has never
-  touched Settings keeps billing exactly as before.
+- **GST and the service charge are charge rows, not settings.** Everything billed
+  on top of the goods is a row in `charges` (Admin → Charges), read via
+  `backend/utils/billingCharges.js` (30s cache, dropped when a charge is saved):
+
+  | `charge_role` | Where it lands | Example |
+  |---------------|----------------|---------|
+  | `Tax`     | summed into `orders.tax` (keeps GST reportable) | GST 5%, CGST + SGST |
+  | `Service` | summed into `orders.service_charge`             | Service Charge 2%   |
+  | `Charge`  | itemised in `order_charges`, summed into `charges_total` | Packing, AC |
+
+  `auto_apply = 1` puts it on every bill of a matching order type; `0` leaves it
+  as a chip the cashier taps at settle time. Tax and service rows are always
+  automatic — one the cashier could forget to tap is not a tax.
+
+  **No charge rows means no tax and no service charge.** This used to be
+  `settings.tax_percentage` / `settings.service_charge` with a hardcoded fallback
+  of 5% GST + 2% service that no screen could switch off, which is wrong for
+  every restaurant not registered for GST. Migration 010 seeds each existing
+  restaurant's effective rates as charge rows so no till changed what it bills —
+  the difference is those rows can now be edited or deleted.
 - **Prices come from `menu_items`, never the request.** `orderModel.priceCartItems`
   re-prices every cart server-side; an item that isn't on that restaurant's menu
   is a 400.

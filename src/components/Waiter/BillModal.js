@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { billTotals, ratesFrom } from "../../utils/rates";
+import { autoChargesFor, billTotals } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
 // Bill preview the waiter reviews BEFORE sending to the cashier. Identical items
 // are merged into one line with a  −  qty  +  stepper, and can be adjusted or
 // removed here. The waiter can also ADD an item that was served but not recorded.
 // None of this touches the kitchen. Only "Confirm & Send" actually sends the bill.
-function BillModal({ tableLabel, items, menuItems, busy, settings, onSetQty, onRemoveGroup, onAddItem, onConfirm, onClose }) {
+//
+// `charges` is the restaurant's charge list (Admin → Charges); the ones set to
+// apply automatically are what the GST / service lines below come from.
+function BillModal({ tableLabel, items, menuItems, busy, charges = [], onSetQty, onRemoveGroup, onAddItem, onConfirm, onClose }) {
 
     // Esc closes the modal (see hooks/useEscapeClose).
     useEscapeClose(onClose);
@@ -42,9 +45,9 @@ function BillModal({ tableLabel, items, menuItems, busy, settings, onSetQty, onR
     // whole rupees and 2% missing, so this preview quoted a different total
     // from the cashier screen for the same table. Now the shared calculation.
     const subtotal = groups.reduce((s, g) => s + g.price * g.qty, 0);
-    const { gstPercent, servicePercent } = ratesFrom(settings);
-    const { tax: gst, service_charge: service, grand_total: total } =
-        billTotals(subtotal, settings);
+    const totals = billTotals(subtotal, autoChargesFor(charges, "Dine-In"));
+    const total = totals.grand_total;
+    const billedLines = [...totals.tax_lines, ...totals.service_lines, ...totals.charge_lines];
 
     const inc = (g) => onSetQty(g.rows[0].id, Number(g.rows[0].quantity) + 1);
     const dec = (g) => {
@@ -137,8 +140,11 @@ function BillModal({ tableLabel, items, menuItems, busy, settings, onSetQty, onR
 
                 <div className="bill-totals">
                     <div className="bill-line"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-                    <div className="bill-line"><span>GST {gstPercent}%</span><span>₹{gst.toFixed(2)}</span></div>
-                    <div className="bill-line"><span>Service {servicePercent}%</span><span>₹{service.toFixed(2)}</span></div>
+                    {billedLines.map((c, i) => (
+                        <div className="bill-line" key={`${c.charge_name}-${i}`}>
+                            <span>{c.charge_name}</span><span>₹{c.amount.toFixed(2)}</span>
+                        </div>
+                    ))}
                     <div className="bill-line bill-grand"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
                 </div>
 

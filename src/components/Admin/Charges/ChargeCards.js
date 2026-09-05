@@ -1,8 +1,12 @@
 import React from "react";
-import { FaReceipt, FaCheckCircle, FaUtensils, FaShoppingBag } from "react-icons/fa";
+import { FaReceipt, FaCheckCircle, FaLandmark, FaConciergeBell } from "react-icons/fa";
 
 function ChargeCards({ summary }) {
 
+    // GST and the service charge are charge rows now, so whether this restaurant
+    // charges either is answerable at a glance — a zero here means bills go out
+    // without that line, which is a legitimate setup and no longer an accident
+    // waiting to happen.
     const cards = [
         {
             title: "Total Charges",
@@ -17,15 +21,15 @@ function ChargeCards({ summary }) {
             color: "#16A34A"
         },
         {
-            title: "Dine-in Charges",
-            value: summary.dinein_count || 0,
-            icon: <FaUtensils />,
+            title: "Tax / GST Charges",
+            value: summary.tax_count || 0,
+            icon: <FaLandmark />,
             color: "#F59E0B"
         },
         {
-            title: "Takeaway Charges",
-            value: summary.takeaway_count || 0,
-            icon: <FaShoppingBag />,
+            title: "Service Charges",
+            value: summary.service_count || 0,
+            icon: <FaConciergeBell />,
             color: "#8B5CF6"
         }
     ];

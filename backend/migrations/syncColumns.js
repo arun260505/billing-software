@@ -119,7 +119,107 @@ async function runSyncSchema() {
         await ensureColumn("printer_settings", "kitchen_printer", "VARCHAR(150) DEFAULT NULL");
     }
 
+    // 010: GST and the service charge became charge rows.
+    if (await tableExists("charges")) {
+        // Whether charge_role is missing is what marks a database as not yet
+        // migrated, so read it BEFORE adding the column.
+        const firstRun = !(await columnExists("charges", "charge_role"));
+
+        await ensureColumn("charges", "charge_role", "VARCHAR(10) NOT NULL DEFAULT 'Charge'");
+        await ensureColumn("charges", "auto_apply", "TINYINT(1) NOT NULL DEFAULT 0");
+
+        if (firstRun) await backfillTaxCharges();
+    }
+
     console.log("Sync schema columns ready.");
+}
+
+/*
+| One-time backfill for migration 010: turn each existing restaurant's effective
+| GST / service rates into the charge rows that now carry them, so no till
+| changes what it bills on upgrade. See migrations/010_charge_roles.sql.
+|
+| Runs only in the pass that first adds charge_role — deleting the seeded GST row
+| must not bring it back on the next restart — and only on a node that owns the
+| charges table. `charges` syncs cloud -> local, so a local node seeding its own
+| rows would end up with two GST charges the moment the cloud's copy arrived.
+*/
+async function backfillTaxCharges() {
+
+    if (require("../sync/syncConfig").isLocal) {
+        console.log("Charge roles: local node, leaving the GST/service backfill to the cloud.");
+        return;
+    }
+
+    try {
+        if (!(await tableExists("restaurants"))) return;
+
+        // The rate each restaurant was effectively billing at: its own if it set
+        // one, otherwise the 5% / 2% the biller forced on everyone who left the
+        // settings columns at 0.
+        const hasSettings = await tableExists("settings");
+        const [restaurants] = hasSettings
+            ? await db.query(
+                `SELECT r.id,
+                        COALESCE(s.tax_percentage, 0) AS tax_percentage,
+                        COALESCE(s.service_charge, 0) AS service_charge
+                 FROM restaurants r
+                 LEFT JOIN settings s ON s.restaurant_id = r.id`
+            )
+            : await db.query("SELECT id, 0 AS tax_percentage, 0 AS service_charge FROM restaurants");
+
+        // Done as two statements rather than an INSERT ... SELECT with a NOT
+        // EXISTS on `charges`: MySQL refuses to read the insert target inside
+        // its own SELECT (error 1093).
+        const [taken] = await db.query(
+            "SELECT restaurant_id, charge_role FROM charges WHERE charge_role IN ('Tax', 'Service')"
+        );
+        const has = new Set(taken.map((t) => `${t.restaurant_id}:${t.charge_role}`));
+
+        // Number() drops trailing zeros on its own, so a name reads "GST 5%" and
+        // "GST 12.5%" rather than "GST 5.00%" on every bill.
+        const rows = [];
+        for (const r of restaurants) {
+            const tax = Number(r.tax_percentage) > 0 ? Number(r.tax_percentage) : 5;
+            const svc = Number(r.service_charge) > 0 ? Number(r.service_charge) : 2;
+
+            if (!has.has(`${r.id}:Tax`)) {
+                rows.push([
+                    r.id, `GST ${tax}%`,
+                    "Carried over from Settings when GST moved into Charges. Edit or delete it if this restaurant does not charge GST.",
+                    "Percentage", "Tax", tax, 1, 1, 1, 1, 0, "Active"
+                ]);
+            }
+            if (!has.has(`${r.id}:Service`)) {
+                rows.push([
+                    r.id, `Service Charge ${svc}%`,
+                    "Carried over from Settings when the service charge moved into Charges. Edit or delete it if this restaurant does not levy one.",
+                    // Dine-in only, which is where a service charge belongs and
+                    // what the old hardcoded one effectively was.
+                    "Percentage", "Service", svc, 1, 1, 0, 0, 0, "Active"
+                ]);
+            }
+        }
+
+        if (!rows.length) {
+            console.log("Charge roles: nothing to backfill.");
+            return;
+        }
+
+        await db.query(
+            `INSERT INTO charges
+                (restaurant_id, charge_name, description, charge_type, charge_role, amount,
+                 auto_apply, applies_dinein, applies_takeaway, applies_delivery, apply_tax, status)
+             VALUES ?`,
+            [rows]
+        );
+        console.log(`Charge roles: seeded ${rows.length} GST / service-charge rows from Settings.`);
+    } catch (err) {
+        // A failed backfill must not stop the server booting — it leaves the
+        // restaurant billing no tax, which is loud and correctable, rather than
+        // taking the till down mid-service.
+        console.error("Charge roles: GST/service backfill failed —", err.message);
+    }
 }
 
 module.exports = { runSyncSchema, SYNC_TABLES };

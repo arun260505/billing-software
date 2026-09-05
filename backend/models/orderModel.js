@@ -1,29 +1,45 @@
 const db = require("../config/db");
-const { totalsFromSubtotal, resolveCharges, money } = require("../utils/billing");
-const { getRates } = require("../utils/taxRates");
+const { totalsFromSubtotal, resolveCharges, money, ROLES } = require("../utils/billing");
+const { getAutoCharges } = require("../utils/billingCharges");
 
 /*
-| Recomputing an order's totals needs three things: its remaining subtotal, its
-| restaurant's tax rates, and any per-bill charges already stored against it.
-| This wraps that so every recompute path agrees — a bill must total the same
-| whether it was just created, edited down to one item, or reprinted.
+| Recomputing an order's totals needs three things: its remaining subtotal, the
+| charges its restaurant applies to every bill of that order type (GST, service
+| charge, a standing packing fee), and the per-bill charges the cashier already
+| picked for it. This wraps that so every recompute path agrees — a bill must
+| total the same whether it was just created, edited down to one item, or
+| reprinted.
 */
 const totalsForOrder = (orderId, restaurantId, subtotal, callback) => {
-    getRates(restaurantId, (err, rates) => {
-        // getRates never errors — it falls back to the historical rates rather
-        // than failing a sale — but keep the guard honest.
-        if (err) return callback(err);
 
-        db.query(
-            "SELECT charge_name, amount FROM order_charges WHERE order_id = ?",
-            [orderId],
-            (err, chargeRows) => {
+    db.query(
+        "SELECT order_type FROM orders WHERE id = ? AND restaurant_id = ? LIMIT 1",
+        [orderId, restaurantId],
+        (err, orderRows) => {
+            if (err) return callback(err);
+            const orderType = (orderRows && orderRows[0] && orderRows[0].order_type) || "Dine-In";
+
+            getAutoCharges(restaurantId, orderType, (err, autoCharges) => {
+                // getAutoCharges never errors — it bills the goods rather than
+                // failing a sale — but keep the guard honest.
                 if (err) return callback(err);
-                // Stored charges are already resolved to rupees.
-                callback(null, totalsFromSubtotal(subtotal, rates, chargeRows || []));
-            }
-        );
-    });
+
+                db.query(
+                    "SELECT charge_name, amount FROM order_charges WHERE order_id = ?",
+                    [orderId],
+                    (err, chargeRows) => {
+                        if (err) return callback(err);
+                        // Stored charges are already resolved to rupees and carry
+                        // no role, so they total as ordinary charges.
+                        callback(null, totalsFromSubtotal(
+                            subtotal,
+                            [...autoCharges, ...(chargeRows || [])]
+                        ));
+                    }
+                );
+            });
+        }
+    );
 };
 
 // Get all orders (tenant-scoped)
@@ -513,10 +529,13 @@ const applyBillCharges = (orders, restaurantId, charges, callback) => {
 
     if (!orders.length) return callback(null);
 
+    // Ordinary charges only. Tax and service rows are applied automatically from
+    // the restaurant's charge list and already sit in orders.tax /
+    // orders.service_charge — storing one here too would bill it twice.
     const resolved = resolveCharges(
         charges,
         orders.reduce((s, o) => s + Number(o.subtotal || 0), 0)
-    );
+    ).filter((c) => c.charge_role === ROLES.CHARGE);
 
     const target = orders[0];
 

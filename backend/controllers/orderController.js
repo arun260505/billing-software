@@ -2,14 +2,14 @@ const orderModel = require("../models/orderModel");
 const generateOrderNumber = require("../utils/orderNumber");
 const auditLog = require("../utils/auditLog");
 const { totalsFromItems } = require("../utils/billing");
-const { getRates } = require("../utils/taxRates");
+const { getAutoCharges } = require("../utils/billingCharges");
 const { success, error } = require("../utils/response");
 
 // Totals come from utils/billing so a bill adds up the same way whether it is
 // being created, edited or reprinted. Client-sent totals are ignored — the
 // receipt and the database have to agree, and only one of them can be right.
-// Rates are the restaurant's own (Admin → Settings), falling back to the
-// historical 5% / 2% when it has never set them.
+// GST and the service charge are the restaurant's own auto-applied charge rows
+// (Admin → Charges); a restaurant with none configured is billed neither.
 const computeTotals = totalsFromItems;
 
 // Cart items are normalised (and priced from menu_items) by
@@ -56,11 +56,11 @@ exports.createOrder = (req, res) => {
 
         if (err) return error(res, err.message, 400);
 
-        getRates(restaurantId, (err, rates) => {
+        getAutoCharges(restaurantId, req.body.order_type || "Dine-In", (err, autoCharges) => {
 
         if (err) return error(res, err.message, 500);
 
-        const { subtotal, tax, service_charge, grand_total } = computeTotals(pricedItems, rates);
+        const { subtotal, tax, service_charge, grand_total } = computeTotals(pricedItems, autoCharges);
 
         generateOrderNumber(restaurantId, (err, orderNumber) => {
 

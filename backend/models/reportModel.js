@@ -306,18 +306,22 @@ const getOverview = async ({ restaurantId, from, to }) => {
     `;
 
     const chargesConfigSql = `
-        SELECT charge_name, charge_type, amount,
+        SELECT charge_name, charge_type, charge_role, amount, auto_apply,
                applies_dinein, applies_takeaway, applies_delivery, apply_tax
         FROM charges
-        WHERE restaurant_id = ? AND status = 'Active'
-        ORDER BY charge_name
+        WHERE restaurant_id = ? AND status = 'Active' AND deleted_at IS NULL
+        ORDER BY charge_role, charge_name
     `;
 
+    // The GST rate the bills were actually charged at. It used to come from
+    // settings.tax_percentage, which the biller stopped reading when GST became
+    // a charge row — so the report would have quoted a rate nobody was billed.
+    // Several tax rows (CGST + SGST) add up to the effective rate.
     const settingsSql = `
-        SELECT tax_percentage
-        FROM settings
-        WHERE restaurant_id = ?
-        LIMIT 1
+        SELECT SUM(amount) AS tax_percentage
+        FROM charges
+        WHERE restaurant_id = ? AND status = 'Active' AND deleted_at IS NULL
+          AND charge_role = 'Tax' AND charge_type = 'Percentage'
     `;
 
     const prevFrom = shiftDate(from, -(dayDiff(from, to) + 1));
@@ -506,6 +510,8 @@ const getOverview = async ({ restaurantId, from, to }) => {
         charges_config: chargeConfigRows.map((r) => ({
             charge_name: r.charge_name,
             charge_type: r.charge_type,
+            charge_role: r.charge_role || "Charge",
+            auto_apply: !!r.auto_apply,
             amount: num(r.amount),
             applies_dinein: !!r.applies_dinein,
             applies_takeaway: !!r.applies_takeaway,

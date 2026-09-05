@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { normalizeRole } = require("../utils/billing");
 
 const getAllCharges = (restaurantId, callback) => {
     const sql = "SELECT * FROM charges WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC";
@@ -12,15 +13,17 @@ const getChargeById = (id, restaurantId, callback) => {
 
 const createCharge = (charge, callback) => {
     const sql = `INSERT INTO charges
-        (restaurant_id, charge_name, description, charge_type, amount,
-         applies_dinein, applies_takeaway, applies_delivery, apply_tax, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (restaurant_id, charge_name, description, charge_type, charge_role, amount,
+         auto_apply, applies_dinein, applies_takeaway, applies_delivery, apply_tax, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     db.query(sql, [
         charge.restaurant_id,
         charge.charge_name,
         charge.description || null,
         charge.charge_type,
+        normalizeRole(charge.charge_role),
         charge.amount,
+        charge.auto_apply ? 1 : 0,
         charge.applies_dinein ? 1 : 0,
         charge.applies_takeaway ? 1 : 0,
         charge.applies_delivery ? 1 : 0,
@@ -31,15 +34,17 @@ const createCharge = (charge, callback) => {
 
 const updateCharge = (id, restaurantId, charge, callback) => {
     const sql = `UPDATE charges SET
-        charge_name=?, description=?, charge_type=?, amount=?,
-        applies_dinein=?, applies_takeaway=?, applies_delivery=?,
+        charge_name=?, description=?, charge_type=?, charge_role=?, amount=?,
+        auto_apply=?, applies_dinein=?, applies_takeaway=?, applies_delivery=?,
         apply_tax=?, status=?
         WHERE id=? AND restaurant_id=?`;
     db.query(sql, [
         charge.charge_name,
         charge.description || null,
         charge.charge_type,
+        normalizeRole(charge.charge_role),
         charge.amount,
+        charge.auto_apply ? 1 : 0,
         charge.applies_dinein ? 1 : 0,
         charge.applies_takeaway ? 1 : 0,
         charge.applies_delivery ? 1 : 0,
@@ -63,7 +68,10 @@ const getChargeSummary = (restaurantId, callback) => {
             SUM(status = 'Inactive') AS inactive,
             SUM(applies_dinein = 1) AS dinein_count,
             SUM(applies_takeaway = 1) AS takeaway_count,
-            SUM(applies_delivery = 1) AS delivery_count
+            SUM(applies_delivery = 1) AS delivery_count,
+            SUM(charge_role = 'Tax' AND status = 'Active') AS tax_count,
+            SUM(charge_role = 'Service' AND status = 'Active') AS service_count,
+            SUM(auto_apply = 1 AND status = 'Active') AS auto_count
         FROM charges WHERE restaurant_id = ? AND deleted_at IS NULL
     `;
     db.query(sql, [restaurantId], callback);

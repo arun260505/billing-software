@@ -20,10 +20,11 @@ import PrinterSetup from "../../components/Cashier/PrinterSetup";
 import BillEditModal from "../../components/Cashier/BillEditModal";
 import { registerNetwork } from "../../services/systemService";
 import billingFormatService from "../../services/billingFormatService";
+import chargeService from "../../services/chargeService";
 import kitchenFormatService from "../../services/kitchenFormatService";
 import printerSettingService from "../../services/printerSettingService";
 import { DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
-import { billTotals, ratesFrom, resolveCharges, money as roundMoney } from "../../utils/rates";
+import { billTotals, autoChargesFor, money as roundMoney } from "../../utils/rates";
 import { DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
 // Prints straight to the configured printer; falls back to the browser dialog
 // only when the till cannot print directly.
@@ -91,6 +92,10 @@ function Dashboard() {
     // kitchen ticket prints when the order is sent, follows the bill, or never prints.
     const [printerMode, setPrinterMode] = useState(DEFAULT_PRINTER_MODE);
     const [restaurantInfo, setRestaurantInfo] = useState(null);
+    // Everything billed on top of the goods — GST, service charge, packing —
+    // lives in Admin → Charges. A restaurant with none configured bills neither
+    // tax nor service, which is the point of them being rows and not settings.
+    const [charges, setCharges] = useState([]);
 
     // ── Functions ───────────────────────────────────────────────────
     function updateDateTime() {
@@ -108,6 +113,17 @@ function Dashboard() {
             }
         } catch (e) {
             console.error("Failed to load bill format in cashier:", e);
+        }
+    };
+
+    const loadCharges = async () => {
+        try {
+            const res = await chargeService.getCharges();
+            if (res.data?.success) setCharges(res.data.data || []);
+        } catch (e) {
+            // Bill the goods rather than blocking the till. An unreachable
+            // charge list means no tax line, which is visible on the screen.
+            console.error("Failed to load charges in cashier:", e);
         }
     };
 
@@ -144,6 +160,7 @@ function Dashboard() {
         loadBillingFormat();
         loadKitchenFormat();
         loadPrinterMode();
+        loadCharges();
 
         // Register this restaurant's WAN IP so waiter phones on the same WiFi
         // are recognised as "on the restaurant network" (cloud model).
@@ -157,6 +174,7 @@ function Dashboard() {
             loadTodaysOrderCount();
             loadCategories();   // pick up menu categories synced from the cloud
             loadPrinterMode();  // pick up a printer setup changed in Admin → Settings
+            loadCharges();      // pick up a GST / service change made in Admin → Charges
         }, 10000);
         const refreshOnFocus = () => {
             loadTables();
@@ -206,16 +224,15 @@ function Dashboard() {
 
     // One calculation for the whole screen — utils/rates mirrors
     // backend/utils/billing.js, so what the cashier sees is what gets stored.
-    // The rates ride along on restaurantInfo (Admin → Settings), falling back
-    // to 5% / 2% for a restaurant that has never set them.
+    // A cart with no table (or a parcel table) is a takeaway, and charges can be
+    // set to apply to one service type and not the other.
+    const cartOrderType = (!selectedTable || selectedTable?.isParcel) ? "Takeaway" : "Dine-In";
+    const cartAutoCharges = autoChargesFor(charges, cartOrderType);
     const subtotal   = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const cartTotals = billTotals(subtotal, restaurantInfo);
+    const cartTotals = billTotals(subtotal, cartAutoCharges);
     const gst        = cartTotals.tax;
     const serviceCharge = cartTotals.service_charge;
     const grandTotal = cartTotals.grand_total;
-    // The rates the totals were actually computed at, so the on-screen labels
-    // can never claim 5% while the restaurant is configured for something else.
-    const { gstPercent, servicePercent } = ratesFrom(restaurantInfo);
 
     const normalizeQuantity = (value) => {
         const parsed = Number(value);
@@ -651,7 +668,14 @@ function Dashboard() {
             subtotal: Number(subtotal.toFixed(2)),
             gst: Number(gst.toFixed(2)),
             serviceCharge: Number(serviceCharge.toFixed(2)),
-            total: Number((subtotal + gst + serviceCharge).toFixed(2)),
+            // Standing charges (packing on takeaway, an AC charge) are part of
+            // what is owed, so the counter bill has to carry them too — this
+            // total was goods + tax + service and left them off.
+            charges: cartTotals.charge_lines,
+            // Named tax / service lines, so the bill screen and the receipt
+            // print what this restaurant actually charges rather than "GST 5%".
+            taxLines: [...cartTotals.tax_lines, ...cartTotals.service_lines],
+            total: cartTotals.grand_total,
         });
         setShowBill(true);
     };
@@ -832,8 +856,8 @@ function Dashboard() {
                 place: header.table_name ? `Table ${header.table_name}` : "Counter",
                 items: editingBillItems,
                 subtotal: totals.subtotal,
-                gst: totals.gst,
-                service: totals.service,
+                taxLines: totals.taxLines,
+                charges: totals.charges,
                 total: totals.total,
                 method,
                 isReprint: true
@@ -877,14 +901,15 @@ function Dashboard() {
             const primaryMethod = paymentList[0]?.method || "Cash";
 
             // Same calculation the backend will run (utils/rates mirrors
-            // backend/utils/billing.js), at the restaurant's own rates.
+            // backend/utils/billing.js): the charges this restaurant applies to
+            // every dine-in bill, plus the ones the cashier picked.
             const sub = roundMoney(items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0));
-            const resolvedCharges = resolveCharges(selectedCharges, sub);
             const {
                 tax: gstAmt,
                 service_charge: svc,
+                charge_lines: resolvedCharges,
                 grand_total: computedTotal
-            } = billTotals(sub, restaurantInfo, resolvedCharges);
+            } = billTotals(sub, [...autoChargesFor(charges, "Dine-In"), ...selectedCharges]);
 
             const total = finalTotal || computedTotal;
 
@@ -1141,8 +1166,14 @@ function Dashboard() {
                             the nearest rupee made the printed lines disagree with
                             the printed total (238 + 12 + 5 ≠ 254). */}
                         <div className="pos-tot-row"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-                        <div className="pos-tot-row"><span>GST ({gstPercent}%)</span><span>₹{gst.toFixed(2)}</span></div>
-                        <div className="pos-tot-row"><span>Service ({servicePercent}%)</span><span>₹{serviceCharge.toFixed(2)}</span></div>
+                        {/* One line per charge the restaurant actually applies,
+                            named as it is in Admin → Charges. Nothing configured,
+                            nothing charged — no phantom GST line. */}
+                        {[...cartTotals.tax_lines, ...cartTotals.service_lines, ...cartTotals.charge_lines].map((c, i) => (
+                            <div className="pos-tot-row" key={`${c.charge_name}-${i}`}>
+                                <span>{c.charge_name}</span><span>₹{c.amount.toFixed(2)}</span>
+                            </div>
+                        ))}
                         <div className="pos-tot-row grand"><span>Total</span><span>₹{displayTotal.toFixed(2)}</span></div>
                         <div className="pos-bill-actions">
                             {selectedTable && (
@@ -1171,7 +1202,7 @@ function Dashboard() {
                     items={tableBillItems}
                     menuItems={allItems}
                     busy={tableBillBusy}
-                    settings={restaurantInfo}
+                    charges={charges}
                     onSetQty={handleTableBillSetQty}
                     onRemoveGroup={handleTableBillRemove}
                     onAddItem={handleTableBillAdd}
@@ -1185,6 +1216,7 @@ function Dashboard() {
                     order={billData}
                     restaurant={restaurantInfo}
                     format={billFormat}
+                    charges={charges}
                     onClose={() => setShowBill(false)}
                     onSuccess={handlePaymentSuccess}
                     onPrinted={handleBillPrinted}
@@ -1197,6 +1229,7 @@ function Dashboard() {
                     menuItems={allItems}
                     busy={billEditBusy}
                     chargedTotal={editingBillCharged}
+                    charges={charges}
                     onSetQty={handleBillSetQty}
                     onRemoveGroup={handleBillRemove}
                     onAddItem={handleBillAdd}

@@ -1,13 +1,12 @@
-import { useState, useEffect } from "react";
-import chargeService from "../../services/chargeService";
-import { isValidCharge } from "../../utils/charges";
-import { billTotals, ratesFrom, resolveCharges, money } from "../../utils/rates";
+import { useState } from "react";
+import { autoChargesFor, optionalChargesFor, billTotals, money } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
-// `settings` carries the restaurant's tax_percentage / service_charge. Omitting
-// it falls back to the historical 5% / 2%, so the modal still totals correctly
-// while the rates are still loading.
-function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onRemoveGroup, onAddItem, onServe, onGenerate, onClose }) {
+// `charges` is the restaurant's charge list (Admin → Charges). The ones flagged
+// to apply automatically — GST, service charge, a standing fee — are on the bill
+// already; the rest are the chips the cashier can add. A restaurant with none
+// configured bills the goods and nothing else.
+function TableBillModal({ table, items, menuItems, busy, charges = [], onSetQty, onRemoveGroup, onAddItem, onServe, onGenerate, onClose }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
@@ -19,14 +18,11 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
     const [splitAmounts, setSplitAmounts] = useState({ Cash: "", Card: "", UPI: "", Wallet: "" });
     const [adding, setAdding] = useState(false);
     const [search, setSearch] = useState("");
-    const [charges, setCharges] = useState([]);
     const [selectedCharges, setSelectedCharges] = useState([]);
 
-    useEffect(() => {
-        chargeService.getCharges().then((res) => {
-            setCharges((res.data.data || []).filter((c) => c.status === "Active" && isValidCharge(c)));
-        }).catch(() => {});
-    }, []);
+    // A table bill is always dine-in, so a charge marked takeaway-only stays off it.
+    const autoCharges = autoChargesFor(charges, "Dine-In");
+    const pickableCharges = optionalChargesFor(charges, "Dine-In");
 
     const groups = [];
     const byKey = {};
@@ -48,20 +44,17 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
         );
     };
 
-    // utils/rates mirrors backend/utils/billing.js — same rates, same paise
+    // utils/rates mirrors backend/utils/billing.js — same filtering, same paise
     // rounding, same order — so the total shown here is the total printed and
     // the total the backend stores.
     const subtotal = money(groups.reduce((s, g) => s + g.price * g.qty, 0));
-    const resolvedCharges = resolveCharges(selectedCharges, subtotal);
     const {
-        tax: gst,
-        service_charge: service,
         charges_total: chargesTotal,
-        grand_total: total
-    } = billTotals(subtotal, settings, resolvedCharges);
-
-    // Label the tax/service lines with the rates they were actually charged at.
-    const { gstPercent, servicePercent } = ratesFrom(settings);
+        grand_total: total,
+        tax_lines: taxLines,
+        service_lines: serviceLines,
+        charge_lines: chargeLines
+    } = billTotals(subtotal, [...autoCharges, ...selectedCharges]);
 
     // Every item must be marked served before the cashier can generate the bill.
     const unservedCount = items.filter((it) => Number(it.served) !== 1).length;
@@ -221,14 +214,21 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
 
                 <div className="tbill-foot">
                     <div className="tbill-tot"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-                    <div className="tbill-tot"><span>GST ({gstPercent}%)</span><span>₹{gst.toFixed(2)}</span></div>
-                    <div className="tbill-tot"><span>Service ({servicePercent}%)</span><span>₹{service.toFixed(2)}</span></div>
 
-                    {charges.length > 0 && (
+                    {/* The charges this restaurant applies to every bill, named
+                        as they are in Admin → Charges. None configured, none
+                        shown — no phantom GST line on a bill that has no GST. */}
+                    {[...taxLines, ...serviceLines].map((c, i) => (
+                        <div className="tbill-tot" key={`${c.charge_name}-${i}`}>
+                            <span>{c.charge_name}</span><span>₹{c.amount.toFixed(2)}</span>
+                        </div>
+                    ))}
+
+                    {pickableCharges.length > 0 && (
                         <div className="tbill-charges-section">
                             <div className="tbill-charges-label">Additional Charges</div>
                             <div className="tbill-charges-grid">
-                                {charges.map((c) => {
+                                {pickableCharges.map((c) => {
                                     const isActive = selectedCharges.some((sc) => sc.id === c.id);
                                     const value = c.charge_type === "Percentage"
                                         ? `${c.amount}%`
@@ -249,22 +249,17 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
                         </div>
                     )}
 
-                    {selectedCharges.length > 0 && (
+                    {chargeLines.length > 0 && (
                         <>
-                            {/* Round these exactly the way resolveCharges does, or
-                                the charge lines shown don't add up to the charges
-                                total they are part of. */}
-                            {selectedCharges.map((c) => {
-                                const val = c.charge_type === "Percentage"
-                                    ? money(subtotal * Number(c.amount) / 100)
-                                    : money(Number(c.amount));
-                                return (
-                                    <div key={c.id} className="tbill-tot tbill-charge-row">
-                                        <span>{c.charge_name}</span>
-                                        <span>₹{val.toFixed(2)}</span>
-                                    </div>
-                                );
-                            })}
+                            {/* Already resolved to rupees by billTotals, so these
+                                lines cannot disagree with the total they are
+                                part of. */}
+                            {chargeLines.map((c, i) => (
+                                <div key={`${c.charge_name}-${i}`} className="tbill-tot tbill-charge-row">
+                                    <span>{c.charge_name}</span>
+                                    <span>₹{c.amount.toFixed(2)}</span>
+                                </div>
+                            ))}
                             <div className="tbill-tot tbill-charges-total"><span>Total Charges</span><span>₹{chargesTotal.toFixed(2)}</span></div>
                         </>
                     )}

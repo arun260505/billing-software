@@ -6,55 +6,95 @@
 // customer paid one number and the database stored another. Everything that
 // totals a bill now goes through here.
 //
-// Rates are per-restaurant (settings.tax_percentage / settings.service_charge),
-// resolved by utils/taxRates.js and passed in. A restaurant that has never set
-// them falls back to the constants below, which are what every bill used before
-// the rates became configurable — so an existing till keeps billing exactly as
-// it did until someone edits Settings.
+// GST and the service charge are CHARGE ROWS, not settings. Every line added on
+// top of the goods — tax, service, packing, delivery — is a row in `charges`
+// with a role:
+//
+//   charge_role = 'Tax'      -> totalled into orders.tax
+//   charge_role = 'Service'  -> totalled into orders.service_charge
+//   charge_role = 'Charge'   -> itemised in order_charges, summed into charges_total
+//
+// A row with auto_apply = 1 lands on every bill of a matching order type; the
+// rest stay opt-in chips the cashier taps at settle time. The roles exist only
+// so the tax a restaurant collects is still separable for GST reporting — the
+// arithmetic is identical for all three.
+//
+// There is deliberately NO hardcoded fallback rate. A restaurant with no Tax
+// charge configured bills no tax, because plenty of them are not registered for
+// GST at all. (Historically this file forced 5% GST + 2% service on every bill
+// with no way to switch it off.)
 
-const DEFAULT_GST_PERCENT = 5;
-const DEFAULT_SERVICE_PERCENT = 2;
+const ROLES = { TAX: "Tax", SERVICE: "Service", CHARGE: "Charge" };
 
 // Round to paise, avoiding the usual float drift (0.1 + 0.2 === 0.30000000000000004).
 const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
-// A rate is "set" only if it is a positive number. The settings row defaults
-// both columns to 0, so 0 means "never configured", not "bill zero tax".
-const rateOr = (value, fallback) => {
-    const n = Number(value);
-    return Number.isFinite(n) && n > 0 ? n : fallback;
+/** Anything unrecognised is an ordinary charge — never silently a tax. */
+const normalizeRole = (role) => {
+    const r = String(role || "").trim().toLowerCase();
+    if (r === "tax") return ROLES.TAX;
+    if (r === "service") return ROLES.SERVICE;
+    return ROLES.CHARGE;
 };
 
+/** A charge row is usable only with a name and a numeric amount. */
+const isValidCharge = (c) =>
+    Boolean(c) &&
+    String(c.charge_name || "").trim() !== "" &&
+    Number.isFinite(Number(c.amount));
+
 /**
- * Normalise a rates object from whatever settings gave us.
- * @param {{gstPercent?: number, servicePercent?: number}} [rates]
+ * Does this charge apply to an order of this type?
+ * Rows carrying none of the applies_* flags (the stored order_charges rows, which
+ * were already decided at settle time) always apply.
  */
-// `= {}` only covers undefined, and null reaches here easily — a settings row
-// that doesn't exist, a caller passing through a nullable value. Normalise
-// explicitly rather than throwing halfway through totalling a bill.
-const resolveRates = (rates) => {
-    const r = rates || {};
-    return {
-        gstPercent: rateOr(r.gstPercent, DEFAULT_GST_PERCENT),
-        servicePercent: rateOr(r.servicePercent, DEFAULT_SERVICE_PERCENT)
-    };
+const appliesToOrderType = (charge, orderType) => {
+    const hasFlags =
+        "applies_dinein" in charge ||
+        "applies_takeaway" in charge ||
+        "applies_delivery" in charge;
+    if (!hasFlags) return true;
+
+    const t = String(orderType || "Dine-In").toLowerCase();
+    if (t === "takeaway" || t === "parcel" || t === "take away") {
+        return Boolean(Number(charge.applies_takeaway));
+    }
+    if (t === "delivery") return Boolean(Number(charge.applies_delivery));
+    return Boolean(Number(charge.applies_dinein));
 };
 
+/** Active unless it says otherwise — order_charges rows carry no status. */
+const isActiveCharge = (c) => String(c.status || "Active") === "Active";
+
 /**
- * Resolve per-bill charges (packing, delivery, AC …) to rupee amounts.
- * A "Percentage" charge is a percentage of the goods subtotal, not of the
- * taxed total — the same basis the cashier screen has always used.
+ * The charges that belong on a bill: active, valid, matching the order type.
+ * `onlyAuto` keeps just the ones that apply without the cashier picking them.
+ */
+const applicableCharges = (charges, orderType, onlyAuto = false) =>
+    (Array.isArray(charges) ? charges : []).filter(
+        (c) =>
+            isValidCharge(c) &&
+            isActiveCharge(c) &&
+            appliesToOrderType(c, orderType) &&
+            (!onlyAuto || Boolean(Number(c.auto_apply)))
+    );
+
+/**
+ * Resolve charge rows to rupee amounts against the goods subtotal.
+ * A "Percentage" charge is a percentage of the goods subtotal, not of the taxed
+ * total — the same basis the cashier screen has always used.
  *
- * @param {Array<{charge_name: string, charge_type?: string, amount: number}>} charges
+ * @param {Array<{charge_name: string, charge_type?: string, charge_role?: string, amount: number}>} charges
  * @param {number} subtotal
- * @returns {Array<{charge_name: string, amount: number}>}
+ * @returns {Array<{charge_name: string, charge_role: string, amount: number}>}
  */
 const resolveCharges = (charges = [], subtotal = 0) => {
     const sub = money(subtotal);
     return (Array.isArray(charges) ? charges : [])
-        .filter((c) => c && String(c.charge_name || "").trim() && Number.isFinite(Number(c.amount)))
+        .filter(isValidCharge)
         .map((c) => ({
             charge_name: String(c.charge_name).trim(),
+            charge_role: normalizeRole(c.charge_role),
             amount: c.charge_type === "Percentage"
                 ? money((sub * Number(c.amount)) / 100)
                 : money(Number(c.amount))
@@ -62,34 +102,52 @@ const resolveCharges = (charges = [], subtotal = 0) => {
 };
 
 /**
- * Total a bill from its subtotal.
+ * Bucket resolved charges into the three columns a bill stores.
+ * @param {Array<{charge_name, charge_role, amount}>} resolved
+ */
+const splitCharges = (resolved = []) => {
+    const list = Array.isArray(resolved) ? resolved : [];
+    const of = (role) => list.filter((c) => normalizeRole(c.charge_role) === role);
+    const sum = (rows) => money(rows.reduce((s, c) => s + Number(c.amount || 0), 0));
+
+    const taxLines = of(ROLES.TAX);
+    const serviceLines = of(ROLES.SERVICE);
+    const chargeLines = of(ROLES.CHARGE);
+
+    return {
+        tax: sum(taxLines),
+        service_charge: sum(serviceLines),
+        charges_total: sum(chargeLines),
+        tax_lines: taxLines,
+        service_lines: serviceLines,
+        charge_lines: chargeLines
+    };
+};
+
+/**
+ * Total a bill from its subtotal and the charge rows that apply to it.
  *
- * Tax and service are each rounded to paise BEFORE being summed, because those
- * are the numbers printed line by line on the receipt — the total has to be the
- * sum of what the customer can read, not a separately-rounded figure.
+ * Each bucket is rounded to paise BEFORE being summed, because those are the
+ * numbers printed line by line on the receipt — the total has to be the sum of
+ * what the customer can read, not a separately-rounded figure.
  *
  * @param {number} subtotal
- * @param {{gstPercent?: number, servicePercent?: number}} [rates]
- * @param {Array<{charge_name: string, amount: number}>} [resolvedCharges] already in rupees
+ * @param {Array} charges  charge rows (unresolved) that apply to this bill
  */
-const totalsFromSubtotal = (subtotal, rates, resolvedCharges = []) => {
-
-    const { gstPercent, servicePercent } = resolveRates(rates);
+const totalsFromSubtotal = (subtotal, charges = []) => {
 
     const sub = money(subtotal);
-    const tax = money((sub * gstPercent) / 100);
-    const service = money((sub * servicePercent) / 100);
-    const charges_total = money(
-        (Array.isArray(resolvedCharges) ? resolvedCharges : [])
-            .reduce((s, c) => s + Number(c.amount || 0), 0)
-    );
+    const split = splitCharges(resolveCharges(charges, sub));
 
     return {
         subtotal: sub,
-        tax,
-        service_charge: service,
-        charges_total,
-        grand_total: money(sub + tax + service + charges_total)
+        tax: split.tax,
+        service_charge: split.service_charge,
+        charges_total: split.charges_total,
+        grand_total: money(sub + split.tax + split.service_charge + split.charges_total),
+        tax_lines: split.tax_lines,
+        service_lines: split.service_lines,
+        charge_lines: split.charge_lines
     };
 
 };
@@ -97,26 +155,24 @@ const totalsFromSubtotal = (subtotal, rates, resolvedCharges = []) => {
 /**
  * Total a bill from its line items.
  * @param {Array<{price: number, quantity: number}>} items
- * @param {{gstPercent?: number, servicePercent?: number}} [rates]
- * @param {Array<{charge_name: string, amount: number}>} [resolvedCharges]
+ * @param {Array} charges
  */
-const totalsFromItems = (items = [], rates, resolvedCharges = []) =>
+const totalsFromItems = (items = [], charges = []) =>
     totalsFromSubtotal(
         (Array.isArray(items) ? items : [])
             .reduce((sum, it) => sum + Number(it.price) * Number(it.quantity), 0),
-        rates,
-        resolvedCharges
+        charges
     );
 
 module.exports = {
-    DEFAULT_GST_PERCENT,
-    DEFAULT_SERVICE_PERCENT,
-    // Kept under the old names so nothing that imported the constants breaks.
-    GST_PERCENT: DEFAULT_GST_PERCENT,
-    SERVICE_PERCENT: DEFAULT_SERVICE_PERCENT,
+    ROLES,
     money,
-    resolveRates,
+    normalizeRole,
+    isValidCharge,
+    appliesToOrderType,
+    applicableCharges,
     resolveCharges,
+    splitCharges,
     totalsFromSubtotal,
     totalsFromItems
 };

@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createPayment } from "../../services/paymentService";
-import chargeService from "../../services/chargeService";
 import { printBillNow } from "../../utils/printDispatch";
-import { isValidCharge } from "../../utils/charges";
+import { optionalChargesFor, resolveCharges, money } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
 // `onPrinted` (optional) fires with the order as it was printed, right after the
 // customer bill goes to the printer. Option 3 of the printer setup uses it to
 // send the kitchen copy out of the same printer straight after the bill.
-function BillModal({ order, restaurant, format, onClose, onSuccess, onPrinted }) {
+//
+// `charges` is the restaurant's charge list (Admin → Charges). Anything set to
+// apply automatically — GST, service charge, a standing packing fee — is already
+// inside order.total; the chips below are the opt-in ones.
+function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess, onPrinted }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
@@ -16,14 +19,16 @@ function BillModal({ order, restaurant, format, onClose, onSuccess, onPrinted })
     const [splitMode, setSplitMode] = useState(false);
     const [splitAmounts, setSplitAmounts] = useState({ Cash: "", Card: "", UPI: "", Wallet: "" });
     const [loading, setLoading] = useState(false);
-    const [charges, setCharges] = useState([]);
     const [selectedCharges, setSelectedCharges] = useState([]);
 
-    useEffect(() => {
-        chargeService.getCharges().then((res) => {
-            setCharges((res.data.data || []).filter((c) => c.status === "Active" && isValidCharge(c)));
-        }).catch(() => {});
-    }, []);
+    const orderType = order.isCounter ? "Takeaway" : "Dine-In";
+    const pickableCharges = optionalChargesFor(charges, orderType);
+
+    // The tax / service lines behind order.total, named as the restaurant named
+    // them. They used to be printed here as a hardcoded "GST (5%)".
+    const billedLines = Array.isArray(order.taxLines) ? order.taxLines : [];
+    // Standing charges already counted into order.total by the cashier screen.
+    const autoChargeLines = Array.isArray(order.charges) ? order.charges : [];
 
     const toggleCharge = (charge) => {
         setSelectedCharges((prev) =>
@@ -33,14 +38,13 @@ function BillModal({ order, restaurant, format, onClose, onSuccess, onPrinted })
         );
     };
 
-    const chargesTotal = selectedCharges.reduce((sum, c) => {
-        if (c.charge_type === "Percentage") return sum + Math.round(order.subtotal * c.amount / 100);
-        return sum + Number(c.amount);
-    }, 0);
+    // Resolved the same way as everywhere else — this rounded percentage charges
+    // to whole rupees, so the charge lines printed did not add up to the charges
+    // total they were part of.
+    const pickedLines = resolveCharges(selectedCharges, order.subtotal);
+    const chargesTotal = money(pickedLines.reduce((s, c) => s + c.amount, 0));
 
-    const grandTotal = order.total + chargesTotal;
-
-    const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
+    const grandTotal = money(order.total + chargesTotal);
     const PAY_METHODS = ["Cash", "Card", "UPI", "Wallet"];
 
     const parsedSplits = () =>
@@ -99,7 +103,10 @@ function BillModal({ order, restaurant, format, onClose, onSuccess, onPrinted })
             const printedOrder = {
                 ...order,
                 payment_method: splitMode ? exactSplits.map((s) => s.payment_method).join(" + ") : paymentMethod,
-                charges: selectedCharges,
+                // Standing charges plus the ones just picked. Overwriting with
+                // the picked ones alone dropped a restaurant's automatic packing
+                // fee off the printed bill while still charging for it.
+                charges: [...autoChargeLines, ...pickedLines],
                 grand_total: money(grandTotal)
             };
 
@@ -151,14 +158,17 @@ function BillModal({ order, restaurant, format, onClose, onSuccess, onPrinted })
 
                 <div className="bill-totals">
                     <div className="bill-row"><span>Subtotal</span><span>₹{order.subtotal.toFixed(2)}</span></div>
-                    <div className="bill-row"><span>GST (5%)</span><span>₹{order.gst.toFixed(2)}</span></div>
-                    <div className="bill-row"><span>Service Charge (2%)</span><span>₹{order.serviceCharge.toFixed(2)}</span></div>
+                    {[...billedLines, ...autoChargeLines].map((c, i) => (
+                        <div className="bill-row" key={`${c.charge_name}-${i}`}>
+                            <span>{c.charge_name}</span><span>₹{Number(c.amount).toFixed(2)}</span>
+                        </div>
+                    ))}
 
-                    {charges.length > 0 && (
+                    {pickableCharges.length > 0 && (
                         <div className="bill-charges-section">
                             <div className="bill-charges-label">Additional Charges</div>
                             <div className="bill-charges-grid">
-                                {charges.map((c) => {
+                                {pickableCharges.map((c) => {
                                     const isActive = selectedCharges.some((sc) => sc.id === c.id);
                                     const value = c.charge_type === "Percentage"
                                         ? `${c.amount}%`
@@ -179,19 +189,14 @@ function BillModal({ order, restaurant, format, onClose, onSuccess, onPrinted })
                         </div>
                     )}
 
-                    {selectedCharges.length > 0 && (
+                    {pickedLines.length > 0 && (
                         <>
-                            {selectedCharges.map((c) => {
-                                const val = c.charge_type === "Percentage"
-                                    ? Math.round(order.subtotal * c.amount / 100)
-                                    : Number(c.amount);
-                                return (
-                                    <div key={c.id} className="bill-row bill-charge-row">
-                                        <span>{c.charge_name}</span>
-                                        <span>₹{val.toFixed(2)}</span>
-                                    </div>
-                                );
-                            })}
+                            {pickedLines.map((c, i) => (
+                                <div key={`${c.charge_name}-${i}`} className="bill-row bill-charge-row">
+                                    <span>{c.charge_name}</span>
+                                    <span>₹{c.amount.toFixed(2)}</span>
+                                </div>
+                            ))}
                             <div className="bill-row bill-charges-total"><span>Total Charges</span><span>₹{chargesTotal.toFixed(2)}</span></div>
                         </>
                     )}

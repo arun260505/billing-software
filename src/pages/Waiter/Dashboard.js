@@ -9,6 +9,7 @@ import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
 import CartSheet from "../../components/Waiter/CartSheet";
 import BillModal from "../../components/Waiter/BillModal";
+import chargeService from "../../services/chargeService";
 import kitchenFormatService from "../../services/kitchenFormatService";
 import printerSettingService from "../../services/printerSettingService";
 import { DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
@@ -53,6 +54,9 @@ function Dashboard() {
     // a kitchen ticket when the restaurant actually has a kitchen printer.
     const [printerMode, setPrinterMode] = useState(DEFAULT_PRINTER_MODE);
     const [restaurantInfo, setRestaurantInfo] = useState(null);
+    // GST, service charge and any other add-on come from Admin → Charges, so the
+    // waiter's preview quotes the same total the cashier will take.
+    const [charges, setCharges] = useState([]);
     const [orderBusy, setOrderBusy] = useState(false);
 
     // ── UI-only state (no business logic) ──────────────────────────
@@ -78,6 +82,16 @@ function Dashboard() {
         }
     };
 
+    const loadCharges = async () => {
+        try {
+            const res = await chargeService.getCharges();
+            if (res.data?.success) setCharges(res.data.data || []);
+        } catch (e) {
+            // Preview the goods rather than blocking order taking.
+            console.error("Failed to load charges in waiter:", e);
+        }
+    };
+
     const loadPrinterMode = async () => {
         try {
             const res = await printerSettingService.getPrinterSetting();
@@ -99,6 +113,7 @@ function Dashboard() {
         loadTodaysOrderCount();
         loadKitchenFormat();
         loadPrinterMode();
+        loadCharges();
 
         const statsTimer = setInterval(() => {
             loadTables();
@@ -106,6 +121,7 @@ function Dashboard() {
             loadTodaysOrderCount();
             loadCategories();   // pick up menu categories synced from the cloud
             loadPrinterMode();  // pick up a printer setup changed in Admin → Settings
+            loadCharges();      // pick up a GST / service change made in Admin → Charges
         }, 10000);
 
         const refreshOnFocus = () => {
@@ -911,7 +927,7 @@ function Dashboard() {
                     items={previousItems}
                     menuItems={allItems}
                     busy={billBusy}
-                    settings={restaurantInfo}
+                    charges={charges}
                     onSetQty={handleSetBillQty}
                     onRemoveGroup={handleRemoveBillGroup}
                     onAddItem={handleAddBillItem}

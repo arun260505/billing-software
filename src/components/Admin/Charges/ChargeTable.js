@@ -38,6 +38,16 @@ function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, s
         return `₹${amt}`;
     };
 
+    // A Tax / Service row is what puts the GST and service lines on a bill —
+    // worth calling out, because deleting one is how a restaurant stops charging
+    // it and that should never happen by accident.
+    const roleTag = (charge) => {
+        const role = String(charge.charge_role || "Charge");
+        if (role === "Tax") return <span className="role-tag tax">Tax</span>;
+        if (role === "Service") return <span className="role-tag service">Service</span>;
+        return null;
+    };
+
     const getAppliesTags = (charge) => {
         const tags = [];
         if (charge.applies_dinein) tags.push(<span key="dinein" className="applies-tag dinein">Dine-in</span>);
@@ -64,7 +74,7 @@ function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, s
                             Amount {renderSortArrow("amount")}
                         </th>
                         <th>Applies To</th>
-                        <th>Tax</th>
+                        <th>Added</th>
                         <th>Status</th>
                         <th onClick={() => onSort("updated_at")}>
                             Updated {renderSortArrow("updated_at")}
@@ -87,7 +97,9 @@ function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, s
                         charges.map((charge) => (
                             <tr key={charge.id}>
                                 <td>
-                                    <div className="charge-name-cell">{charge.charge_name}</div>
+                                    <div className="charge-name-cell">
+                                        {charge.charge_name} {roleTag(charge)}
+                                    </div>
                                     {charge.description && (
                                         <div className="charge-desc">{charge.description}</div>
                                     )}
@@ -100,8 +112,8 @@ function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, s
                                     </div>
                                 </td>
                                 <td>
-                                    <span className={charge.apply_tax ? "tax-yes" : "tax-no"}>
-                                        {charge.apply_tax ? "Yes" : "No"}
+                                    <span className={charge.auto_apply ? "tax-yes" : "tax-no"}>
+                                        {charge.auto_apply ? "Every bill" : "Cashier picks"}
                                     </span>
                                 </td>
                                 <td>

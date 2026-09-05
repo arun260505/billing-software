@@ -50,7 +50,12 @@ db.query(`
         charge_name      VARCHAR(100) NOT NULL,
         description      TEXT DEFAULT NULL,
         charge_type      VARCHAR(20) NOT NULL DEFAULT 'Fixed',
+        -- 'Tax' | 'Service' | 'Charge' — see migrations/010_charge_roles.sql.
+        -- GST and the service charge are rows in this table, not settings.
+        charge_role      VARCHAR(10) NOT NULL DEFAULT 'Charge',
         amount           DECIMAL(10,2) NOT NULL DEFAULT 0,
+        -- 1 = on every bill of a matching order type; 0 = the cashier taps it.
+        auto_apply       TINYINT(1) NOT NULL DEFAULT 0,
         applies_dinein   TINYINT(1) DEFAULT 1,
         applies_takeaway TINYINT(1) DEFAULT 0,
         applies_delivery TINYINT(1) DEFAULT 0,

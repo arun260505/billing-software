@@ -1,11 +1,16 @@
 import { useState } from "react";
-import { GST_PERCENT, SERVICE_PERCENT } from "../../utils/printBill";
+import { autoChargesFor, billTotals } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
 // A settled bill, opened for correction: adjust a quantity that was rung up
 // twice, drop an item that was never served, add one that was missed — then
 // reprint. Totals shown here are the ones that will be saved and charged.
-function BillEditModal({ bill, items, menuItems, busy, chargedTotal,
+//
+// The tax and service lines used to be a hardcoded 5% and 2% here, so correcting
+// a bill at a restaurant on any other rate — or on none at all — quoted a total
+// the backend then refused to agree with. They now come from the restaurant's
+// own charge rows (Admin → Charges), like everywhere else.
+function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [],
                          onSetQty, onRemoveGroup, onAddItem, onReprint, onClose }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
@@ -33,9 +38,14 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal,
     const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
     const subtotal = money(groups.reduce((s, g) => s + g.price * g.qty, 0));
-    const gst = money((subtotal * GST_PERCENT) / 100);
-    const service = money((subtotal * SERVICE_PERCENT) / 100);
-    const total = money(subtotal + gst + service);
+    const {
+        tax: gst,
+        service_charge: service,
+        grand_total: total,
+        tax_lines: taxLines,
+        service_lines: serviceLines,
+        charge_lines: chargeLines
+    } = billTotals(subtotal, autoChargesFor(charges, bill.order_type || (bill.table_name ? "Dine-In" : "Takeaway")));
 
     // What the customer was actually charged when this bill was settled.
     const charged = Number(chargedTotal || 0);
@@ -132,8 +142,11 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal,
 
                 <div className="tbill-foot">
                     <div className="tbill-tot"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-                    <div className="tbill-tot"><span>GST ({GST_PERCENT}%)</span><span>₹{gst.toFixed(2)}</span></div>
-                    <div className="tbill-tot"><span>Service ({SERVICE_PERCENT}%)</span><span>₹{service.toFixed(2)}</span></div>
+                    {[...taxLines, ...serviceLines, ...chargeLines].map((c, i) => (
+                        <div className="tbill-tot" key={`${c.charge_name}-${i}`}>
+                            <span>{c.charge_name}</span><span>₹{c.amount.toFixed(2)}</span>
+                        </div>
+                    ))}
                     <div className="tbill-tot grand"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
 
                     {changed && (
@@ -161,7 +174,11 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal,
                     <button
                         className="tbill-generate"
                         disabled={busy || groups.length === 0}
-                        onClick={() => onReprint(method, { subtotal, gst, service, total })}
+                        onClick={() => onReprint(method, {
+                            subtotal, gst, service, total,
+                            taxLines: [...taxLines, ...serviceLines],
+                            charges: chargeLines
+                        })}
                     >
                         {busy ? "Working…" : `🖨 ${changed ? "Save & Reprint" : "Reprint"} · ₹${total.toFixed(2)}`}
                     </button>
