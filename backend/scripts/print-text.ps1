@@ -4,49 +4,20 @@
 # through the Windows GDI path (Out-Printer) renders a proportional font on a
 # full driver PAGE - unclear text and a whole sheet fed per ticket. Instead we
 # send the text straight to the spooler as RAW: the printer uses its own compact
-# monospace font at the roll width, and we feed just a few lines and cut. No
-# dialog, clear text, no wasted paper.
+# monospace font at the roll width, and we feed just a few lines and cut.
 #
 #   powershell -File print-text.ps1 -Path <file> -PrinterName "TVS RP 3160"
+#   powershell -File print-text.ps1 -WarmOnly      (compile the helper, no print)
 
 param(
-    [Parameter(Mandatory = $true)][string]$Path,
-    [Parameter(Mandatory = $true)][string]$PrinterName
+    [string]$Path,
+    [string]$PrinterName,
+    # Compile the RAW-printer helper DLL and exit. The installer calls this once
+    # so the first real print is already fast.
+    [switch]$WarmOnly
 )
 
 $ErrorActionPreference = "Stop"
-
-if (-not (Test-Path -LiteralPath $Path)) {
-    Write-Error "Receipt file not found: $Path"
-    exit 2
-}
-
-# Fail loudly when the printer is not installed, rather than silently spooling
-# into nothing - the cashier needs to know the bill did not come out.
-$printer = Get-Printer -Name $PrinterName -ErrorAction SilentlyContinue
-if (-not $printer) {
-    Write-Error "Printer not installed: $PrinterName"
-    exit 3
-}
-
-# Read the receipt text (Get-Content -Raw strips the UTF-8 BOM the caller wrote).
-$text = Get-Content -LiteralPath $Path -Raw
-if ($null -eq $text) { $text = "" }
-$text = $text -replace "`r`n", "`n"
-
-# ESC/POS control codes.
-$ESC = [char]27
-$GS  = [char]29
-$init   = "$ESC@"                                   # ESC @  - reset printer
-# Feed a few lines so the content clears the cutter, then partial-cut.
-# GS V 66 0  = feed (0) then partial cut. Widely supported on TVS/Epson clones.
-$cut    = "`n`n`n`n" + "$GS" + "V" + [char]66 + [char]0
-
-$payload = $init + $text + $cut
-
-# One char -> one byte (Latin1/CP1252). ESC/POS wants bytes, not UTF-16, and the
-# receipt text is ASCII ("Rs.", "=", "-", digits, letters).
-$bytes = [System.Text.Encoding]::GetEncoding(28591).GetBytes($payload)
 
 # RAW spool via the Windows print API (winspool), so no GDI page is rendered.
 $code = @'
@@ -95,7 +66,53 @@ public static class RawPrinter {
     }
 }
 '@
-Add-Type -TypeDefinition $code -Language CSharp
+
+# Compiling this C# on every print (~1-2s) is what made printing feel slow.
+# Compile it ONCE to a cached DLL next to this script, then just load that DLL
+# on every later print (~50ms).
+$dllPath = Join-Path $PSScriptRoot "RawPrinter.dll"
+if (-not (Test-Path $dllPath)) {
+    try {
+        Add-Type -TypeDefinition $code -Language CSharp -OutputAssembly $dllPath
+    } catch {
+        # If the cache can't be written, compile in-memory this once.
+        if (-not ("RawPrinter" -as [type])) { Add-Type -TypeDefinition $code -Language CSharp }
+    }
+}
+if (-not ("RawPrinter" -as [type])) { Add-Type -Path $dllPath }
+
+# Install pre-warm: helper is now cached, nothing to print.
+if ($WarmOnly) { exit 0 }
+
+if (-not $Path -or -not (Test-Path -LiteralPath $Path)) {
+    Write-Error "Receipt file not found: $Path"
+    exit 2
+}
+
+# Fail loudly when the printer is not installed, rather than silently spooling
+# into nothing - the cashier needs to know the bill did not come out.
+$printer = Get-Printer -Name $PrinterName -ErrorAction SilentlyContinue
+if (-not $printer) {
+    Write-Error "Printer not installed: $PrinterName"
+    exit 3
+}
+
+# Read the receipt text (Get-Content -Raw strips the UTF-8 BOM the caller wrote).
+$text = Get-Content -LiteralPath $Path -Raw
+if ($null -eq $text) { $text = "" }
+$text = $text -replace "`r`n", "`n"
+
+# ESC/POS control codes.
+$ESC = [char]27
+$GS  = [char]29
+$init = "$ESC@"                                     # ESC @  - reset printer
+# Feed a few lines so the content clears the cutter, then partial-cut.
+$cut  = "`n`n`n`n" + "$GS" + "V" + [char]66 + [char]0
+
+$payload = $init + $text + $cut
+
+# One char -> one byte (Latin1/CP1252). ESC/POS wants bytes, not UTF-16.
+$bytes = [System.Text.Encoding]::GetEncoding(28591).GetBytes($payload)
 
 [RawPrinter]::Send($PrinterName, $bytes)
 exit 0

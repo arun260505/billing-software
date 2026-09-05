@@ -167,6 +167,18 @@ try {
     Say "App registration skipped: $($_.Exception.Message)"
 }
 
+# 8) Pre-warm the RAW printer helper: compile its DLL once now so the very first
+# bill/kitchen ticket prints instantly instead of paying a one-time ~2s compile.
+Say "Warming up the printer helper"
+try {
+    $printScript = Join-Path $backend "scripts\print-text.ps1"
+    if (Test-Path $printScript) {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $printScript -WarmOnly 2>&1 | Out-Null
+    }
+} catch {
+    Say "Printer warm-up skipped: $($_.Exception.Message)"
+}
+
 Start-Sleep -Seconds 3
 Say "Service status"
 Get-Service InWallzMySQL, InWallzServer -ErrorAction SilentlyContinue |
