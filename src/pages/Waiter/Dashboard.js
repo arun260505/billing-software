@@ -3,7 +3,7 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Waiter/Dashboard.css";
 import { getCategories, getItemsByCategory, getAllItems } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markItemServed, cancelItem, setItemQuantity, addBillItem, updateOrder, cancelOrder, getTodaysOrderCount } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, markOrderServed, markItemServed, cancelItem, setItemQuantity, addBillItem, updateOrder, cancelOrder, getTodaysOrderCount, settleTable } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -11,9 +11,12 @@ import CartSheet from "../../components/Waiter/CartSheet";
 import BillModal from "../../components/Waiter/BillModal";
 import chargeService from "../../services/chargeService";
 import kitchenFormatService from "../../services/kitchenFormatService";
+import billingFormatService from "../../services/billingFormatService";
 import printerSettingService from "../../services/printerSettingService";
 import { DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
-import { printKotNow } from "../../utils/printDispatch";
+import { DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
+import { printKotNow, printBillNow } from "../../utils/printDispatch";
+import { autoChargesFor, billTotals } from "../../utils/rates";
 import {
     DEFAULT_PRINTER_MODE,
     normalizePrinterMode,
@@ -53,6 +56,10 @@ function Dashboard() {
     // Which printer setup the admin chose (Admin → Settings). A waiter only prints
     // a kitchen ticket when the restaurant actually has a kitchen printer.
     const [printerMode, setPrinterMode] = useState(DEFAULT_PRINTER_MODE);
+    // Admin toggle: when on, the waiter picks a payment method and prints +
+    // settles the bill; when off, the bill is sent to the cashier as before.
+    const [waiterCanBill, setWaiterCanBill] = useState(false);
+    const [billFormat, setBillFormat] = useState(DEFAULT_BILL_FORMAT);
     const [restaurantInfo, setRestaurantInfo] = useState(null);
     // GST, service charge and any other add-on come from Admin → Charges, so the
     // waiter's preview quotes the same total the cashier will take.
@@ -97,10 +104,25 @@ function Dashboard() {
             const res = await printerSettingService.getPrinterSetting();
             if (res.data?.success) {
                 setPrinterMode(normalizePrinterMode(res.data?.data?.setting?.printer_mode));
+                setWaiterCanBill(Boolean(Number(res.data?.data?.setting?.waiter_can_print_bill)));
             }
         } catch (e) {
             // Fall back to the default setup rather than blocking order taking.
             console.error("Failed to load printer mode in waiter:", e);
+        }
+    };
+
+    // The bill format + restaurant header, used only when the waiter prints the
+    // bill directly (Admin enabled it). Mirrors the cashier's bill.
+    const loadBillingFormat = async () => {
+        try {
+            const res = await billingFormatService.getBillingFormat();
+            if (res.data?.success && res.data?.data) {
+                if (res.data.data.format) setBillFormat(res.data.data.format);
+                if (res.data.data.restaurant) setRestaurantInfo(res.data.data.restaurant);
+            }
+        } catch (e) {
+            console.error("Failed to load bill format in waiter:", e);
         }
     };
 
@@ -112,6 +134,7 @@ function Dashboard() {
         loadAllItems();
         loadTodaysOrderCount();
         loadKitchenFormat();
+        loadBillingFormat();
         loadPrinterMode();
         loadCharges();
 
@@ -476,6 +499,64 @@ function Dashboard() {
             await loadTables();
         } catch (e) {
             alert("Could not send the bill to the cashier.");
+        } finally {
+            setBillBusy(false);
+        }
+    };
+
+    // Waiter prints + settles the bill directly (Admin enabled it). Mirrors the
+    // cashier's generateTableBill: settle FIRST (the server re-derives the total
+    // and can refuse), then print — so a print failure can't lose the sale.
+    const settleAndPrint = async (method) => {
+        if (!selectedTable) return;
+        const table = selectedTable;
+        setBillBusy(true);
+        try {
+            const items = previousItems;
+            const sub = items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0);
+            const autoCharges = autoChargesFor(charges, "Dine-In");
+            const {
+                tax: gstAmt,
+                service_charge: svc,
+                charge_lines: resolvedCharges,
+                grand_total: total
+            } = billTotals(sub, autoCharges);
+
+            // Settle: the backend records payment + frees the table, and enforces
+            // that Admin has allowed waiter billing (else it refuses). Pass NO
+            // optional charges - the server auto-applies GST/service itself, so
+            // sending the auto charges here would double them.
+            await settleTable(table.id, [{ method, amount: total }], total, []);
+
+            printBillNow({
+                order: {
+                    order_number: `TBL-${table.table_number}-${Date.now().toString().slice(-4)}`,
+                    tableName: `Table ${table.table_number}`,
+                    table_number: table.table_number,
+                    items,
+                    subtotal: sub,
+                    tax: gstAmt,
+                    service_charge: svc,
+                    charges: resolvedCharges,
+                    grand_total: total,
+                    payment_method: method,
+                    payments: [{ method, amount: total }],
+                    waiter_name: waiterName,
+                    date: currentDate,
+                    time: currentTime
+                },
+                restaurant: restaurantInfo || {},
+                format: billFormat || {}
+            });
+
+            alert(`Table ${table.table_number} billed (${method}) & settled.`);
+            setShowBill(false);
+            setSelectedTable(null);
+            setPreviousItems([]);
+            setCart([]);
+            await loadTables();
+        } catch (e) {
+            alert(e.response?.data?.message || "Could not print & settle the bill.");
         } finally {
             setBillBusy(false);
         }
@@ -928,10 +1009,12 @@ function Dashboard() {
                     menuItems={allItems}
                     busy={billBusy}
                     charges={charges}
+                    canSettle={waiterCanBill && !selectedTable.isParcel}
                     onSetQty={handleSetBillQty}
                     onRemoveGroup={handleRemoveBillGroup}
                     onAddItem={handleAddBillItem}
                     onConfirm={requestBill}
+                    onSettle={settleAndPrint}
                     onClose={() => setShowBill(false)}
                 />
             )}

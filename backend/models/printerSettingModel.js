@@ -21,7 +21,10 @@ const DEFAULT_PRINTER_SETTING = {
     // The devices the till prints to, recorded on the cashier's Printer page.
     // Which of them is actually used depends on the mode above.
     cashier_printer: null,
-    kitchen_printer: null
+    kitchen_printer: null,
+    // When 1, a waiter can print + settle a bill from the app; when 0 (default)
+    // the waiter's bill goes to the cashier to print and settle.
+    waiter_can_print_bill: 0
 };
 
 // Windows printer names are long but not unbounded; the column is VARCHAR(150).
@@ -56,15 +59,17 @@ const getPrinterSetting = (restaurantId, callback) => {
 
 const savePrinterSetting = (restaurantId, data, callback) => {
     const sql = `
-        INSERT INTO printer_settings (restaurant_id, printer_mode)
-        VALUES (?, ?)
+        INSERT INTO printer_settings (restaurant_id, printer_mode, waiter_can_print_bill)
+        VALUES (?, ?, ?)
         ON DUPLICATE KEY UPDATE
-            printer_mode = VALUES(printer_mode)
+            printer_mode = VALUES(printer_mode),
+            waiter_can_print_bill = VALUES(waiter_can_print_bill)
     `;
 
     const mode = isValidMode(data.printer_mode) ? data.printer_mode : DEFAULT_PRINTER_MODE;
+    const waiterCanBill = (data.waiter_can_print_bill === true || Number(data.waiter_can_print_bill) === 1) ? 1 : 0;
 
-    db.query(sql, [restaurantId, mode], callback);
+    db.query(sql, [restaurantId, mode, waiterCanBill], callback);
 };
 
 /**

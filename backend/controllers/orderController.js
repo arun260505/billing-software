@@ -1,4 +1,5 @@
 const orderModel = require("../models/orderModel");
+const printerSettingModel = require("../models/printerSettingModel");
 const generateOrderNumber = require("../utils/orderNumber");
 const auditLog = require("../utils/auditLog");
 const { totalsFromItems } = require("../utils/billing");
@@ -246,6 +247,23 @@ exports.markTableServed = (req, res) => {
 // `final_total` is the cashier's charged total (may include per-bill charges
 // that are not part of the stored order grand_total).
 exports.settleTable = (req, res) => {
+
+    // A waiter may settle only when Admin has enabled "waiter can print bill".
+    // Cashier/admin always may. Enforced here so it can't be bypassed by the app.
+    const finishSettle = () => doSettleTable(req, res);
+    if (req.user.role === "waiter") {
+        return printerSettingModel.getPrinterSetting(req.user.restaurant_id, (err, data) => {
+            if (err) return error(res, err.message, 500);
+            if (!Number(data?.setting?.waiter_can_print_bill)) {
+                return error(res, "Waiter billing is turned off. Send the bill to the cashier.", 403);
+            }
+            finishSettle();
+        });
+    }
+    return finishSettle();
+};
+
+function doSettleTable(req, res) {
 
     // Support split payments: body may contain either a single
     // { payment_method } or an array of { method, amount } splits.

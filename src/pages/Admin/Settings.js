@@ -542,6 +542,10 @@ function TabSecurity() {
 function TabPrintersKitchen() {
     const [savedMode, setSavedMode] = useState(DEFAULT_PRINTER_MODE);
     const [mode, setMode] = useState(DEFAULT_PRINTER_MODE);
+    // Waiter-can-print-bill toggle: on = waiter prints + settles from the app;
+    // off = the waiter's bill goes to the cashier to print + settle.
+    const [savedWaiterBill, setSavedWaiterBill] = useState(false);
+    const [waiterBill, setWaiterBill] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [notice, setNotice] = useState("");
@@ -558,6 +562,9 @@ function TabPrintersKitchen() {
             const current = normalizePrinterMode(res.data?.data?.setting?.printer_mode);
             setSavedMode(current);
             setMode(current);
+            const wb = Boolean(Number(res.data?.data?.setting?.waiter_can_print_bill));
+            setSavedWaiterBill(wb);
+            setWaiterBill(wb);
             setLoadError("");
         } catch (err) {
             console.error("Failed to load printer settings:", err);
@@ -579,10 +586,13 @@ function TabPrintersKitchen() {
         setSaving(true);
         setNotice("");
         try {
-            const res = await printerSettingService.savePrinterSetting({ printer_mode: mode });
+            const res = await printerSettingService.savePrinterSetting({ printer_mode: mode, waiter_can_print_bill: waiterBill ? 1 : 0 });
             const current = normalizePrinterMode(res.data?.data?.setting?.printer_mode);
             setSavedMode(current);
             setMode(current);
+            const wb = Boolean(Number(res.data?.data?.setting?.waiter_can_print_bill));
+            setSavedWaiterBill(wb);
+            setWaiterBill(wb);
             setNotice("Printer setup saved. The cashier and waiter screens pick it up within a few seconds.");
         } catch (err) {
             console.error("Failed to save printer settings:", err);
@@ -592,7 +602,7 @@ function TabPrintersKitchen() {
         }
     };
 
-    const dirty = mode !== savedMode;
+    const dirty = mode !== savedMode || waiterBill !== savedWaiterBill;
 
     return (
         <>
@@ -652,6 +662,26 @@ function TabPrintersKitchen() {
                     Choosing the printer devices themselves is done on the cashier screen — this
                     page only sets which setup the restaurant runs.
                 </p>
+
+                {!loading && (
+                    <label className="set-toggle-row">
+                        <span className="set-toggle-text">
+                            <strong>Waiter can print the bill directly</strong>
+                            <span className="set-toggle-sub">
+                                On: the waiter picks the payment method, prints the bill and closes
+                                the table from the app. Off: the waiter&apos;s bill goes to the
+                                cashier, who is notified the table is billed and prints it.
+                            </span>
+                        </span>
+                        <input
+                            type="checkbox"
+                            className="set-toggle-input"
+                            checked={waiterBill}
+                            disabled={saving}
+                            onChange={(e) => { setWaiterBill(e.target.checked); setNotice(""); }}
+                        />
+                    </label>
+                )}
             </section>
 
             <div className="set-section-footer">

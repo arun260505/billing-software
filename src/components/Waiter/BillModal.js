@@ -9,13 +9,17 @@ import useEscapeClose from "../../hooks/useEscapeClose";
 //
 // `charges` is the restaurant's charge list (Admin → Charges); the ones set to
 // apply automatically are what the GST / service lines below come from.
-function BillModal({ tableLabel, items, menuItems, busy, charges = [], onSetQty, onRemoveGroup, onAddItem, onConfirm, onClose }) {
+// When `canSettle` is true (Admin enabled "waiter can print bill"), the waiter
+// picks a payment method and the button becomes "Print & Settle" (onSettle).
+// Otherwise the bill is sent to the cashier to print/settle (onConfirm).
+function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle = false, onSetQty, onRemoveGroup, onAddItem, onConfirm, onSettle, onClose }) {
 
     // Esc closes the modal (see hooks/useEscapeClose).
     useEscapeClose(onClose);
 
     const [adding, setAdding] = useState(false);
     const [search, setSearch] = useState("");
+    const [method, setMethod] = useState("Cash");
 
     const pick = (mi) => {
         onAddItem(mi);
@@ -148,15 +152,44 @@ function BillModal({ tableLabel, items, menuItems, busy, charges = [], onSetQty,
                     <div className="bill-line bill-grand"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
                 </div>
 
+                {canSettle && (
+                    <div className="bill-pay">
+                        <span className="bill-pay-label">Payment</span>
+                        <div className="bill-pay-methods">
+                            {["Cash", "Card", "UPI"].map((m) => (
+                                <button
+                                    key={m}
+                                    type="button"
+                                    className={`bill-pay-btn${method === m ? " active" : ""}`}
+                                    disabled={busy}
+                                    onClick={() => setMethod(m)}
+                                >
+                                    {m}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="bill-actions">
                     <button className="bill-back" onClick={onClose} disabled={busy}>Keep Editing</button>
-                    <button
-                        className="bill-confirm"
-                        onClick={onConfirm}
-                        disabled={busy || groups.length === 0}
-                    >
-                        {busy ? "Working…" : "✓ Confirm & Send to Cashier"}
-                    </button>
+                    {canSettle ? (
+                        <button
+                            className="bill-confirm"
+                            onClick={() => onSettle && onSettle(method)}
+                            disabled={busy || groups.length === 0}
+                        >
+                            {busy ? "Working…" : `🧾 Print & Settle · ₹${total.toFixed(2)}`}
+                        </button>
+                    ) : (
+                        <button
+                            className="bill-confirm"
+                            onClick={onConfirm}
+                            disabled={busy || groups.length === 0}
+                        >
+                            {busy ? "Working…" : "✓ Confirm & Send to Cashier"}
+                        </button>
+                    )}
                 </div>
 
             </div>

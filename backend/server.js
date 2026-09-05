@@ -214,6 +214,7 @@ db.query(`
         printer_mode    VARCHAR(30) DEFAULT 'dual_printer',
         cashier_printer VARCHAR(150) DEFAULT NULL,
         kitchen_printer VARCHAR(150) DEFAULT NULL,
+        waiter_can_print_bill TINYINT(1) NOT NULL DEFAULT 0,
         created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         CONSTRAINT fk_printer_setting_restaurant

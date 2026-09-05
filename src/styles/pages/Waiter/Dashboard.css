@@ -1045,3 +1045,19 @@
     font-weight: 600;
     color: #92400e;
 }
+
+/* Payment method picker shown when a waiter may print + settle the bill */
+.bill-pay { padding: 10px 14px 0; }
+.bill-pay-label { display: block; font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 600; }
+.bill-pay-methods { display: flex; gap: 8px; }
+.bill-pay-btn {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+}
+.bill-pay-btn.active { background: #0f766e; border-color: #0f766e; color: #fff; }

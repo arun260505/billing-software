@@ -113,6 +113,11 @@ async function runSyncSchema() {
     if (await tableExists("order_items")) {
         await ensureColumn("order_items", "served", "TINYINT(1) NOT NULL DEFAULT 0");
     }
+    if (await tableExists("printer_settings")) {
+        // Lets a waiter print + settle a bill directly (Admin toggle); off by
+        // default so existing tills keep routing bills through the cashier.
+        await ensureColumn("printer_settings", "waiter_can_print_bill", "TINYINT(1) NOT NULL DEFAULT 0");
+    }
     // 007: the printer devices the cashier till prints to.
     if (await tableExists("printer_settings")) {
         await ensureColumn("printer_settings", "cashier_printer", "VARCHAR(150) DEFAULT NULL");
