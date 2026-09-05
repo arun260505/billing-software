@@ -239,11 +239,11 @@ function BillModal({ order, restaurant, format, onClose, onSuccess, onPrinted })
                                 </div>
                             ))}
                             <div className={`tbill-split-total${money(splitSum) === money(grandTotal) ? " ok" : " bad"}`}>
-                                Allocated {money(splitSum).toFixed(0)} / {money(grandTotal).toFixed(0)}
+                                Allocated {money(splitSum).toFixed(2)} / {money(grandTotal).toFixed(2)}
                             </div>
                             {!splitValid && (
                                 <div className="tbill-split-error">
-                                    Split amounts must add up to the total (₹{money(grandTotal).toFixed(0)}) and use at least 2 methods.
+                                    Split amounts must add up to the total (₹{money(grandTotal).toFixed(2)}) and use at least 2 methods.
                                 </div>
                             )}
                         </div>

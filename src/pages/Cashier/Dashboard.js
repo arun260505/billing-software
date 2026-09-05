@@ -23,7 +23,7 @@ import billingFormatService from "../../services/billingFormatService";
 import kitchenFormatService from "../../services/kitchenFormatService";
 import printerSettingService from "../../services/printerSettingService";
 import { DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
-import { billTotals, resolveCharges, money as roundMoney } from "../../utils/rates";
+import { billTotals, ratesFrom, resolveCharges, money as roundMoney } from "../../utils/rates";
 import { DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
 // Prints straight to the configured printer; falls back to the browser dialog
 // only when the till cannot print directly.
@@ -75,7 +75,12 @@ function Dashboard() {
     const [tableBillBusy, setTableBillBusy] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [orderNumber, setOrderNumber] = useState(1001);
-    const [cashierName] = useState("Cashier");
+    // The signed-in cashier. This is not decoration: `cashierName` is what goes
+    // out as `cashier_name` on every printed bill, so a placeholder here puts
+    // the wrong person on the customer's receipt and on the day's audit trail.
+    const currentUser = authService.getUser();
+    const cashierName = currentUser?.full_name || currentUser?.username || "Cashier";
+    const cashierId   = currentUser?.username || "";
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
     const [billFormat, setBillFormat] = useState(DEFAULT_BILL_FORMAT);
@@ -206,6 +211,9 @@ function Dashboard() {
     const gst        = cartTotals.tax;
     const serviceCharge = cartTotals.service_charge;
     const grandTotal = cartTotals.grand_total;
+    // The rates the totals were actually computed at, so the on-screen labels
+    // can never claim 5% while the restaurant is configured for something else.
+    const { gstPercent, servicePercent } = ratesFrom(restaurantInfo);
 
     const normalizeQuantity = (value) => {
         const parsed = Number(value);
@@ -974,7 +982,7 @@ function Dashboard() {
                     <span /><span /><span />
                 </button>
                 <div className="pos-brand">
-                    <span className="pos-logo">The InWallz</span>
+                    <span className="pos-logo">{restaurantInfo?.restaurant_name || currentUser?.restaurant_name || "InWallz POS"}</span>
                     <span className="pos-open">● Open</span>
                 </div>
                 <div className="pos-stats">
@@ -991,7 +999,7 @@ function Dashboard() {
                     <div className="pos-time"><span className="pos-clock">{currentTime}</span><span className="pos-date">{currentDate}</span></div>
                     <div className="pos-user">
                         <div className="pos-avatar">{cashierName.charAt(0)}</div>
-                        <div className="pos-user-info"><span className="pos-user-name">{cashierName}</span><span className="pos-user-id">C101</span></div>
+                        <div className="pos-user-info"><span className="pos-user-name">{cashierName}</span><span className="pos-user-id">{cashierId}</span></div>
                     </div>
                     <button className="pos-logout" onClick={handleLogout}>Logout</button>
                 </div>
@@ -1116,10 +1124,13 @@ function Dashboard() {
 
                     {/* Totals + actions (always docked at the bottom) */}
                     <div className="pos-bill-foot">
-                        <div className="pos-tot-row"><span>Subtotal</span><span>₹{subtotal.toFixed(0)}</span></div>
-                        <div className="pos-tot-row"><span>GST (5%)</span><span>₹{gst.toFixed(0)}</span></div>
-                        <div className="pos-tot-row"><span>Service (2%)</span><span>₹{serviceCharge.toFixed(0)}</span></div>
-                        <div className="pos-tot-row grand"><span>Total</span><span>₹{displayTotal.toFixed(0)}</span></div>
+                        {/* Two decimals, not whole rupees: rounding each line to
+                            the nearest rupee made the printed lines disagree with
+                            the printed total (238 + 12 + 5 ≠ 254). */}
+                        <div className="pos-tot-row"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                        <div className="pos-tot-row"><span>GST ({gstPercent}%)</span><span>₹{gst.toFixed(2)}</span></div>
+                        <div className="pos-tot-row"><span>Service ({servicePercent}%)</span><span>₹{serviceCharge.toFixed(2)}</span></div>
+                        <div className="pos-tot-row grand"><span>Total</span><span>₹{displayTotal.toFixed(2)}</span></div>
                         <div className="pos-bill-actions">
                             {selectedTable && (
                                 <button className="pos-send" onClick={placeOrder} disabled={cart.length === 0 || orderBusy}>

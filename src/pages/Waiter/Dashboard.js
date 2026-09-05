@@ -38,7 +38,12 @@ function Dashboard() {
     // The selected table's already-sent items, shown read-only for reference.
     const [previousItems, setPreviousItems] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [waiterName] = useState("John");
+    // The signed-in waiter. Every phone used to show "John" because this was a
+    // literal, and the name also rides along on the kitchen ticket (waiter_name),
+    // so the kitchen could not tell which waiter sent an order.
+    const currentUser = authService.getUser();
+    const waiterName = currentUser?.full_name || currentUser?.username || "Waiter";
+    const waiterId   = currentUser?.username || "";
     const [currentDate, setCurrentDate] = useState("");
     const [currentTime, setCurrentTime] = useState("");
     const [kitchenFormat, setKitchenFormat] = useState(DEFAULT_KITCHEN_FORMAT);
@@ -612,7 +617,7 @@ function Dashboard() {
                         <span/><span/><span/>
                     </button>
                     <div className="nav-brand">
-                        <span className="nav-brand-name">The InWallz Restaurant</span>
+                        <span className="nav-brand-name">{currentUser?.restaurant_name || "InWallz"}</span>
                         <span className="nav-open-badge">● Open</span>
                     </div>
                 </div>
@@ -631,7 +636,7 @@ function Dashboard() {
                         <div className="nav-avatar">{waiterName.charAt(0)}</div>
                         <div className="nav-user-info">
                             <span className="nav-user-name">{waiterName}</span>
-                            <span className="nav-user-id">Waiter ID: W102</span>
+                            <span className="nav-user-id">{waiterId}</span>
                         </div>
                     </div>
                     <button className="nav-logout" onClick={handleLogout} title="Logout">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import chargeService from "../../services/chargeService";
 import { isValidCharge } from "../../utils/charges";
-import { billTotals, resolveCharges, money } from "../../utils/rates";
+import { billTotals, ratesFrom, resolveCharges, money } from "../../utils/rates";
 
 // `settings` carries the restaurant's tax_percentage / service_charge. Omitting
 // it falls back to the historical 5% / 2%, so the modal still totals correctly
@@ -55,6 +55,9 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
         charges_total: chargesTotal,
         grand_total: total
     } = billTotals(subtotal, settings, resolvedCharges);
+
+    // Label the tax/service lines with the rates they were actually charged at.
+    const { gstPercent, servicePercent } = ratesFrom(settings);
 
     // Every item must be marked served before the cashier can generate the bill.
     const unservedCount = items.filter((it) => Number(it.served) !== 1).length;
@@ -139,7 +142,7 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
                             <div key={g.key} className="tbill-row">
                                 <div className="tbill-row-info">
                                     <span className="tbill-name">{g.item_name}</span>
-                                    <span className="tbill-unit">₹{g.price.toFixed(0)} each</span>
+                                    <span className="tbill-unit">₹{g.price.toFixed(2)} each</span>
                                 </div>
                                 <div className="tbill-row-right">
                                     <div className="tbill-stepper">
@@ -147,7 +150,7 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
                                         <span className="tbill-qty">{g.qty}</span>
                                         <button className="add" disabled={busy} onClick={() => inc(g)}>+</button>
                                     </div>
-                                    <span className="tbill-amt">₹{(g.price * g.qty).toFixed(0)}</span>
+                                    <span className="tbill-amt">₹{(g.price * g.qty).toFixed(2)}</span>
                                     {g.rows.every((r) => Number(r.served) === 1) ? (
                                         <span className="tbill-served-tag" title="All units of this item are served">✓ Served</span>
                                     ) : onServe ? (
@@ -182,7 +185,7 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
                                     addable.slice(0, 30).map((mi) => (
                                         <button key={mi.id} className="tbill-add-row" disabled={busy} onClick={() => pick(mi)}>
                                             <span>{mi.item_name}</span>
-                                            <span className="tbill-add-price">₹{Number(mi.price).toFixed(0)}</span>
+                                            <span className="tbill-add-price">₹{Number(mi.price).toFixed(2)}</span>
                                             <span className="tbill-add-plus">＋</span>
                                         </button>
                                     ))
@@ -196,9 +199,9 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
                 </div>
 
                 <div className="tbill-foot">
-                    <div className="tbill-tot"><span>Subtotal</span><span>₹{subtotal.toFixed(0)}</span></div>
-                    <div className="tbill-tot"><span>GST (5%)</span><span>₹{gst.toFixed(0)}</span></div>
-                    <div className="tbill-tot"><span>Service (2%)</span><span>₹{service.toFixed(0)}</span></div>
+                    <div className="tbill-tot"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                    <div className="tbill-tot"><span>GST ({gstPercent}%)</span><span>₹{gst.toFixed(2)}</span></div>
+                    <div className="tbill-tot"><span>Service ({servicePercent}%)</span><span>₹{service.toFixed(2)}</span></div>
 
                     {charges.length > 0 && (
                         <div className="tbill-charges-section">
@@ -227,22 +230,25 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
 
                     {selectedCharges.length > 0 && (
                         <>
+                            {/* Round these exactly the way resolveCharges does, or
+                                the charge lines shown don't add up to the charges
+                                total they are part of. */}
                             {selectedCharges.map((c) => {
                                 const val = c.charge_type === "Percentage"
-                                    ? Math.round(subtotal * c.amount / 100)
-                                    : Number(c.amount);
+                                    ? money(subtotal * Number(c.amount) / 100)
+                                    : money(Number(c.amount));
                                 return (
                                     <div key={c.id} className="tbill-tot tbill-charge-row">
                                         <span>{c.charge_name}</span>
-                                        <span>₹{val.toFixed(0)}</span>
+                                        <span>₹{val.toFixed(2)}</span>
                                     </div>
                                 );
                             })}
-                            <div className="tbill-tot tbill-charges-total"><span>Total Charges</span><span>₹{chargesTotal.toFixed(0)}</span></div>
+                            <div className="tbill-tot tbill-charges-total"><span>Total Charges</span><span>₹{chargesTotal.toFixed(2)}</span></div>
                         </>
                     )}
 
-                    <div className="tbill-tot grand"><span>Total</span><span>₹{total.toFixed(0)}</span></div>
+                    <div className="tbill-tot grand"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
 
                     <div className="tbill-pay">
                         <div className="tbill-pay-head">
@@ -282,7 +288,7 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
                                 </div>
                             ))}
                             <div className={`tbill-split-total${money(splitSum) === money(total) ? " ok" : " bad"}`}>
-                                Allocated {money(splitSum).toFixed(0)} / {total.toFixed(0)}
+                                Allocated {money(splitSum).toFixed(2)} / {total.toFixed(2)}
                             </div>
                         </div>
                     )}
@@ -295,7 +301,7 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
 
                     {splitMode && !splitValid && money(splitSum) !== money(total) && (
                         <div className="tbill-split-error">
-                            Split amounts must add up to the total (₹{total.toFixed(0)}) and use at least 2 methods.
+                            Split amounts must add up to the total (₹{total.toFixed(2)}) and use at least 2 methods.
                         </div>
                     )}
 
@@ -304,7 +310,7 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
                         disabled={!canGenerate || !canGeneratePayments}
                         onClick={() => onGenerate(payments, total, selectedCharges)}
                     >
-                        {busy ? "Working…" : unservedCount > 0 ? `Served ${groups.length - unservedCount}/${groups.length} — Generate Locked` : `🖨 Generate Bill · ₹${total.toFixed(0)}`}
+                        {busy ? "Working…" : unservedCount > 0 ? `Served ${groups.length - unservedCount}/${groups.length} — Generate Locked` : `🖨 Generate Bill · ₹${total.toFixed(2)}`}
                     </button>
                 </div>
 

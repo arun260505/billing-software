@@ -70,7 +70,7 @@ function MenuAvailability() {
                                     return (
                                         <div key={item.id} className={`menuavail-row${off ? " off" : ""}`}>
                                             <span className="menuavail-name">{item.item_name}</span>
-                                            <span className="menuavail-price">₹{Number(item.price).toFixed(0)}</span>
+                                            <span className="menuavail-price">₹{Number(item.price).toFixed(2)}</span>
                                             <button
                                                 className={`menuavail-toggle${off ? " is-off" : " is-on"}`}
                                                 onClick={() => toggle(item)}
