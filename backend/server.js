@@ -221,6 +221,51 @@ db.query(`
     else console.log("Printer settings table ready.");
 });
 
+// settings.restaurant_id must be UNIQUE or saveRestaurantSettings' upsert can
+// never take its UPDATE branch — every save inserts another row and reads come
+// back stale, so an admin's change to (say) the GST rate silently does nothing.
+// See migrations/009_settings_unique_restaurant.sql.
+db.query(`
+    SELECT INDEX_NAME
+    FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'settings'
+      AND COLUMN_NAME = 'restaurant_id'
+      AND NON_UNIQUE = 0
+`, (err, rows) => {
+    if (err) {
+        console.error("Settings unique-key check error:", err.message);
+        return;
+    }
+    if (rows && rows.length) {
+        console.log("Settings restaurant_id unique key ready.");
+        return;
+    }
+    // Keep the most recently written row per restaurant — what the admin last
+    // intended — then constrain the table so this can't recur.
+    db.query(
+        `DELETE s1 FROM settings s1
+         INNER JOIN settings s2
+             ON s1.restaurant_id = s2.restaurant_id AND s1.id < s2.id`,
+        (dedupeErr, result) => {
+            if (dedupeErr) {
+                console.error("Settings dedupe error:", dedupeErr.message);
+                return;
+            }
+            if (result && result.affectedRows) {
+                console.log(`Settings: removed ${result.affectedRows} duplicate row(s).`);
+            }
+            db.query(
+                "ALTER TABLE settings ADD UNIQUE KEY uq_settings_restaurant (restaurant_id)",
+                (alterErr) => {
+                    if (alterErr) console.error("Settings unique-key migration error:", alterErr.message);
+                    else console.log("Settings restaurant_id unique key added.");
+                }
+            );
+        }
+    );
+});
+
 // Per-bill charges, itemised against the order that carries them. See
 // migrations/008_order_charges.sql for why they are stored rather than living
 // only on the receipt.

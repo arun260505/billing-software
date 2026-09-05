@@ -4,7 +4,7 @@ A multi-tenant restaurant POS (Point of Sale). Each restaurant's data is isolate
 by `restaurant_id`, taken from the logged-in user's JWT and never trusted from the
 request body.
 
-_Last updated: 2026-09-03_
+_Last updated: 2026-09-05_
 
 ---
 
@@ -231,8 +231,73 @@ All are tenant-scoped (`restaurant_id` from the JWT).
 | `002_order_items_served.sql`           | Adds `order_items.served TINYINT(1)`      |
 | `006_printer_settings.sql`             | Adds `printer_settings` (the printer setup) |
 | `007_printer_devices.sql`              | Adds `cashier_printer`/`kitchen_printer` to it |
+| `008_order_charges.sql`                | Adds `order_charges` + `orders.charges_total` |
 
-Apply any not already in the DB dump.
+Apply any not already in the DB dump. Two files share the `003_` prefix
+(`003_charges.sql`, `003_order_service_charge.sql`) — they touch different
+tables, so the order between them doesn't matter.
+
+**These files are documentation, not the mechanism.** Nothing runs them
+automatically. `backend/server.js` re-creates every table and adds every missing
+column on boot (idempotent, self-skipping), which is how an installed till
+upgrades itself: start the new build and the schema catches up. The `.sql` files
+exist so the change is readable in one place and can be applied by hand.
+
+---
+
+## How a bill is totalled
+
+One calculation, two mirrored implementations that must not drift:
+
+| Side | File |
+|------|------|
+| Backend (authoritative — recomputes everything it stores) | `backend/utils/billing.js` |
+| Till screens (has to predict the backend exactly)         | `src/utils/rates.js` |
+
+- **Rates are per-restaurant** — `settings.tax_percentage` / `settings.service_charge`,
+  read via `backend/utils/taxRates.js` (30s cache, dropped when settings are saved).
+  A rate of `0`/null means *never configured* and falls back to **5% GST + 2%
+  service**, the historical hardcoded values — so a restaurant that has never
+  touched Settings keeps billing exactly as before.
+- **Prices come from `menu_items`, never the request.** `orderModel.priceCartItems`
+  re-prices every cart server-side; an item that isn't on that restaurant's menu
+  is a 400.
+- **Tax and service are each rounded to paise before being summed**, because
+  those are the lines printed on the receipt — the total is the sum of what the
+  customer can read.
+- **Per-bill charges** (packing, delivery) are stored: itemised in
+  `order_charges`, rolled up in `orders.charges_total`, and included in
+  `grand_total`. So `payments` reconcile against `grand_total`, and reports that
+  sum it are correct.
+
+A table with several orders is taxed per order, while the screen taxes the
+combined subtotal once — they can land a paisa apart, so the settle tolerates ₹1
+of drift and the stored total wins. Beyond that it refuses.
+
+**Settle happens before print.** The backend can refuse a settle (unserved
+items, a total that no longer matches); printing first would hand the customer a
+receipt for a sale that was never recorded.
+
+---
+
+## Tests
+
+```bash
+cd billing-software/backend && npm test     # node:test, no extra dependency
+```
+
+Covers `utils/billing.js` (the rate fallbacks, charge resolution, and the
+invariant that `grand_total` is always its own parts summed) and
+`sync/syncEngine.js` (unknown columns dropped, rows pinned to the authorised
+restaurant, orphans deferred).
+
+---
+
+## One-off scripts
+
+| Script | Purpose |
+|--------|---------|
+| `backend/scripts/backfill-order-charges.js` | Moves pre-`008` per-bill charges out of their legacy "surplus" payment row and onto the order. **Dry-run by default**; `--apply` writes, `--restaurant N` scopes it. Idempotent — an order that already has `charges_total` is skipped. Take a `mysqldump` first. |
 
 ---
 
@@ -241,3 +306,8 @@ Apply any not already in the DB dump.
 - **Parcel** was removed from the cashier (a new idea is planned for it).
 - **Counter cards** on the kitchen are limited to *today's* orders.
 - Packaging the cashier page as a **Windows .exe** (planned via Electron).
+- The per-restaurant rates have only been exercised on the fallback path — no
+  restaurant in the dev database has a `settings` row, so a configured rate
+  (e.g. 18%) is still untested end to end against a real bill.
+- `backend/server.js` is ~600 lines, most of it boot-time DDL. Worth moving into
+  a real migration runner at some point; the duplicate `003_` prefix is a symptom.
