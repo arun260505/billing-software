@@ -20,7 +20,7 @@ function MenuModal({
         item_code: "",
         price: "",
         gst: 5,
-        kitchen_section: "",
+        kitchen_section: "Kitchen",
         food_type: "Veg",
         description: "",
         preparation_time: "",
@@ -244,12 +244,20 @@ function MenuModal({
 
                             <label>Kitchen Section</label>
 
-                            <input
-                                type="text"
+                            {/* This column is enum('Kitchen','Bar','Bakery').
+                                It was a free-text box, so a blank field — the
+                                default — or any other wording was rejected by
+                                MySQL, and saving a menu item failed with a
+                                generic "Something went wrong". */}
+                            <select
                                 name="kitchen_section"
-                                value={formData.kitchen_section}
+                                value={formData.kitchen_section || "Kitchen"}
                                 onChange={handleChange}
-                            />
+                            >
+                                <option value="Kitchen">Kitchen</option>
+                                <option value="Bar">Bar</option>
+                                <option value="Bakery">Bakery</option>
+                            </select>
 
                         </div>
 
