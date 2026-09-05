@@ -958,6 +958,10 @@ const getTodaysBills = (restaurantId, callback) => {
             o.id,
             o.order_number,
             o.order_type,
+            -- Cancelled bills are listed alongside settled ones. A cancelled
+            -- number is never reused, so without showing it the sequence looks
+            -- like it has lost a bill.
+            o.order_status,
             o.table_id,
             o.subtotal,
             o.tax,
@@ -988,7 +992,7 @@ const getTodaysBills = (restaurantId, callback) => {
         LEFT JOIN dining_tables dt ON o.table_id = dt.id
         LEFT JOIN users u ON o.employee_id = u.id
         WHERE o.restaurant_id = ?
-          AND o.order_status = 'Completed'
+          AND o.order_status IN ('Completed','Cancelled')
           AND DATE(o.created_at) = CURDATE()
         ORDER BY o.id DESC
     `;

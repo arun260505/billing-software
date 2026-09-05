@@ -150,3 +150,16 @@
     background:#1d4ed8;
 
 }
+/* Shown when the api layer bounced us here on a 401, so an expired shift token
+   reads as "sign in again", not as an unexplained logout. */
+.login-page .login-notice {
+    margin: 0 0 14px;
+    padding: 9px 12px;
+    border: 1px solid #f0d9a8;
+    border-left: 3px solid #d99b1c;
+    border-radius: 6px;
+    background: #fff8e8;
+    color: #7a5310;
+    font-size: 13px;
+    text-align: center;
+}

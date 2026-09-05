@@ -542,7 +542,7 @@ function Dashboard() {
             await loadTodaysOrderCount();
         } catch (error) {
             console.error("Order Error:", error);
-            alert(error.response?.data?.message || "Failed to place order.");
+            alert(error.response?.data?.message || error.friendlyMessage || "Failed to place order.");
         } finally {
             setOrderBusy(false);
         }

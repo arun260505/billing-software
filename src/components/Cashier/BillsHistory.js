@@ -35,7 +35,13 @@ function BillsHistory({ onOpenBill }) {
         (b.table_name ? `table ${b.table_name}` : "counter").includes(term)
     );
 
-    const totalTaken = filtered.reduce((s, b) => s + Number(b.paid_amount || 0), 0);
+    const isCancelled = (b) => b.order_status === "Cancelled";
+
+    // A cancelled bill keeps its number (it is never reused) but took no money,
+    // so it is listed for the audit trail and left out of both counts.
+    const settled = filtered.filter((b) => !isCancelled(b));
+    const totalTaken = settled.reduce((s, b) => s + Number(b.paid_amount || 0), 0);
+    const cancelledCount = filtered.length - settled.length;
 
     const timeOf = (iso) =>
         new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -52,7 +58,8 @@ function BillsHistory({ onOpenBill }) {
                     onChange={(e) => setSearch(e.target.value)}
                 />
                 <span className="bills-summary">
-                    <b>{filtered.length}</b> bills · <b>₹{totalTaken.toFixed(2)}</b>
+                    <b>{settled.length}</b> bills · <b>₹{totalTaken.toFixed(2)}</b>
+                    {cancelledCount > 0 && <> · <b>{cancelledCount}</b> cancelled</>}
                 </span>
             </div>
 
@@ -81,24 +88,33 @@ function BillsHistory({ onOpenBill }) {
                         <tbody>
                             {filtered.map((b) => {
                                 const corrected = Number(b.correction_count) > 0;
+                                const cancelled = isCancelled(b);
                                 return (
-                                    <tr key={b.id}>
+                                    <tr key={b.id} className={cancelled ? "bills-row-cancelled" : ""}>
                                         <td className="bills-no">{b.order_number}</td>
                                         <td>{b.table_name ? `Table ${b.table_name}` : "Counter"}</td>
                                         <td>{timeOf(b.created_at)}</td>
                                         <td className="num">{Number(b.item_count)}</td>
-                                        <td>{b.payment_method || "—"}</td>
+                                        <td>{cancelled ? "—" : (b.payment_method || "—")}</td>
                                         <td className="num bills-amt">
-                                            ₹{Number(b.grand_total).toFixed(2)}
-                                            {corrected && <span className="bills-tag">edited</span>}
+                                            {cancelled ? "₹0.00" : `₹${Number(b.grand_total).toFixed(2)}`}
+                                            {cancelled && <span className="bills-tag bills-tag-cancelled">cancelled</span>}
+                                            {!cancelled && corrected && <span className="bills-tag">edited</span>}
                                         </td>
                                         <td className="num">
-                                            <button
-                                                className="bills-open"
-                                                onClick={() => onOpenBill(b)}
-                                            >
-                                                View / Edit
-                                            </button>
+                                            {/* A cancelled bill took no money — there is
+                                                nothing to correct or reprint, and its
+                                                number stays burnt. */}
+                                            {cancelled ? (
+                                                <span className="bills-void">No bill</span>
+                                            ) : (
+                                                <button
+                                                    className="bills-open"
+                                                    onClick={() => onOpenBill(b)}
+                                                >
+                                                    View / Edit
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 );

@@ -298,6 +298,12 @@ function Dashboard() {
         } catch (e) { console.error(e); }
     };
 
+    // The unpaid order sitting on the selected table, whether or not it was
+    // opened for editing. This is what "Cancel Order" acts on.
+    const activeTableOrder = selectedTable
+        ? runningOrders.find((o) => Number(o.table_id) === Number(selectedTable.id)) || null
+        : null;
+
     const blockIfParcelLocked = () => {
         if (selectedTable?.isParcel && editingOrder) {
             alert("Please complete billing for the current Parcel order first.");
@@ -540,17 +546,22 @@ function Dashboard() {
             await loadTodaysOrderCount();
         } catch (error) {
             console.error("Order Error:", error);
-            alert(error.response?.data?.message || "Failed to place order.");
+            alert(error.response?.data?.message || error.friendlyMessage || "Failed to place order.");
         } finally {
             setOrderBusy(false);
         }
     };
 
     const handleCancelOrder = async () => {
-        if (!editingOrder) { alert("Please open an existing order first."); return; }
+        // Cancel whatever order is actually open on this table. Selecting a table
+        // clears `editingOrder` (the cart starts empty for the next round), so
+        // requiring it meant the button only ever appeared after going in through
+        // Running Orders — the feature looked missing from the table view.
+        const target = editingOrder || activeTableOrder;
+        if (!target) { alert("There is no open order on this table."); return; }
         if (!window.confirm("Are you sure you want to cancel this order?")) return;
         try {
-            await cancelOrder(editingOrder.id);
+            await cancelOrder(target.id);
             if (selectedTable && selectedTable.id) {
                 await updateTableStatus(selectedTable.id, "FREE");
                 setSelectedTable({ ...selectedTable, status: "FREE" });
@@ -620,7 +631,7 @@ function Dashboard() {
                 }
             } catch (error) {
                 console.error("Order Error:", error);
-                alert(error.response?.data?.message || "Failed to place order.");
+                alert(error.response?.data?.message || error.friendlyMessage || "Failed to place order.");
                 setOrderBusy(false);
                 return;
             } finally {
@@ -841,7 +852,7 @@ function Dashboard() {
             await loadTodaysOrderCount();
         } catch (e) {
             console.error("Rebill error:", e);
-            alert(e.response?.data?.message || "Could not save the corrected bill.");
+            alert(e.response?.data?.message || e.friendlyMessage || "Could not save the corrected bill.");
         } finally {
             setBillEditBusy(false);
         }
@@ -923,7 +934,7 @@ function Dashboard() {
             // (items not yet served, a total that no longer matches). Swallowing
             // that behind "Could not generate the bill" left them with nothing
             // to go on.
-            alert(e.response?.data?.message || "Could not generate the bill.");
+            alert(e.response?.data?.message || e.friendlyMessage || "Could not generate the bill.");
         } finally {
             setTableBillBusy(false);
         }
@@ -1141,7 +1152,7 @@ function Dashboard() {
                                 {orderBusy ? "Processing..." : selectedTable ? "Proceed to Billing →" : "Send & Bill →"}
                             </button>
                         </div>
-                        {editingOrder && selectedTable && <button className="pos-cancel" onClick={handleCancelOrder}>✕ Cancel Order</button>}
+                        {selectedTable && (editingOrder || activeTableOrder) && <button className="pos-cancel" onClick={handleCancelOrder}>✕ Cancel Order</button>}
                     </div>
                 </aside>
             </div>

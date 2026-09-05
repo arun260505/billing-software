@@ -56,6 +56,19 @@ function Dashboard() {
 
     const totalTables = tables.length;
 
+    // The board is a cooking queue, so the table that has been waiting longest
+    // comes first — not alphabetical table order. A table is "waiting" from its
+    // oldest item that is still unserved; tables with nothing left to cook fall
+    // to the end.
+    const waitingSince = (t) => {
+        const times = t.items
+            .filter((it) => !Number(it.served))
+            .map((it) => new Date(it.created_at).getTime())
+            .filter((n) => Number.isFinite(n));
+        return times.length ? Math.min(...times) : Number.POSITIVE_INFINITY;
+    };
+    const orderedTables = [...tables].sort((a, b) => waitingSince(a) - waitingSince(b));
+
     return (
         <div className="kitchen-app">
 
@@ -66,7 +79,7 @@ function Dashboard() {
                     <span className="kd-count">{totalTables} table{totalTables === 1 ? "" : "s"}</span>
                 </div>
                 <div className="kd-tablebar">
-                    {tables.map((t) => {
+                    {orderedTables.map((t) => {
                         const pending = t.items.filter((it) => !Number(it.served)).length;
                         return (
                             <a key={t.table_id} href={`#tbl-${t.table_id}`} className={`kd-tab${pending === 0 ? " done" : ""}`}>
@@ -87,14 +100,18 @@ function Dashboard() {
                 <div className="kd-empty">No active tables. New orders appear here automatically.</div>
             ) : (
                 <div className="kd-grid">
-                    {tables.map((t) => {
+                    {orderedTables.map((t) => {
                         const served = t.items.filter((it) => Number(it.served)).length;
                         const allDone = served === t.items.length;
-                        // Unserved on top (newest first); served items sink to the bottom.
+                        // Unserved on top, OLDEST first, so the kitchen cooks in the
+                        // order the food was ordered — first in, first out. (This
+                        // used to be newest-first, which quietly pushed the ticket
+                        // that had been waiting longest to the bottom of the queue.)
+                        // Served items sink below the rest.
                         const sortedItems = [...t.items].sort((a, b) => {
                             const sa = Number(a.served), sb = Number(b.served);
                             if (sa !== sb) return sa - sb;
-                            return (new Date(b.created_at) - new Date(a.created_at)) || (b.id - a.id);
+                            return (new Date(a.created_at) - new Date(b.created_at)) || (a.id - b.id);
                         });
                         return (
                             <div key={t.table_id} id={`tbl-${t.table_id}`} className={`kd-table${allDone ? " all-served" : ""}`}>

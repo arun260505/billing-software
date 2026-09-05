@@ -134,6 +134,23 @@ function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onR
                     <button className="tbill-close" onClick={onClose} disabled={busy}>✕</button>
                 </div>
 
+                {/* The bill can't be generated until every line is served, so on a
+                    full table that meant tapping Serve on each row in turn. One
+                    button does the lot; the per-row Serve stays for the normal
+                    case where food goes out a dish at a time. */}
+                {onServe && unservedCount > 0 && (
+                    <div className="tbill-serveall-bar">
+                        <span>{unservedCount} item{unservedCount === 1 ? "" : "s"} not served yet</span>
+                        <button
+                            className="tbill-serveall"
+                            disabled={busy}
+                            onClick={() => onServe(items.filter((it) => Number(it.served) !== 1))}
+                        >
+                            ✓ Serve all
+                        </button>
+                    </div>
+                )}
+
                 <div className="tbill-body">
                     {groups.length === 0 ? (
                         <p className="tbill-empty">No items on this bill.</p>

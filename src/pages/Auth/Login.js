@@ -2,6 +2,12 @@ import React, { useState } from "react";
 import "../../styles/pages/Auth/Login.css";
 import { FaUserAlt, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import authService from "../../services/authService";
+import { isNativeApp } from "../../services/serverConfig";
+
+// The roles the Android waiter APK is allowed to sign in. Kitchen is included
+// because a kitchen display on a spare tablet is a reasonable use of the same
+// build; the cashier till and the admin/super-admin back office are not.
+const APK_ROLES = ["waiter", "kitchen"];
 
 function Login() {
 
@@ -13,6 +19,18 @@ function Login() {
     });
 
     const [loading, setLoading] = useState(false);
+
+    // Set by the api 401 handler just before it redirects here, so an expired
+    // shift token explains itself instead of looking like a random logout.
+    const [sessionExpired] = useState(() => {
+        try {
+            const flag = sessionStorage.getItem("inwallz_session_expired") === "1";
+            sessionStorage.removeItem("inwallz_session_expired");
+            return flag;
+        } catch {
+            return false;
+        }
+    });
 
     const handleChange = (event) => {
 
@@ -38,6 +56,19 @@ function Login() {
             if (response.success && response.data) {
 
                 const { token, user } = response.data;
+
+                // This APK is the waiter's floor app. The cashier till is a
+                // desktop POS — a docked bill panel, printer setup, a settle
+                // flow — none of which fits or belongs on a waiter's phone, and
+                // signing the till in here would let anyone take money from a
+                // handset. Refuse the login rather than store the session.
+                if (isNativeApp() && !APK_ROLES.includes(user.role)) {
+                    alert(
+                        "This app is for waiters. Please use the cashier till on " +
+                        "the counter PC to sign in as " + user.role + "."
+                    );
+                    return;
+                }
 
                 localStorage.setItem("token", token);
 
@@ -79,6 +110,7 @@ function Login() {
 
             alert(
                 error.response?.data?.message ||
+                error.friendlyMessage ||
                 "Login Failed"
             );
 
@@ -103,6 +135,12 @@ function Login() {
                     <p>Restaurant Billing & POS System</p>
 
                 </div>
+
+                {sessionExpired && (
+                    <p className="login-notice">
+                        Your session expired. Please sign in again.
+                    </p>
+                )}
 
                 <form onSubmit={handleLogin}>
 

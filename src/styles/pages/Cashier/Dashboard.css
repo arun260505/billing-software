@@ -586,3 +586,39 @@
     font-family: 'Courier New', Courier, monospace;
 }
 
+
+/* "Serve all" strip in the table bill modal — the bill stays locked until every
+   line is served, so a full table needed one tap per row before this. */
+.cashier-app .tbill-serveall-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 16px;
+    background: #fff8e8;
+    border-bottom: 1px solid #f0e0bd;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #7a5310;
+}
+.cashier-app .tbill-serveall {
+    height: 30px;
+    padding: 0 14px;
+    border: 1px solid #bbf7d0;
+    background: #f0fdf4;
+    color: #16a34a;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.cashier-app .tbill-serveall:hover { background: #dcfce7; }
+.cashier-app .tbill-serveall:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Cancelled bills are listed with the settled ones so a burnt bill number is
+   visibly accounted for instead of looking like a bill went missing. */
+.cashier-app .bills-row-cancelled td { color: #98a2b3; background: #fbfbfc; }
+.cashier-app .bills-row-cancelled .bills-no { text-decoration: line-through; }
+.cashier-app .bills-tag-cancelled { background: #fdecea; color: #b3261e; border-color: #f3c9c4; }
+.cashier-app .bills-void { font-size: 12px; font-weight: 600; color: #98a2b3; }
