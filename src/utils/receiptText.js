@@ -66,6 +66,35 @@ function wrap(text, width) {
     return lines.length ? lines : [""];
 }
 
+/** Pad a cell to `w`, right-aligned when `right`, clipping anything longer. */
+function cell(text, w, right = false) {
+    const s = String(text == null ? "" : text);
+    if (s.length >= w) return s.slice(0, w);
+    return right ? repeat(" ", w - s.length) + s : s + repeat(" ", w - s.length);
+}
+
+/**
+ * Column widths for the No. / Item / Qty. / Price / Amount grid. The money
+ * columns keep their width on a 58mm roll and the item name column absorbs the
+ * difference, wrapping onto continuation lines.
+ */
+function itemCols(W) {
+    const wide = W >= 40;
+    const no = 3;
+    const qty = wide ? 5 : 3;
+    const price = wide ? 9 : 7;
+    const amt = wide ? 10 : 8;
+    return { no, qty, price, amt, item: W - no - qty - price - amt };
+}
+
+/** " 5%" for a line worth 5% of the subtotal, "" when it is not expressible. */
+function percentOf(part, base) {
+    if (!(Number(base) > 0) || !(Number(part) > 0)) return "";
+    const p = Math.round((Number(part) / Number(base)) * 10000) / 100;
+    if (!(p > 0)) return "";
+    return ` ${Number.isInteger(p) ? p : p.toFixed(2)}%`;
+}
+
 // Two decimals by default. This renderer produces the slip that is spooled
 // straight to the till printer, and it was rounding every line to whole rupees
 // while the split-payment lines (the only caller passing dp explicitly) printed
@@ -99,6 +128,9 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     const timeStr = order.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const orderNumber = order.order_number || "ORD-1001";
     const tableName = order.tableName || order.table_name || (order.table_number ? `Table ${order.table_number}` : "Counter");
+    const isParcel = isParcelOrder(order);
+    const seatValue = order.table_number || String(tableName).replace(/^table\s*/i, "");
+    const totalQty = items.reduce((sum, it) => sum + Number(it.quantity || 1), 0);
     const paymentMethod = order.payment_method || order.paymentMethod || "Cash";
     const paymentList = Array.isArray(order.payments) && order.payments.length ? order.payments : null;
 
@@ -109,72 +141,102 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_restaurant_name) {
         out.push(center((restaurant.restaurant_name || "Restaurant").toUpperCase(), W));
     }
+    // GSTIN under the trading name, then the postal address — the order the
+    // printed reference bill reads in.
+    if (cfg.show_gst && restaurant.gst_number) out.push(center(restaurant.gst_number, W));
     const addr = [restaurant.address, restaurant.city, restaurant.state, restaurant.pincode]
         .filter((p) => p && String(p).trim())
         .join(", ");
     if (cfg.show_address && addr) wrap(addr, W).forEach((l) => out.push(center(l, W)));
     if (cfg.show_phone && restaurant.mobile) out.push(center(`Ph: ${restaurant.mobile}`, W));
     if (cfg.show_email && restaurant.email) out.push(center(restaurant.email, W));
-    if (cfg.show_gst && restaurant.gst_number) out.push(center(`GSTIN: ${restaurant.gst_number}`, W));
     if (cfg.show_fssai && restaurant.fssai_number) out.push(center(`FSSAI: ${restaurant.fssai_number}`, W));
 
     out.push(repeat("=", W));
 
-    // ── Order meta ──
-    if (cfg.show_order_number) out.push(lr("Bill:", orderNumber, W));
-    if (cfg.show_table_name) out.push(lr("Table:", tableName, W));
-    if (cfg.show_date) out.push(lr("Date:", dateStr, W));
-    if (cfg.show_time) out.push(lr("Time:", timeStr, W));
-    if (cfg.show_customer_name && order.customer_name) out.push(lr("Customer:", order.customer_name, W));
-    if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) out.push(lr("Waiter:", order.waiter_name || order.waiter, W));
-    if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) out.push(lr("Cashier:", order.cashier_name || order.cashier, W));
+    // ── Order meta: a name rule, then fields paired two to a line ──
+    if (cfg.show_customer_name) {
+        out.push(`Name: ${order.customer_name || ""}`.trimEnd());
+        out.push(repeat("-", W));
+    }
+
+    const metaBits = [];
+    if (cfg.show_date) metaBits.push(`Date: ${dateStr}`);
+    if (cfg.show_table_name) metaBits.push(isParcel ? "Take Away" : `Dine In: ${seatValue}`);
+    if (cfg.show_time) metaBits.push(`Time: ${timeStr}`);
+    if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) metaBits.push(`Waiter: ${order.waiter_name || order.waiter}`);
+    if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaBits.push(`Cashier: ${order.cashier_name || order.cashier}`);
+    if (cfg.show_order_number) metaBits.push(`Bill No.: ${orderNumber}`);
+
+    const leftW = Math.ceil(W * 0.52);
+    for (let i = 0; i < metaBits.length; i += 2) {
+        out.push((cell(metaBits[i], leftW) + (metaBits[i + 1] || "")).trimEnd());
+    }
 
     out.push(repeat("-", W));
 
-    // ── Items: name on its own line, then qty x rate ....... amount ──
-    // Widened for the two decimals amounts now carry ("Rs.1234.50"), so the
-    // amount column still lines up on a 32-column 58mm roll.
-    const amtW = 11;
-    const qtyRateW = 14;
-    out.push(lr("Item", "Amount", W));
+    // ── Items: No. | Item | Qty. | Price | Amount ──
+    // The money columns carry no currency mark, so they stay aligned on a
+    // 32-column roll; only the grand total below is prefixed.
+    const C = itemCols(W);
+    out.push(
+        cell("No.", C.no) +
+        cell("Item", C.item) +
+        (cfg.show_item_qty ? cell("Qty.", C.qty, true) : repeat(" ", C.qty)) +
+        (cfg.show_item_price ? cell("Price", C.price, true) : repeat(" ", C.price)) +
+        cell("Amount", C.amt, true)
+    );
     out.push(repeat("-", W));
 
-    items.forEach((it) => {
+    items.forEach((it, idx) => {
         const qty = Number(it.quantity || 1);
         const rate = Number(it.price || 0);
         const lineTotal = rate * qty;
+        const nameLines = wrap(it.item_name || it.name || "Item", C.item - 1);
 
-        wrap(it.item_name || it.name || "Item", W).forEach((l) => out.push(l));
+        out.push(
+            cell(`${idx + 1}`, C.no) +
+            cell(nameLines[0], C.item) +
+            (cfg.show_item_qty ? cell(qty, C.qty, true) : repeat(" ", C.qty)) +
+            (cfg.show_item_price ? cell(rate.toFixed(2), C.price, true) : repeat(" ", C.price)) +
+            cell(lineTotal.toFixed(2), C.amt, true)
+        );
+        // Continuation lines of a long name sit under the item column.
+        nameLines.slice(1).forEach((l) => out.push(repeat(" ", C.no) + l));
 
-        const bits = [];
-        if (cfg.show_item_qty) bits.push(`${qty}`);
-        if (cfg.show_item_qty && cfg.show_item_price) bits.push("x");
-        if (cfg.show_item_price) bits.push(money(rate));
-        const left = bits.length ? `  ${bits.join(" ")}` : "  ";
-
-        out.push(lr(left.padEnd(Math.min(qtyRateW, W - amtW)), money(lineTotal), W));
-
-        if (it.notes) wrap(`* ${it.notes}`, W - 2).forEach((l) => out.push(`  ${l}`));
+        if (it.notes) wrap(`* ${it.notes}`, C.item - 1).forEach((l) => out.push(repeat(" ", C.no) + l));
     });
 
     out.push(repeat("-", W));
 
     // ── Summary ──
-    if (cfg.show_subtotal) out.push(lr("Subtotal", money(subtotal), W));
-    if (cfg.show_tax && tax > 0) out.push(lr("GST / Tax", money(tax), W));
-    if (cfg.show_service_charge && serviceCharge > 0) out.push(lr("Service Charge", money(serviceCharge), W));
+    const summaryRows = [];
+    if (cfg.show_subtotal) summaryRows.push(["Sub Total", subtotal.toFixed(2)]);
+    if (cfg.show_tax && tax > 0) summaryRows.push([`GST${percentOf(tax, subtotal)}`, tax.toFixed(2)]);
+    if (cfg.show_service_charge && serviceCharge > 0) {
+        summaryRows.push([`Service Charge${percentOf(serviceCharge, subtotal)}`, serviceCharge.toFixed(2)]);
+    }
     if (cfg.show_charges && charges.length > 0) {
         charges.forEach((c) => {
             const val = c.charge_type === "Percentage"
                 ? Math.round(subtotal * Number(c.amount) / 100)
                 : Number(c.amount);
-            out.push(lr(c.charge_name, money(val), W));
+            const label = c.charge_type === "Percentage" ? `${c.charge_name} ${Number(c.amount)}%` : c.charge_name;
+            summaryRows.push([label, val.toFixed(2)]);
         });
     }
 
+    // Total Qty prints alongside the first summary line, as on the reference bill.
+    const qtyLabel = cfg.show_item_qty ? `Total Qty: ${totalQty}` : "";
+    const moneyW = Math.min(W - 2, Math.max(18, C.qty + C.price + C.amt));
+    summaryRows.forEach(([label, val], i) => {
+        const left = i === 0 ? qtyLabel : "";
+        out.push(cell(left, W - moneyW) + lr(label, val, moneyW));
+    });
+
     if (cfg.show_grand_total) {
         out.push(repeat("=", W));
-        out.push(lr("TOTAL", money(grandTotal), W));
+        out.push(lr("Grand Total", money(grandTotal), W));
         out.push(repeat("=", W));
     }
 
@@ -233,15 +295,19 @@ export function buildKotText({ order = {}, restaurant = {}, format = {} }) {
 
     out.push(repeat("=", W));
 
-    if (isParcel) {
-        out.push(center("*** PARCEL ***", W));
-        out.push(center("[ TAKEAWAY PACKING ]", W));
-        out.push(repeat("=", W));
-    }
+    // Dine-in gets the same banner as parcel — the table number is what a cook
+    // reads first, so it leads the ticket instead of sitting in a metadata row.
+    out.push(center(
+        isParcel
+            ? "*** PARCEL ***"
+            : (cfg.show_table_name ? `*** ${String(tableName).toUpperCase()} ***` : "*** DINE-IN ***"),
+        W
+    ));
+    out.push(center(isParcel ? "[ TAKEAWAY PACKING ]" : "[ DINE - IN ]", W));
+    out.push(repeat("=", W));
 
     if (cfg.show_order_number) out.push(lr("KOT / ORD:", `#${orderNumber}`, W));
     if (cfg.show_order_type) out.push(lr("Type:", isParcel ? "PARCEL / TAKEAWAY" : "DINE-IN", W));
-    if (cfg.show_table_name && !isParcel) out.push(lr("TABLE:", tableName, W));
 
     const dt = [];
     if (cfg.show_date) dt.push(dateStr);

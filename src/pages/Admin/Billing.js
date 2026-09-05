@@ -592,7 +592,7 @@ function Billing() {
                                     </label>
 
                                     <label className="toggle-item">
-                                        <span className="toggle-label">Show Table Name</span>
+                                        <span className="toggle-label">Show Dine In / Take Away Line</span>
                                         <span className="switch">
                                             <input
                                                 type="checkbox"
@@ -604,7 +604,7 @@ function Billing() {
                                     </label>
 
                                     <label className="toggle-item">
-                                        <span className="toggle-label">Show Customer Name</span>
+                                        <span className="toggle-label">Show Customer "Name:" Line</span>
                                         <span className="switch">
                                             <input
                                                 type="checkbox"

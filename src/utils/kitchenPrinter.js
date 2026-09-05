@@ -91,20 +91,25 @@ export function generateKitchenTicketHtml({ order = {}, restaurant = {}, format 
 
     headerHtml += `</div>`;
 
-    // ── 2. PARCEL / TAKEAWAY HIGHLIGHT BANNER (MONOCHROME OPTIMIZED) ──────
-    let parcelBannerHtml = "";
-    if (isParcel) {
-        parcelBannerHtml = `
-            <div style="border: 2px solid #000; padding: ${is58mm ? "4px 2px" : "6px 4px"}; margin: 6px 0; text-align: center; background: #fff;">
-                <div style="font-size: ${is58mm ? "14px" : "17px"}; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; line-height: 1.1;">
-                    *** PARCEL ***
-                </div>
-                <div style="font-size: ${is58mm ? "9px" : "11px"}; font-weight: bold; letter-spacing: 1px; margin-top: 2px;">
-                    [ TAKEAWAY PACKING ]
-                </div>
+    // ── 2. ORDER TYPE HIGHLIGHT BANNER (MONOCHROME OPTIMIZED) ─────────────
+    // Dine-in gets the same boxed banner as parcel — the table number is the
+    // one thing a cook has to read across the pass, and it used to be buried in
+    // a small grey metadata row while takeaway got the whole box.
+    const bannerTitle = isParcel
+        ? "*** PARCEL ***"
+        : (cfg.show_table_name ? `*** ${String(tableName).toUpperCase()} ***` : "*** DINE-IN ***");
+    const bannerSubtitle = isParcel ? "[ TAKEAWAY PACKING ]" : "[ DINE - IN ]";
+
+    const orderTypeBannerHtml = `
+        <div style="border: 2px solid #000; padding: ${is58mm ? "4px 2px" : "6px 4px"}; margin: 6px 0; text-align: center; background: #fff;">
+            <div style="font-size: ${is58mm ? "14px" : "17px"}; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; line-height: 1.1;">
+                ${escapeHtml(bannerTitle)}
             </div>
-        `;
-    }
+            <div style="font-size: ${is58mm ? "9px" : "11px"}; font-weight: bold; letter-spacing: 1px; margin-top: 2px;">
+                ${bannerSubtitle}
+            </div>
+        </div>
+    `;
 
     // ── 3. ORDER METADATA ──────────────────────────────────
     let metaHtml = `<div style="font-size: ${is58mm ? "10px" : "12px"}; margin: 4px 0;">`;
@@ -116,10 +121,6 @@ export function generateKitchenTicketHtml({ order = {}, restaurant = {}, format 
 
     if (cfg.show_order_type) {
         metaRows.push(`<div style="display: flex; justify-content: space-between;"><span>Type:</span><span style="font-weight: bold; text-transform: uppercase;">${isParcel ? "PARCEL / TAKEAWAY" : "DINE-IN"}</span></div>`);
-    }
-
-    if (cfg.show_table_name && !isParcel) {
-        metaRows.push(`<div style="display: flex; justify-content: space-between; font-weight: 900; font-size: ${is58mm ? "12px" : "14px"}; background: #f0f0f0; padding: 2px 4px; border: 1px solid #000; margin: 2px 0;"><span>TABLE:</span><span>${escapeHtml(tableName)}</span></div>`);
     }
 
     const dtParts = [];
@@ -198,7 +199,7 @@ export function generateKitchenTicketHtml({ order = {}, restaurant = {}, format 
         <div style="${fontStyle} ${containerStyle}">
             ${headerHtml}
             ${doubleDivider}
-            ${parcelBannerHtml}
+            ${orderTypeBannerHtml}
             ${metaHtml}
             ${heavyDivider}
             ${itemsHtml}
