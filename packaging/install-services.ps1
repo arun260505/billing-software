@@ -67,11 +67,21 @@ $fso = New-Object -ComObject Scripting.FileSystemObject
 $dataShort = $fso.GetFolder($dataDir).ShortPath
 $baseShort = $fso.GetFolder($mysqlBd).ShortPath
 
+# Guarantee a passwordless root on every start. A data folder KEPT from a prior
+# install can carry a root that has a password (or a mismatched auth plugin),
+# and then setup - which logs in as passwordless root - fails with "Access
+# denied" and never registers InWallzServer. Applying this via --init-file makes
+# the install self-heal on any device; it is a harmless no-op on a fresh init.
+$rootReset = Join-Path $InstallDir "reset-root.sql"
+"ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';" | Out-File $rootReset -Encoding ascii
+$rootResetShort = $fso.GetFile($rootReset).ShortPath
+
 Say "Registering InWallzMySQL service"
 & $nssm install InWallzMySQL $mysqld
 # bind-address=0.0.0.0 so the backend can reach MySQL over IPv4 loopback
 # (mysqld otherwise binds '::' / IPv6, and the backend's 127.0.0.1 times out).
-& $nssm set InWallzMySQL AppParameters "--datadir=$dataShort --basedir=$baseShort --port=$DbPort --bind-address=0.0.0.0"
+# --init-file resets root to passwordless on each start (see above).
+& $nssm set InWallzMySQL AppParameters "--datadir=$dataShort --basedir=$baseShort --port=$DbPort --bind-address=0.0.0.0 --init-file=$rootResetShort"
 & $nssm set InWallzMySQL Start SERVICE_AUTO_START
 & $nssm set InWallzMySQL AppStdout (Join-Path $logs "mysql.log")
 & $nssm set InWallzMySQL AppStderr (Join-Path $logs "mysql.log")
