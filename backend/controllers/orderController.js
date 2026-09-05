@@ -288,13 +288,15 @@ function doSettleTable(req, res) {
         req.user.id,
         finalTotal,
         charges,
-        (err) => {
+        (err, result) => {
 
             // A refused settle is the cashier's problem to act on (unserved
             // items, a total that no longer matches), not an internal fault.
             if (err) return error(res, err.message, 400);
 
-            return success(res, "Table settled and freed.");
+            // The settled bill's own number, so the receipt prints what is
+            // actually stored rather than a string the till made up.
+            return success(res, "Table settled and freed.", result || null);
 
         }
     );

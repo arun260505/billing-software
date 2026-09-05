@@ -598,10 +598,16 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
             }
 
             // Grab the orders first — after the UPDATE they no longer match "active".
+            // order_number comes back so the receipt can print the bill's real
+            // number: the till was inventing a "TBL-<table>-<clock>" string that
+            // matched nothing in the database and differed on every reprint.
+            // Ordered so orders[0] is stable — it is the one charges attach to
+            // and the one whose number identifies the bill.
             db.query(
-                `SELECT id, subtotal, charges_total, grand_total FROM orders
+                `SELECT id, order_number, subtotal, charges_total, grand_total FROM orders
                  WHERE table_id=? AND restaurant_id=?
-                   AND order_status IN ('Pending','Preparing','Ready','Served')`,
+                   AND order_status IN ('Pending','Preparing','Ready','Served')
+                 ORDER BY id`,
                 [tableId, restaurantId],
                 (err, orders) => {
                     if (err) return callback(err);
@@ -687,7 +693,18 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
                                 return db.query(
                                     "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
                                     [tableId, restaurantId],
-                                    callback
+                                    (err) => {
+                                        if (err) return callback(err);
+                                        // Hand back the bill's identity so the
+                                        // receipt prints the stored number and a
+                                        // reprint carries the same one.
+                                        callback(null, {
+                                            order_id: orders[0] ? orders[0].id : null,
+                                            order_number: orders[0] ? orders[0].order_number : null,
+                                            order_count: orders.length,
+                                            grand_total: billTotal
+                                        });
+                                    }
                                 );
                             };
 

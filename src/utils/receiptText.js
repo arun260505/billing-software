@@ -20,6 +20,35 @@ import { DEFAULT_KITCHEN_FORMAT, isParcelOrder } from "./kitchenPrinter";
 // on every printer. Switch this to "₹" if your printer's font handles it.
 const RUPEE = "Rs.";
 
+/*
+| Emphasis (bold / double height)
+|
+| This receipt reaches the printer as RAW bytes, so bold is not a font choice —
+| it is an ESC/POS command the printer obeys. The `font-weight: bold` in
+| billPrinter.js only styles the admin preview and the browser-dialog fallback,
+| which is why a bill that looked bold on screen printed flat on the roll.
+|
+| backend/scripts/print-text.ps1 already speaks ESC/POS (it sends the reset and
+| the paper cut), and maps each character to one byte, so these pass straight
+| through.
+|
+| Applied to WHOLE finished lines, never inside one: every column below is padded
+| by string length, and a control character counted as a column would knock the
+| money out of alignment.
+*/
+const ESC = "\x1b";
+const GS = "\x1d";
+
+/** ESC E 1 / ESC E 0 — the printer's own emphasised (double-strike) mode. */
+const bold = (line) => `${ESC}E\x01${line}${ESC}E\x00`;
+
+// GS ! 0x01 — double HEIGHT only. Double width would halve the columns per line
+// and wrap the header, so the big lines here grow downwards, not sideways.
+const tall = (line) => `${GS}!\x01${line}${GS}!\x00`;
+
+/** Both, for the one or two lines that have to carry across a counter. */
+const heading = (line) => bold(tall(line));
+
 // Characters per line. 58mm thermal paper fits ~32, 80mm fits ~48.
 function widthFor(paperSize) {
     return paperSize === "thermal-58" ? 32 : 48;
@@ -126,7 +155,9 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
 
     const dateStr = order.date || new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     const timeStr = order.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const orderNumber = order.order_number || "ORD-1001";
+    // No invented placeholder — see billPrinter.js. The line is dropped rather
+    // than printing a number the bill does not have.
+    const orderNumber = order.order_number || "";
     const tableName = order.tableName || order.table_name || (order.table_number ? `Table ${order.table_number}` : "Counter");
     const isParcel = isParcelOrder(order);
     const seatValue = order.table_number || String(tableName).replace(/^table\s*/i, "");
@@ -134,20 +165,20 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     const paymentMethod = order.payment_method || order.paymentMethod || "Cash";
     const paymentList = Array.isArray(order.payments) && order.payments.length ? order.payments : null;
 
-    // ── Header ──
+    // ── Header ── (the emphasised block, matching the reference bill)
     if (cfg.header_title && cfg.header_title.trim()) {
-        out.push(center(cfg.header_title.trim().toUpperCase(), W));
+        out.push(bold(center(cfg.header_title.trim().toUpperCase(), W)));
     }
     if (cfg.show_restaurant_name) {
-        out.push(center((restaurant.restaurant_name || "Restaurant").toUpperCase(), W));
+        out.push(heading(center((restaurant.restaurant_name || "Restaurant").toUpperCase(), W)));
     }
     // GSTIN under the trading name, then the postal address — the order the
     // printed reference bill reads in.
-    if (cfg.show_gst && restaurant.gst_number) out.push(center(restaurant.gst_number, W));
+    if (cfg.show_gst && restaurant.gst_number) out.push(bold(center(restaurant.gst_number, W)));
     const addr = [restaurant.address, restaurant.city, restaurant.state, restaurant.pincode]
         .filter((p) => p && String(p).trim())
         .join(", ");
-    if (cfg.show_address && addr) wrap(addr, W).forEach((l) => out.push(center(l, W)));
+    if (cfg.show_address && addr) wrap(addr, W).forEach((l) => out.push(bold(center(l, W))));
     if (cfg.show_phone && restaurant.mobile) out.push(center(`Ph: ${restaurant.mobile}`, W));
     if (cfg.show_email && restaurant.email) out.push(center(restaurant.email, W));
     if (cfg.show_fssai && restaurant.fssai_number) out.push(center(`FSSAI: ${restaurant.fssai_number}`, W));
@@ -166,7 +197,7 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_time) metaBits.push(`Time: ${timeStr}`);
     if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) metaBits.push(`Waiter: ${order.waiter_name || order.waiter}`);
     if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaBits.push(`Cashier: ${order.cashier_name || order.cashier}`);
-    if (cfg.show_order_number) metaBits.push(`Bill No.: ${orderNumber}`);
+    if (cfg.show_order_number && orderNumber) metaBits.push(`Bill No.: ${orderNumber}`);
 
     const leftW = Math.ceil(W * 0.52);
     for (let i = 0; i < metaBits.length; i += 2) {
@@ -179,13 +210,13 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     // The money columns carry no currency mark, so they stay aligned on a
     // 32-column roll; only the grand total below is prefixed.
     const C = itemCols(W);
-    out.push(
+    out.push(bold(
         cell("No.", C.no) +
         cell("Item", C.item) +
         (cfg.show_item_qty ? cell("Qty.", C.qty, true) : repeat(" ", C.qty)) +
         (cfg.show_item_price ? cell("Price", C.price, true) : repeat(" ", C.price)) +
         cell("Amount", C.amt, true)
-    );
+    ));
     out.push(repeat("-", W));
 
     items.forEach((it, idx) => {
@@ -236,7 +267,7 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
 
     if (cfg.show_grand_total) {
         out.push(repeat("=", W));
-        out.push(lr("Grand Total", money(grandTotal), W));
+        out.push(heading(lr("Grand Total", money(grandTotal), W)));
         out.push(repeat("=", W));
     }
 
@@ -284,10 +315,10 @@ export function buildKotText({ order = {}, restaurant = {}, format = {} }) {
         : (order.tableName || order.table_name || (order.table_number ? `Table ${order.table_number}` : "Dine-In"));
 
     if (cfg.header_title && cfg.header_title.trim()) {
-        out.push(center(cfg.header_title.trim().toUpperCase(), W));
+        out.push(bold(center(cfg.header_title.trim().toUpperCase(), W)));
     }
     if (cfg.show_restaurant_name) {
-        out.push(center((restaurant.restaurant_name || "Restaurant").toUpperCase(), W));
+        out.push(bold(center((restaurant.restaurant_name || "Restaurant").toUpperCase(), W)));
     }
     const addr = [restaurant.address, restaurant.city].filter((p) => p && String(p).trim()).join(", ");
     if (cfg.show_address && addr) wrap(addr, W).forEach((l) => out.push(center(l, W)));
@@ -297,16 +328,19 @@ export function buildKotText({ order = {}, restaurant = {}, format = {} }) {
 
     // Dine-in gets the same banner as parcel — the table number is what a cook
     // reads first, so it leads the ticket instead of sitting in a metadata row.
-    out.push(center(
+    // Emphasised and double height: this is the line read from across the pass.
+    out.push(heading(center(
         isParcel
             ? "*** PARCEL ***"
             : (cfg.show_table_name ? `*** ${String(tableName).toUpperCase()} ***` : "*** DINE-IN ***"),
         W
-    ));
-    out.push(center(isParcel ? "[ TAKEAWAY PACKING ]" : "[ DINE - IN ]", W));
+    )));
+    out.push(bold(center(isParcel ? "[ TAKEAWAY PACKING ]" : "[ DINE - IN ]", W)));
     out.push(repeat("=", W));
 
-    if (cfg.show_order_number) out.push(lr("KOT / ORD:", `#${orderNumber}`, W));
+    // The number the pass calls out when the dish goes up — same weight as the
+    // table banner, so both are readable at arm's length.
+    if (cfg.show_order_number) out.push(heading(lr("KOT / ORD:", `#${orderNumber}`, W)));
     if (cfg.show_order_type) out.push(lr("Type:", isParcel ? "PARCEL / TAKEAWAY" : "DINE-IN", W));
 
     const dt = [];
@@ -319,7 +353,7 @@ export function buildKotText({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_customer_name && order.customer_name) out.push(lr("Customer:", order.customer_name, W));
 
     out.push(repeat("-", W));
-    out.push(cfg.show_item_qty ? "QTY  ITEM" : "ITEM");
+    out.push(bold(cfg.show_item_qty ? "QTY  ITEM" : "ITEM"));
     out.push(repeat("-", W));
 
     let totalQty = 0;
@@ -334,17 +368,19 @@ export function buildKotText({ order = {}, restaurant = {}, format = {} }) {
             out.push(`${indent}[${it.category_name || it.category}]`);
         }
 
+        // The dish and its quantity are what gets cooked — emphasised, while the
+        // category and any note stay light so the item still stands out.
         const nameLines = cfg.show_item_name ? wrap(name, W - prefix.length) : [""];
-        nameLines.forEach((l, i) => out.push((i === 0 ? prefix : indent) + l));
+        nameLines.forEach((l, i) => out.push(bold((i === 0 ? prefix : indent) + l)));
 
         if (cfg.show_item_notes && (it.notes || it.note)) {
-            wrap(`** ${it.notes || it.note}`, W - prefix.length).forEach((l) => out.push(indent + l));
+            wrap(`** ${it.notes || it.note}`, W - prefix.length).forEach((l) => out.push(bold(indent + l)));
         }
         out.push("");
     });
 
     out.push(repeat("-", W));
-    out.push(lr("TOTAL ITEMS:", `${items.length} items (${totalQty} pcs)`, W));
+    out.push(bold(lr("TOTAL ITEMS:", `${items.length} items (${totalQty} pcs)`, W)));
 
     if (cfg.footer_text && cfg.footer_text.trim()) {
         out.push("");
@@ -360,8 +396,8 @@ export function buildTestText({ printerName = "", role = "", restaurantName = ""
     const now = new Date();
     const out = [];
 
-    out.push(center("PRINTER TEST", W));
-    if (restaurantName) out.push(center(restaurantName.toUpperCase(), W));
+    out.push(heading(center("PRINTER TEST", W)));
+    if (restaurantName) out.push(bold(center(restaurantName.toUpperCase(), W)));
     out.push(repeat("=", W));
     out.push(lr("Printer:", printerName || "(not set)", W));
     if (role) out.push(lr("Prints:", role, W));
@@ -370,6 +406,13 @@ export function buildTestText({ printerName = "", role = "", restaurantName = ""
     out.push(repeat("=", W));
     out.push(center("If you can read this,", W));
     out.push(center("the printer works.", W));
+    out.push("");
+    // The title above is emphasised and double height. If these two lines look
+    // identical on the slip, the printer is ignoring ESC/POS emphasis and the
+    // bold on the bill will not come out either — which is the one thing a test
+    // print should be able to tell you.
+    out.push(bold(center("This line should be BOLD.", W)));
+    out.push(center("This line should be normal.", W));
     out.push("");
     out.push(center("InWallz POS", W));
 

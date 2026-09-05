@@ -77,7 +77,6 @@ function Dashboard() {
     const [tableBillItems, setTableBillItems] = useState([]);
     const [tableBillBusy, setTableBillBusy] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const [orderNumber, setOrderNumber] = useState(1001);
     // The signed-in cashier. This is not decoration: `cashierName` is what goes
     // out as `cashier_name` on every printed bill, so a placeholder here puts
     // the wrong person on the customer's receipt and on the day's audit trail.
@@ -500,15 +499,18 @@ function Dashboard() {
         if (!selectedTable) { alert("Please select a table first."); return; }
 
         setOrderBusy(true);
+        // No order_number: the backend assigns it (utils/orderNumber.js, one
+        // sequence per restaurant per day) and ignores anything sent here. The
+        // till used to send `ORD-<milliseconds>` and then print that when the
+        // response was not read, putting a number on paper that existed nowhere.
         const orderData = {
-            order_number: `ORD-${Date.now()}`,
             waiter_id: 1,
             table_id: selectedTable?.id || null,
             order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
             items: mergeCartItems(cart),
         };
         try {
-            let assignedOrderNumber = orderData.order_number;
+            let assignedOrderNumber = null;
             if (editingOrder) {
                 await updateOrder(editingOrder.id, orderData);
                 assignedOrderNumber = editingOrder.order_number;
@@ -527,7 +529,6 @@ function Dashboard() {
                     await loadTables();
                 }
                 alert(selectedTable?.isParcel ? "Parcel Order Sent To Kitchen" : "Order Sent To Kitchen");
-                setOrderNumber((prev) => prev + 1);
                 if (selectedTable?.isParcel) {
                     setEditingOrder({ id: res.data.data.order_id, order_number: res.data.data.order_number });
                 }
@@ -604,7 +605,10 @@ function Dashboard() {
         if (cart.length === 0) { alert("Please add items."); return; }
 
         let orderId = editingOrder?.id;
-        let assignedOrderNumber = editingOrder ? editingOrder.order_number : `ORD-${orderNumber}`;
+        // Only ever the number the backend assigned. There is no local counter
+        // to fall back on — a made-up number on a customer's bill cannot be
+        // looked up, and came out different on every reprint.
+        let assignedOrderNumber = editingOrder ? editingOrder.order_number : null;
 
         // A counter / walk-in order: no table, or a parcel. The printer setup treats
         // these differently from dine-in (option 3 prints their kitchen copy).
@@ -613,8 +617,8 @@ function Dashboard() {
         // No existing order yet → create it now (this also sends it to the kitchen).
         if (!orderId) {
             setOrderBusy(true);
+            // The backend assigns order_number; see placeOrder above.
             const orderData = {
-                order_number: `ORD-${Date.now()}`,
                 waiter_id: 1,
                 table_id: selectedTable?.id || null,
                 order_type: isTakeaway ? "Takeaway" : "Dine-In",
@@ -623,7 +627,7 @@ function Dashboard() {
             try {
                 const res = await createOrder(orderData);
                 orderId = res.data.data.order_id;
-                assignedOrderNumber = res.data.data.order_number || orderData.order_number;
+                assignedOrderNumber = res.data.data.order_number || assignedOrderNumber;
                 if (selectedTable && selectedTable.id) {
                     await updateTableStatus(selectedTable.id, "OCCUPIED");
                 }
@@ -921,13 +925,20 @@ function Dashboard() {
             // `charges` go up as name/type/amount; the backend resolves them to
             // rupees itself and stores them on the order, so grand_total is the
             // whole amount owed and the payment lines reconcile against it.
-            await settleTable(table.id, paymentList, total, selectedCharges);
+            const settled = await settleTable(table.id, paymentList, total, selectedCharges);
+
+            // The bill's real number, straight from the order that was just
+            // settled. This printed "TBL-<table>-<last 4 digits of the clock>",
+            // which matched nothing in the database and came out different on
+            // every reprint of the same bill.
+            const billNumber = settled?.data?.data?.order_number
+                || `Table ${table.table_number}`;
 
             // Sale is recorded — now print. A print failure from here on cannot
             // lose the sale, which is the whole point of the ordering.
             printBillNow({
                 order: {
-                    order_number: `TBL-${table.table_number}-${Date.now().toString().slice(-4)}`,
+                    order_number: billNumber,
                     tableName: `Table ${table.table_number}`,
                     table_number: table.table_number,
                     items: items,

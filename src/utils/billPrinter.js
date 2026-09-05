@@ -55,7 +55,10 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
 
     const dateStr = order.date || new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     const timeStr = order.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const orderNumber = order.order_number || "ORD-1001";
+    // No invented placeholder: a bill number that is not the stored one cannot be
+    // looked up, so the line is simply left off when there is nothing real to
+    // print. (This used to default to "ORD-1001" on every such bill.)
+    const orderNumber = order.order_number || "";
     const tableName = order.tableName || order.table_name || (order.table_number ? `Table ${order.table_number}` : "Counter");
     // The reference receipt labels the seat line by service type — "Dine In: 4"
     // for a table, "Take Away" for a counter bill — instead of a bare table name.
@@ -149,7 +152,7 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_time) metaRows.push(`<strong>Time:</strong> ${timeStr}`);
     if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) metaRows.push(`<strong>Waiter:</strong> ${escapeHtml(order.waiter_name || order.waiter)}`);
     if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaRows.push(`<strong>Cashier:</strong> ${escapeHtml(order.cashier_name || order.cashier)}`);
-    if (cfg.show_order_number) metaRows.push(`<strong>Bill No.:</strong> ${escapeHtml(orderNumber)}`);
+    if (cfg.show_order_number && orderNumber) metaRows.push(`<strong>Bill No.:</strong> ${escapeHtml(orderNumber)}`);
 
     if (isA4) {
         metaHtml += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">`;
