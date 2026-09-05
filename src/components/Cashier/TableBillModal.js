@@ -2,11 +2,15 @@ import { useState, useEffect } from "react";
 import chargeService from "../../services/chargeService";
 import { isValidCharge } from "../../utils/charges";
 import { billTotals, ratesFrom, resolveCharges, money } from "../../utils/rates";
+import useEscapeClose from "../../hooks/useEscapeClose";
 
 // `settings` carries the restaurant's tax_percentage / service_charge. Omitting
 // it falls back to the historical 5% / 2%, so the modal still totals correctly
 // while the rates are still loading.
 function TableBillModal({ table, items, menuItems, busy, settings, onSetQty, onRemoveGroup, onAddItem, onServe, onGenerate, onClose }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
 
     const [method, setMethod] = useState("Cash");
     // Split payment: when on, the cashier allocates the total across several

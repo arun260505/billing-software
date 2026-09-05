@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
+import useEscapeClose from "../../hooks/useEscapeClose";
 
 function EmployeeModal({ show, onClose, onSave }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
 
     const [form, setForm] = useState({
         full_name: "",

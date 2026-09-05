@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 import "../../styles/Admin/CategoryModal.css";
+import useEscapeClose from "../../hooks/useEscapeClose";
 
 function CategoryModal({
     show,
@@ -9,6 +10,9 @@ function CategoryModal({
     category = null,
     isEditMode = false
 }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
 
     const initialState = {
         category_name: "",

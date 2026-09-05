@@ -622,3 +622,62 @@
 .cashier-app .bills-row-cancelled .bills-no { text-decoration: line-through; }
 .cashier-app .bills-tag-cancelled { background: #fdecea; color: #b3261e; border-color: #f3c9c4; }
 .cashier-app .bills-void { font-size: 12px; font-weight: 600; color: #98a2b3; }
+
+/* ============================================================================
+   RESPONSIVE — tablets and narrow windows
+   The till is a desktop layout: a menu that fills, and a 380px bill docked
+   beside it. The shell is `position:fixed; overflow:hidden`, so once the window
+   is narrower than menu + bill the bill (flex 0 0 380px) keeps its width, the
+   menu is squeezed to nothing and clipped — leaving a screen with a cart on it
+   and no way to add anything to the cart. Below 1024px the two stack instead.
+   ============================================================================ */
+
+@media (max-width: 1024px) {
+
+    /* Menu on top, bill below — both reachable, both scrollable. */
+    .cashier-app .pos-body { flex-direction: column; }
+
+    .cashier-app .pos-menu {
+        flex: 1 1 auto;
+        min-height: 42vh;          /* never collapses to nothing */
+        padding: 12px;
+    }
+
+    .cashier-app .pos-bill {
+        flex: 0 0 auto;
+        width: 100%;
+        max-height: 48vh;
+        border-left: none;
+        border-top: 2px solid #cbd5e1;
+        box-shadow: 0 -6px 18px rgba(15, 23, 42, .08);
+    }
+
+    /* More columns of smaller cards rather than two enormous ones. */
+    .cashier-app .menu-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+
+    /* The top bar runs out of room long before this; let it wrap instead of
+       pushing the logout button off the edge. */
+    .cashier-app .pos-topbar { flex-wrap: wrap; gap: 10px 14px; padding: 10px 12px; }
+    .cashier-app .pos-topactions { gap: 10px; }
+    .cashier-app .pos-time { display: none; }      /* the tablet shows its own clock */
+}
+
+@media (max-width: 720px) {
+
+    .cashier-app .pos-menu { min-height: 38vh; }
+    .cashier-app .pos-bill { max-height: 52vh; }
+    .cashier-app .menu-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+
+    /* Identity is nice to have; the stats and the logout button are not. */
+    .cashier-app .pos-user-info { display: none; }
+    .cashier-app .pos-stats { order: 3; width: 100%; }
+}
+
+/* Touch devices: a finger needs a bigger target than a mouse. Applied by input
+   type, so it never inflates the desktop till. */
+@media (pointer: coarse) {
+    .cashier-app button,
+    .cashier-app .pos-tchip,
+    .cashier-app .qty-btn { min-height: 40px; }
+    .cashier-app .menu-card .qty-btn { min-width: 40px; }
+}

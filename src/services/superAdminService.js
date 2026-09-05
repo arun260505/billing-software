@@ -21,6 +21,17 @@ const getAdmins = async () => {
 
 };
 
+const updateAdmin = async (id, data) => {
+
+    const response = await api.put(
+        `/super-admin/admin/${id}`,
+        data
+    );
+
+    return response.data;
+
+};
+
 const deleteAdmin = async (id) => {
 
     const response = await api.delete(
@@ -34,6 +45,7 @@ const deleteAdmin = async (id) => {
 const superAdminService = {
     createAdmin,
     getAdmins,
+    updateAdmin,
     deleteAdmin
 };
 

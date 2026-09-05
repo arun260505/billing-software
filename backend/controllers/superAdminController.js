@@ -193,8 +193,82 @@ const deleteAdmin = (req, res) => {
 
 };
 
+// The Edit button on the super admin panel had no endpoint behind it at all —
+// it rendered, it was clickable, and nothing happened. This is that endpoint.
+// Deliberately narrow: name, mobile and status only. Changing an admin's
+// username would orphan their restaurant's per-restaurant logins, and passwords
+// are reset, never edited.
+const updateAdmin = (req, res) => {
+
+    const { id } = req.params;
+    const { full_name, mobile, status } = req.body;
+
+    const name = typeof full_name === "string" ? full_name.trim() : "";
+    if (!name) {
+        return res.status(400).json({
+            success: false,
+            message: "Owner / admin name is required."
+        });
+    }
+    // A name is a name. Letters, spaces and the punctuation real names carry.
+    if (!/^[A-Za-z][A-Za-z .'-]*$/.test(name)) {
+        return res.status(400).json({
+            success: false,
+            message: "Name cannot contain numbers or symbols."
+        });
+    }
+
+    const phone = mobile == null ? "" : String(mobile).trim();
+    if (phone && !/^[0-9]{10}$/.test(phone)) {
+        return res.status(400).json({
+            success: false,
+            message: "Mobile number must be 10 digits."
+        });
+    }
+
+    if (status && !["Active", "Inactive"].includes(status)) {
+        return res.status(400).json({
+            success: false,
+            message: "Status must be Active or Inactive."
+        });
+    }
+
+    db.query(
+        `UPDATE users
+            SET full_name = ?,
+                mobile = ?,
+                status = COALESCE(?, status)
+          WHERE id = ? AND role = 'admin' AND deleted_at IS NULL`,
+        [name, phone || null, status || null, id],
+        (err, result) => {
+
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Admin not found."
+                });
+            }
+
+            res.json({
+                success: true,
+                message: "Admin updated successfully."
+            });
+
+        }
+    );
+
+};
+
 module.exports = {
     createAdmin,
     getAdmins,
+    updateAdmin,
     deleteAdmin
 };

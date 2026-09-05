@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 
 import "../../styles/Admin/DeleteModal.css";
+import useEscapeClose from "../../hooks/useEscapeClose";
 
 function DeleteModal({
     open,
@@ -10,6 +11,9 @@ function DeleteModal({
     onCancel,
     onDelete
 }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onCancel);
 
     if (!open) return null;
 

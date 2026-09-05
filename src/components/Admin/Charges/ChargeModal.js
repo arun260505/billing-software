@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { FaTimes, FaChevronDown, FaChevronRight } from "react-icons/fa";
+import useEscapeClose from "../../../hooks/useEscapeClose";
 
 function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
 
     const initial = {
         charge_name: "",

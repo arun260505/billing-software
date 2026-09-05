@@ -163,3 +163,30 @@
     font-size: 13px;
     text-align: center;
 }
+
+/* ============================================================================
+   Icon alignment
+   The field icons were positioned with a hardcoded `top: 17px`, measured
+   against a 55px input. That is not a centre — it drifts as soon as the font,
+   the zoom level or the input height changes, and the user and lock glyphs have
+   different heights so they never lined up with each other. Centre them against
+   the field instead, so they stay put at any size.
+   ============================================================================ */
+.login-page .input-icon,
+.login-page .password-toggle {
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    line-height: 0;
+}
+
+/* Comfortable tap target for the eye toggle on a phone. */
+@media (pointer: coarse) {
+    .login-page .password-toggle { padding: 10px; margin: -10px; }
+}
+
+@media (max-width: 480px) {
+    .login-page .login-card { padding: 22px 18px; }
+    .login-page .input-group input { height: 50px; }
+}

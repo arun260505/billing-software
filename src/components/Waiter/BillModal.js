@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { billTotals, ratesFrom } from "../../utils/rates";
+import useEscapeClose from "../../hooks/useEscapeClose";
 
 // Bill preview the waiter reviews BEFORE sending to the cashier. Identical items
 // are merged into one line with a  −  qty  +  stepper, and can be adjusted or
 // removed here. The waiter can also ADD an item that was served but not recorded.
 // None of this touches the kitchen. Only "Confirm & Send" actually sends the bill.
 function BillModal({ tableLabel, items, menuItems, busy, settings, onSetQty, onRemoveGroup, onAddItem, onConfirm, onClose }) {
+
+    // Esc closes the modal (see hooks/useEscapeClose).
+    useEscapeClose(onClose);
 
     const [adding, setAdding] = useState(false);
     const [search, setSearch] = useState("");

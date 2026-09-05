@@ -33,7 +33,9 @@ function Sidebar({ isOpen }) {
             key={menu.path}
             className={location.pathname === menu.path ? "active" : ""}
           >
-            <Link to={menu.path}>{menu.name}</Link>
+            {/* data-initial gives the collapsed rail something to show — it
+                hides the label with font-size:0 and there are no icons. */}
+            <Link to={menu.path} data-initial={menu.name.charAt(0)}>{menu.name}</Link>
           </li>
         ))}
       </ul>

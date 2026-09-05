@@ -754,7 +754,9 @@ function Menu() {
 
                         <td>
 
-                            ₹ {item.price}
+                            {/* Always two decimals — the raw column value renders
+                                as "150" for one item and "149.50" for the next. */}
+                            ₹ {Number(item.price).toFixed(2)}
 
                         </td>
 

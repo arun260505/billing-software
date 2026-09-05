@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "../../styles/Admin/MenuModal.css";
+import useEscapeClose from "../../hooks/useEscapeClose";
 
 function MenuModal({
     open,
@@ -9,6 +10,9 @@ function MenuModal({
     editItem,
     menuService
 }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
 
     const initialForm = {
         category_id: "",
@@ -72,8 +76,32 @@ function MenuModal({
             return;
         }
 
-        if (!formData.price) {
+        // `!formData.price` was the whole check, so it only caught an empty box:
+        // a negative price, a price of zero and anything non-numeric all sailed
+        // through onto real bills. type="number" doesn't help — the browser
+        // hands over an empty string for junk and happily accepts "-50".
+        const price = Number(formData.price);
+
+        if (formData.price === "" || formData.price === null) {
             alert("Price is required.");
+            return;
+        }
+        if (!Number.isFinite(price)) {
+            alert("Price must be a number.");
+            return;
+        }
+        if (price <= 0) {
+            alert("Price must be greater than zero.");
+            return;
+        }
+        if (price > 1000000) {
+            alert("That price looks wrong. Please check it.");
+            return;
+        }
+        // Money is two decimals. 149.999 would be stored as 150.00 by the
+        // DECIMAL(10,2) column and the admin would never know it was changed.
+        if (Math.round(price * 100) !== price * 100) {
+            alert("Price can have at most 2 decimal places (e.g. 149.50).");
             return;
         }
 
@@ -190,6 +218,8 @@ function MenuModal({
                             <input
                                 type="number"
                                 step="0.01"
+                                min="0.01"
+                                max="1000000"
                                 name="price"
                                 value={formData.price}
                                 onChange={handleChange}

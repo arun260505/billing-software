@@ -4,6 +4,7 @@ import { getOrderDetails, cancelOrder } from "../../services/orderService";
 import { updateTicketStatus } from "../../services/kitchenService";
 
 import "../../styles/pages/Admin/Orders.css";
+import useEscapeClose from "../../hooks/useEscapeClose";
 
 // Canonical flow used for the progress strip. Derived ONLY from the order's
 // current status — the database stores no status history, so no timestamps
@@ -22,6 +23,9 @@ const money = (v) =>
     `₹${Number(v || 0).toLocaleString("en-IN")}`;
 
 function OrderDetailsModal({ order, payments = [], editable = false, onClose, onUpdated }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
 
     const [items, setItems] = useState([]);
     const [loadingItems, setLoadingItems] = useState(true);

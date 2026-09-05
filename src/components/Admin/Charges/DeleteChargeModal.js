@@ -1,7 +1,11 @@
 import React from "react";
 import { FaTrash } from "react-icons/fa";
+import useEscapeClose from "../../../hooks/useEscapeClose";
 
 function DeleteChargeModal({ show, charge, onClose, onConfirm }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
 
     if (!show) return null;
 

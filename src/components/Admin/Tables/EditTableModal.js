@@ -1,8 +1,12 @@
 import React, { useState } from "react";
 
 import "../../../styles/Admin/Tables/Modal.css";
+import useEscapeClose from "../../../hooks/useEscapeClose";
 
 const EditTableModal = ({ table, onClose, onSave }) => {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
 
     const [formData, setFormData] = useState({
         table_name: table.table_name,

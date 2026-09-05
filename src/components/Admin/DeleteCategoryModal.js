@@ -1,5 +1,6 @@
 import React from "react";
 import "../../styles/Admin/DeleteCategoryModal.css";
+import useEscapeClose from "../../hooks/useEscapeClose";
 
 function DeleteCategoryModal({
     show,
@@ -7,6 +8,9 @@ function DeleteCategoryModal({
     onClose,
     onConfirm
 }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
 
     if (!show) return null;
 

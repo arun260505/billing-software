@@ -34,6 +34,7 @@ import {
     shouldPrintKotOnSend,
     shouldPrintKotWithBill
 } from "../../utils/printerMode";
+import usePersistentCart from "../../hooks/usePersistentCart";
 
 function Dashboard() {
     // ── State ───────────────────────────────────────────────────────
@@ -43,7 +44,8 @@ function Dashboard() {
     const [menuItems, setMenuItems] = useState([]);
     const [allItems, setAllItems] = useState([]);    // whole menu (search across categories)
     const [selectedCategory, setSelectedCategory] = useState(null);
-    const [cart, setCart] = useState([]);
+    // Survives a refresh and an Android WebView kill (hooks/usePersistentCart).
+    const [cart, setCart] = usePersistentCart("inwallz_cart_cashier");
     const [runningOrders, setRunningOrders] = useState([]);
     const [todayOrders, setTodayOrders] = useState(0);
     const [editingOrder, setEditingOrder] = useState(null);

@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { GST_PERCENT, SERVICE_PERCENT } from "../../utils/printBill";
+import useEscapeClose from "../../hooks/useEscapeClose";
 
 // A settled bill, opened for correction: adjust a quantity that was rung up
 // twice, drop an item that was never served, add one that was missed — then
 // reprint. Totals shown here are the ones that will be saved and charged.
 function BillEditModal({ bill, items, menuItems, busy, chargedTotal,
                          onSetQty, onRemoveGroup, onAddItem, onReprint, onClose }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
 
     const [method, setMethod] = useState(bill.payment_method || "Cash");
     const [adding, setAdding] = useState(false);

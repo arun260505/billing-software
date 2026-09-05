@@ -17,13 +17,24 @@ function Dashboard() {
 
     const [admins, setAdmins] = useState([]);
 
+    // The admin currently open in the edit row, or null.
+    const [editing, setEditing] = useState(null);
+    const [savingEdit, setSavingEdit] = useState(false);
+
     const handleChange = (e) => {
 
         const { name, value } = e.target;
 
+        // Stop the wrong characters at the keyboard rather than only complaining
+        // on submit: digits only in the mobile box, and no digits in a name.
+        const cleaned =
+            name === "mobile"   ? value.replace(/[^0-9]/g, "").slice(0, 10) :
+            name === "fullName" ? value.replace(/[0-9]/g, "") :
+            value;
+
         setAdminData({
             ...adminData,
-            [name]: value
+            [name]: cleaned
         });
 
     };
@@ -33,9 +44,43 @@ function Dashboard() {
 
 }, []);
 
+// A mobile number is ten digits. A person's name is not a number. The form
+// accepted letters in the mobile field and digits in the owner name, and both
+// went straight to the database.
+const MOBILE_RE = /^[0-9]{10}$/;
+const NAME_RE = /^[A-Za-z][A-Za-z .'-]*$/;
+
+// Returns the first problem with the form, or "" when it is good to send.
+function validateAdmin(data, { requirePassword = true } = {}) {
+
+    if (!String(data.restaurantName || "").trim()) return "Restaurant name is required.";
+
+    const name = String(data.fullName || "").trim();
+    if (!name) return "Owner / admin name is required.";
+    if (!NAME_RE.test(name)) return "Owner name cannot contain numbers or symbols.";
+
+    if (!MOBILE_RE.test(String(data.mobile || "").trim())) {
+        return "Mobile number must be exactly 10 digits.";
+    }
+
+    if (!String(data.username || "").trim()) return "Username is required.";
+
+    if (requirePassword && String(data.password || "").length < 6) {
+        return "Password must be at least 6 characters.";
+    }
+
+    return "";
+}
+
    const handleCreateAdmin = async (e) => {
 
     e.preventDefault();
+
+    const problem = validateAdmin(adminData);
+    if (problem) {
+        alert(problem);
+        return;
+    }
 
     try {
 
@@ -66,6 +111,57 @@ function Dashboard() {
 }
 
 };
+// Open the inline editor for one admin. The Edit button used to do nothing at
+// all — there was no handler on it and no endpoint behind it.
+const startEdit = (admin) => {
+    setEditing({
+        id: admin.id,
+        full_name: admin.full_name || "",
+        mobile: admin.mobile || "",
+        status: admin.status || "Active"
+    });
+};
+
+const changeEdit = (field, value) => {
+    const cleaned =
+        field === "mobile"    ? value.replace(/[^0-9]/g, "").slice(0, 10) :
+        field === "full_name" ? value.replace(/[0-9]/g, "") :
+        value;
+    setEditing((prev) => ({ ...prev, [field]: cleaned }));
+};
+
+const saveEdit = async () => {
+
+    const name = editing.full_name.trim();
+    if (!name)               { alert("Owner / admin name is required."); return; }
+    if (!NAME_RE.test(name)) { alert("Owner name cannot contain numbers or symbols."); return; }
+    if (editing.mobile && !MOBILE_RE.test(editing.mobile)) {
+        alert("Mobile number must be exactly 10 digits.");
+        return;
+    }
+
+    setSavingEdit(true);
+    try {
+        const res = await superAdminService.updateAdmin(editing.id, {
+            full_name: name,
+            mobile: editing.mobile,
+            status: editing.status
+        });
+        alert(res.message || "Admin updated.");
+        setEditing(null);
+        loadAdmins();
+    } catch (error) {
+        alert(
+            error.response?.data?.message ||
+            error.friendlyMessage ||
+            "Could not update the admin."
+        );
+    } finally {
+        setSavingEdit(false);
+    }
+
+};
+
 const handleDelete = async (id) => {
 
     if (!window.confirm("Delete Admin?"))
@@ -259,17 +355,74 @@ const handleDelete = async (id) => {
 
                                 {admins.map((admin) => (
 
+                                    editing && editing.id === admin.id ? (
+
+                                        <tr key={admin.id} className="editing-row">
+
+                                            <td data-label="ID">{admin.id}</td>
+
+                                            <td data-label="Full Name">
+                                                <input
+                                                    className="edit-input"
+                                                    value={editing.full_name}
+                                                    onChange={(e) => changeEdit("full_name", e.target.value)}
+                                                    placeholder="Owner name"
+                                                    autoFocus
+                                                />
+                                                <input
+                                                    className="edit-input"
+                                                    value={editing.mobile}
+                                                    onChange={(e) => changeEdit("mobile", e.target.value)}
+                                                    placeholder="10-digit mobile"
+                                                    inputMode="numeric"
+                                                />
+                                            </td>
+
+                                            <td data-label="Username">{admin.username}</td>
+
+                                            <td data-label="Status">
+                                                <select
+                                                    className="edit-input"
+                                                    value={editing.status}
+                                                    onChange={(e) => changeEdit("status", e.target.value)}
+                                                >
+                                                    <option>Active</option>
+                                                    <option>Inactive</option>
+                                                </select>
+                                            </td>
+
+                                            <td data-label="Action">
+                                                <button
+                                                    className="edit-btn"
+                                                    onClick={saveEdit}
+                                                    disabled={savingEdit}
+                                                >
+                                                    {savingEdit ? "Saving…" : "Save"}
+                                                </button>
+                                                <button
+                                                    className="delete-btn"
+                                                    onClick={() => setEditing(null)}
+                                                    disabled={savingEdit}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </td>
+
+                                        </tr>
+
+                                    ) : (
+
                                     <tr key={admin.id}>
 
-                                        <td>{admin.id}</td>
+                                        <td data-label="ID">{admin.id}</td>
 
-                                        <td>{admin.full_name}</td>
+                                        <td data-label="Full Name">{admin.full_name}</td>
 
-                                        <td>{admin.username}</td>
+                                        <td data-label="Username">{admin.username}</td>
 
-                                        <td>
+                                        <td data-label="Status">
 
-                                            <span className="status-active">
+                                            <span className={admin.status === "Inactive" ? "status-inactive" : "status-active"}>
 
                                                 {admin.status}
 
@@ -277,9 +430,12 @@ const handleDelete = async (id) => {
 
                                         </td>
 
-                                        <td>
+                                        <td data-label="Action">
 
-                                            <button className="edit-btn">
+                                            <button
+                                                className="edit-btn"
+                                                onClick={() => startEdit(admin)}
+                                            >
 
                                                 Edit
 
@@ -290,11 +446,12 @@ const handleDelete = async (id) => {
 >
     Delete
 </button>
-                                            
+
                                         </td>
 
                                     </tr>
 
+                                    )
                                 ))}
 
                             </tbody>

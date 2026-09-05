@@ -3,11 +3,15 @@ import { createPayment } from "../../services/paymentService";
 import chargeService from "../../services/chargeService";
 import { printBillNow } from "../../utils/printDispatch";
 import { isValidCharge } from "../../utils/charges";
+import useEscapeClose from "../../hooks/useEscapeClose";
 
 // `onPrinted` (optional) fires with the order as it was printed, right after the
 // customer bill goes to the printer. Option 3 of the printer setup uses it to
 // send the kitchen copy out of the same printer straight after the bill.
 function BillModal({ order, restaurant, format, onClose, onSuccess, onPrinted }) {
+
+    // Esc closes this modal (src/hooks/useEscapeClose.js).
+    useEscapeClose(onClose);
     const [paymentMethod, setPaymentMethod] = useState("Cash");
     const [splitMode, setSplitMode] = useState(false);
     const [splitAmounts, setSplitAmounts] = useState({ Cash: "", Card: "", UPI: "", Wallet: "" });
