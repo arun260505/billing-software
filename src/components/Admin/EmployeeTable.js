@@ -1,7 +1,9 @@
 import React from "react";
 import { FaEye, FaEdit, FaTrash } from "react-icons/fa";
 
-function EmployeeTable({ employees }) {
+// These three buttons rendered with no onClick at all — they looked like
+// working controls and did nothing when clicked.
+function EmployeeTable({ employees, onView, onEdit, onDelete }) {
 
     return (
 
@@ -84,19 +86,31 @@ function EmployeeTable({ employees }) {
 
                                     <td>
 
-                                        <button className="action-btn view">
+                                        <button
+                                            className="action-btn view"
+                                            title="View details"
+                                            onClick={() => onView && onView(employee)}
+                                        >
 
                                             <FaEye />
 
                                         </button>
 
-                                        <button className="action-btn edit">
+                                        <button
+                                            className="action-btn edit"
+                                            title="Edit employee"
+                                            onClick={() => onEdit && onEdit(employee)}
+                                        >
 
                                             <FaEdit />
 
                                         </button>
 
-                                        <button className="action-btn delete">
+                                        <button
+                                            className="action-btn delete"
+                                            title="Remove employee"
+                                            onClick={() => onDelete && onDelete(employee)}
+                                        >
 
                                             <FaTrash />
 

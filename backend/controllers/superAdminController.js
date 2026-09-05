@@ -25,6 +25,31 @@ const createAdmin = async (req, res) => {
 
         }
 
+        // Server-side checks, because the form's validation only stops honest
+        // mistakes — the endpoint accepted a one-character password and a mobile
+        // number made of letters when called directly. This account owns a whole
+        // restaurant.
+        if (String(password).length < 8) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 8 characters."
+            });
+        }
+
+        if (!/^[A-Za-z][A-Za-z .'-]*$/.test(String(fullName).trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Owner name cannot contain numbers or symbols."
+            });
+        }
+
+        if (!/^[0-9]{10}$/.test(String(mobile).trim())) {
+            return res.status(400).json({
+                success: false,
+                message: "Mobile number must be exactly 10 digits."
+            });
+        }
+
         db.query(
 
             "SELECT id FROM users WHERE username=? AND deleted_at IS NULL",

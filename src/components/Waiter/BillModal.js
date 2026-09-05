@@ -73,7 +73,7 @@ function BillModal({ tableLabel, items, menuItems, busy, settings, onSetQty, onR
                             <div key={g.key} className="bill-row">
                                 <div className="bill-row-info">
                                     <span className="bill-name">{g.item_name}</span>
-                                    <span className="bill-unit">₹{g.price.toFixed(0)} each</span>
+                                    <span className="bill-unit">₹{g.price.toFixed(2)} each</span>
                                 </div>
                                 <div className="bill-row-right">
                                     <div className="bill-stepper">
@@ -81,7 +81,7 @@ function BillModal({ tableLabel, items, menuItems, busy, settings, onSetQty, onR
                                         <span className="bill-qty">{g.qty}</span>
                                         <button className="bill-step bill-step-add" disabled={busy} onClick={() => inc(g)}>+</button>
                                     </div>
-                                    <span className="bill-amt">₹{(g.price * g.qty).toFixed(0)}</span>
+                                    <span className="bill-amt">₹{(g.price * g.qty).toFixed(2)}</span>
                                     <button
                                         className="bill-cancel-item"
                                         disabled={busy}
@@ -120,7 +120,7 @@ function BillModal({ tableLabel, items, menuItems, busy, settings, onSetQty, onR
                                     addable.slice(0, 30).map((mi) => (
                                         <button key={mi.id} className="bill-add-row" disabled={busy} onClick={() => pick(mi)}>
                                             <span className="bill-add-name">{mi.item_name}</span>
-                                            <span className="bill-add-price">₹{Number(mi.price).toFixed(0)}</span>
+                                            <span className="bill-add-price">₹{Number(mi.price).toFixed(2)}</span>
                                             <span className="bill-add-plus">＋</span>
                                         </button>
                                     ))

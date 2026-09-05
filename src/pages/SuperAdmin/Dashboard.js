@@ -65,8 +65,8 @@ function validateAdmin(data, { requirePassword = true } = {}) {
 
     if (!String(data.username || "").trim()) return "Username is required.";
 
-    if (requirePassword && String(data.password || "").length < 6) {
-        return "Password must be at least 6 characters.";
+    if (requirePassword && String(data.password || "").length < 8) {
+        return "Password must be at least 8 characters.";
     }
 
     return "";

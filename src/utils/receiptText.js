@@ -66,7 +66,12 @@ function wrap(text, width) {
     return lines.length ? lines : [""];
 }
 
-const money = (n, dp = 0) => `${RUPEE}${Number(n || 0).toFixed(dp)}`;
+// Two decimals by default. This renderer produces the slip that is spooled
+// straight to the till printer, and it was rounding every line to whole rupees
+// while the split-payment lines (the only caller passing dp explicitly) printed
+// paise — so a receipt could read Subtotal 238 + GST 12 + Service 5 against a
+// TOTAL of 254, and a split payment visibly failed to match its own total.
+const money = (n, dp = 2) => `${RUPEE}${Number(n || 0).toFixed(dp)}`;
 
 /**
  * The customer bill as text. Mirrors generateBillHtml's field logic so the two
@@ -127,7 +132,9 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     out.push(repeat("-", W));
 
     // ── Items: name on its own line, then qty x rate ....... amount ──
-    const amtW = 9;
+    // Widened for the two decimals amounts now carry ("Rs.1234.50"), so the
+    // amount column still lines up on a 32-column 58mm roll.
+    const amtW = 11;
     const qtyRateW = 14;
     out.push(lr("Item", "Amount", W));
     out.push(repeat("-", W));

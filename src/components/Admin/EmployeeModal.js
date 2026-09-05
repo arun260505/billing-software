@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
-function EmployeeModal({ show, onClose, onSave }) {
+// `editEmployee` switches the modal to edit mode: the fields prefill from that
+// staff member and the generated-credentials block is hidden, because the
+// username is fixed at creation and passwords are reset, never edited.
+function EmployeeModal({ show, onClose, onSave, editEmployee = null }) {
+
+    const isEdit = Boolean(editEmployee);
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
@@ -94,21 +99,51 @@ function EmployeeModal({ show, onClose, onSave }) {
 
     useEffect(() => {
 
-        if (show) {
+        if (!show) return;
 
+        if (isEdit) {
+            // Prefill from the row being edited; no credentials are generated.
+            setForm({
+                full_name: editEmployee.full_name || "",
+                mobile: editEmployee.mobile || "",
+                email: editEmployee.email || "",
+                role: editEmployee.role || "cashier",
+                status: editEmployee.status || "Active"
+            });
+        } else {
+            setForm({ full_name: "", mobile: "", email: "", role: "cashier", status: "Active" });
             generatePassword();
-
         }
 
-    }, [show]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [show, editEmployee]);
 
     const handleSubmit = (e) => {
 
         e.preventDefault();
 
+        const name = form.full_name.trim();
+        if (!name) { alert("Employee name is required."); return; }
+        if (!/^[A-Za-z][A-Za-z .'-]*$/.test(name)) {
+            alert("Name cannot contain numbers or symbols.");
+            return;
+        }
+        if (form.mobile && !/^[0-9]{10}$/.test(form.mobile.trim())) {
+            alert("Mobile number must be 10 digits.");
+            return;
+        }
+
+        if (isEdit) {
+            // Editing never touches the username or the password.
+            onSave({ ...form, full_name: name });
+            return;
+        }
+
         onSave({
 
             ...form,
+
+            full_name: name,
 
             username: generatedUsername,
 
@@ -128,7 +163,7 @@ function EmployeeModal({ show, onClose, onSave }) {
 
                 <div className="modal-header">
 
-                    <h2>Add Employee</h2>
+                    <h2>{isEdit ? "Edit Employee" : "Add Employee"}</h2>
 
                     <button
                         type="button"
@@ -221,7 +256,9 @@ function EmployeeModal({ show, onClose, onSave }) {
 
                     </div>
 
-                    <div className="generated-box">
+                    {/* Credentials are issued once, at creation. Editing a staff
+                        member must not silently regenerate their login. */}
+                    <div className="generated-box" hidden={isEdit}>
 
                         <h3>Generated Login Credentials</h3>
 

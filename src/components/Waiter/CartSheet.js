@@ -39,7 +39,7 @@ function CartSheet({ tableLabel, items, editing, busy, increaseQuantity, decreas
                 </div>
 
                 <div className="cs-footer">
-                    <div className="cs-total"><span>Total</span><span>₹{total.toFixed(0)}</span></div>
+                    <div className="cs-total"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
                     <div className="cs-actions">
                         <button className="cs-addmore" onClick={onClose}>+ Add more</button>
                         <button className="cs-send" onClick={onSend} disabled={items.length === 0 || busy}>

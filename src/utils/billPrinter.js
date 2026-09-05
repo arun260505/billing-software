@@ -185,12 +185,17 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
             </div>
         `;
         items.forEach((it) => {
-            const lineTotal = (Number(it.price || 0) * Number(it.quantity || 1)).toFixed(0);
+            // Two decimals, matching the A4 renderer above and the totals the
+            // backend stores. The thermal branch rounded every line and the
+            // grand total to whole rupees, so the receipt a customer is actually
+            // handed did not add up — and disagreed with the A4 invoice for the
+            // same bill.
+            const lineTotal = (Number(it.price || 0) * Number(it.quantity || 1)).toFixed(2);
             itemsHtml += `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-size: ${is58mm ? "10px" : "12px"};">
                     <span style="flex: 2; overflow: hidden; text-overflow: ellipsis; white-space: normal; padding-right: 4px;">${escapeHtml(it.item_name)}</span>
                     ${cfg.show_item_qty ? `<span style="width: 32px; text-align: center;">${it.quantity}</span>` : ""}
-                    ${cfg.show_item_price ? `<span style="width: 48px; text-align: right;">&#8377;${Number(it.price).toFixed(0)}</span>` : ""}
+                    ${cfg.show_item_price ? `<span style="width: 48px; text-align: right;">&#8377;${Number(it.price).toFixed(2)}</span>` : ""}
                     <span style="width: 52px; text-align: right; font-weight: 600;">&#8377;${lineTotal}</span>
                 </div>
             `;
@@ -240,7 +245,7 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
             summaryHtml += `<div style="display: flex; justify-content: space-between; margin-bottom: 2px; font-size: ${is58mm ? "10px" : "12px"};"><span>${r.label}</span><span>${r.val}</span></div>`;
         });
         if (cfg.show_grand_total) {
-            summaryHtml += `<div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58mm ? "12px" : "14px"}; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #000;"><span>TOTAL</span><span>&#8377;${grandTotal.toFixed(0)}</span></div>`;
+            summaryHtml += `<div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58mm ? "12px" : "14px"}; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #000;"><span>TOTAL</span><span>&#8377;${grandTotal.toFixed(2)}</span></div>`;
         }
     }
 

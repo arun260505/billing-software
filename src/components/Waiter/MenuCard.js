@@ -21,7 +21,10 @@ function MenuCard({ item, addToCart, removeOneFromCart, quantity = 0, onToggleAv
                 {item.description && <p className="menu-desc">{item.description}</p>}
 
                 <div className="menu-card-bottom">
-                    <span className="menu-price">₹{Number(item.price).toFixed(0)}</span>
+                    {/* Two decimals: a 99.50 item was priced "₹99" on the till,
+                        so the menu and the bill disagreed before a single item
+                        was even added. */}
+                    <span className="menu-price">₹{Number(item.price).toFixed(2)}</span>
 
                     {isUnavailable ? (
                         <span className="menu-unavailable-tag">Unavailable</span>

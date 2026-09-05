@@ -110,8 +110,25 @@ function Dashboard() {
     }
   }, []);
 
+  // The dashboard loaded once on mount and then never again, so the table-status
+  // widget, the recent-orders list and the sales figures all froze at whatever
+  // was true when the page opened — an admin watching the floor saw nothing
+  // change. Refresh on the same 15s cadence the rest of the app polls at, and
+  // again whenever the tab is brought back to the front.
   useEffect(() => {
     loadCore();
+
+    const timer = setInterval(loadCore, 15000);
+
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible") loadCore();
+    };
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+    };
   }, [loadCore]);
 
   // Poll the real cloud-sync time for the "Last Sync" badge.

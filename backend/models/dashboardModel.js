@@ -55,16 +55,33 @@ const getSummary = (restaurantId, callback) => {
              AND DATE(payment_date)=CURDATE()) AS other_amount,
 
             (SELECT restaurant_name FROM restaurants WHERE id=?) AS restaurant_name,
-            (SELECT status FROM restaurants WHERE id=?) AS restaurant_status,
-            (SELECT opening_time FROM restaurants WHERE id=?) AS opening_time,
-            (SELECT closing_time FROM restaurants WHERE id=?) AS closing_time
+
+            -- Opening hours and the open/closed switch live in BOTH tables, and
+            -- Admin > Settings writes to the settings table while this read used
+            -- the restaurants table. So changing the hours had no effect on the
+            -- dashboard Open/Closed badge, and because restaurants.opening_time
+            -- is normally NULL the badge fell through to "always Open".
+            -- Prefer what Settings actually saves, fall back to the restaurant row.
+            COALESCE(
+                (SELECT restaurant_status FROM settings WHERE restaurant_id=?),
+                (SELECT status FROM restaurants WHERE id=?)
+            ) AS restaurant_status,
+            COALESCE(
+                (SELECT opening_time FROM settings WHERE restaurant_id=?),
+                (SELECT opening_time FROM restaurants WHERE id=?)
+            ) AS opening_time,
+            COALESCE(
+                (SELECT closing_time FROM settings WHERE restaurant_id=?),
+                (SELECT closing_time FROM restaurants WHERE id=?)
+            ) AS closing_time
     `;
 
-    db.query(sql, [
-        restaurantId, restaurantId, restaurantId, restaurantId, restaurantId, restaurantId,
-        restaurantId, restaurantId, restaurantId, restaurantId, restaurantId, restaurantId,
-        restaurantId, restaurantId, restaurantId, restaurantId
-    ], callback);
+    // Every placeholder in this query is the same restaurant id, and the list
+    // was a hand-counted row of 16. Deriving the count from the SQL means adding
+    // or removing a subquery can't silently shift the bindings by one.
+    const params = new Array((sql.match(/\?/g) || []).length).fill(restaurantId);
+
+    db.query(sql, params, callback);
 
 };
 

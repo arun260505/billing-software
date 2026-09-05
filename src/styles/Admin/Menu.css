@@ -970,3 +970,35 @@ color:#6B7280;
 margin-bottom:20px;
 
 }
+
+/* ============================================================================
+   Long item names
+   The table had no column sizing at all, so a very long item name stretched its
+   cell until the row pushed the price and action columns off the page. Give the
+   name column a share of the width and let it wrap inside the cell.
+   ============================================================================ */
+.menu-table { table-layout: auto; }
+
+.menu-table td {
+    overflow-wrap: anywhere;   /* break a single very long word rather than overflow */
+    word-break: break-word;
+    vertical-align: middle;
+}
+
+/* The name is the only free-text column; cap it so it wraps instead of
+   squeezing everything else out. */
+.menu-table td:nth-child(2),
+.menu-table th:nth-child(2) {
+    max-width: 320px;
+    min-width: 140px;
+}
+
+/* Keep the action buttons on one line — wrapping them made the row jump. */
+.menu-table td:last-child { white-space: nowrap; }
+
+/* Below this the table scrolls in its own box (see AdminLayout.css) rather than
+   dragging the page sideways. */
+@media (max-width: 900px) {
+    .menu-table td:nth-child(2),
+    .menu-table th:nth-child(2) { max-width: 200px; }
+}

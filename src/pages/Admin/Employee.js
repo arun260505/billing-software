@@ -22,9 +22,27 @@ function Employee() {
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 const [credentials, setCredentials] = useState(null);
 
-useEffect(() => {
-    console.log("showModal:", showModal);
-}, [showModal]);
+// The employee being edited (null = the Add form), and the live filter state
+// the search box and dropdowns feed.
+const [editing, setEditing] = useState(null);
+const [filters, setFilters] = useState({ search: "", role: "", status: "" });
+
+const changeFilter = (field, value) =>
+    setFilters((prev) => ({ ...prev, [field]: value }));
+
+// Filtering happens here rather than on the server: the staff list is a handful
+// of rows per restaurant, so a round trip per keystroke would be wasteful.
+const visibleEmployees = employees.filter((e) => {
+    const term = filters.search.trim().toLowerCase();
+    const matchesTerm =
+        !term ||
+        String(e.full_name || "").toLowerCase().includes(term) ||
+        String(e.username || "").toLowerCase().includes(term) ||
+        String(e.mobile || "").includes(term);
+    const matchesRole = !filters.role || e.role === filters.role;
+    const matchesStatus = !filters.status || e.status === filters.status;
+    return matchesTerm && matchesRole && matchesStatus;
+});
 
     useEffect(() => {
 
@@ -82,6 +100,57 @@ useEffect(() => {
 
 };
 
+const handleEditEmployee = async (form) => {
+
+    try {
+        await employeeService.updateEmployee(editing.id, form);
+        setEditing(null);
+        setShowModal(false);
+        loadEmployees();
+        loadSummary();
+    } catch (err) {
+        alert(
+            err.response?.data?.message ||
+            err.friendlyMessage ||
+            "Could not update the employee."
+        );
+    }
+
+};
+
+const handleDeleteEmployee = async (employee) => {
+
+    if (!window.confirm(
+        `Remove ${employee.full_name}?\n\nThey will no longer be able to log in. ` +
+        `Their past orders stay on record.`
+    )) return;
+
+    try {
+        await employeeService.deleteEmployee(employee.id);
+        loadEmployees();
+        loadSummary();
+    } catch (err) {
+        alert(
+            err.response?.data?.message ||
+            err.friendlyMessage ||
+            "Could not remove the employee."
+        );
+    }
+
+};
+
+const handleViewEmployee = (employee) => {
+    alert(
+        `${employee.full_name}\n\n` +
+        `Username : ${employee.username}\n` +
+        `Role     : ${employee.role}\n` +
+        `Mobile   : ${employee.mobile || "—"}\n` +
+        `Email    : ${employee.email || "—"}\n` +
+        `Status   : ${employee.status}\n` +
+        `Added    : ${new Date(employee.created_at).toLocaleString()}`
+    );
+};
+
     const loadSummary = () => {
 
         employeeService.getSummary()
@@ -117,17 +186,25 @@ useEffect(() => {
                     <EmployeeCards summary={summary} />
 
 <EmployeeFilters
-    onAdd={() => setShowModal(true)}
+    onAdd={() => { setEditing(null); setShowModal(true); }}
+    search={filters.search}
+    role={filters.role}
+    status={filters.status}
+    onChange={changeFilter}
 />
 
 <EmployeeTable
-    employees={employees}
+    employees={visibleEmployees}
+    onView={handleViewEmployee}
+    onEdit={(employee) => { setEditing(employee); setShowModal(true); }}
+    onDelete={handleDeleteEmployee}
 />
 
 <EmployeeModal
     show={showModal}
-    onClose={() => setShowModal(false)}
-    onSave={handleAddEmployee}
+    editEmployee={editing}
+    onClose={() => { setShowModal(false); setEditing(null); }}
+    onSave={editing ? handleEditEmployee : handleAddEmployee}
 />
 <EmployeeSuccessModal
     show={showSuccessModal}

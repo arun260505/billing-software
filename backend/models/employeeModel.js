@@ -8,6 +8,8 @@ exports.getEmployees = (restaurantId, callback) => {
             id,
             full_name,
             username,
+            mobile,
+            email,
             role,
             status,
             created_at
@@ -166,6 +168,70 @@ VALUES
     );
 
         }
+    );
+
+};
+
+/*
+| Update and delete were missing entirely — the Employee page rendered View,
+| Edit and Delete buttons, and the frontend service already had updateEmployee /
+| deleteEmployee, but there were no routes, no controller methods and no model
+| functions behind them. The buttons did nothing.
+|
+| Both are tenant-scoped on restaurant_id from the JWT, so one restaurant's
+| admin can never edit or remove another restaurant's staff.
+*/
+
+// Edit a staff member. Deliberately narrow: name, mobile, email, role and
+// status. The username is derived from the name + restaurant at creation time
+// and is what the person logs in with, so it is not editable here; passwords
+// are reset, never edited.
+exports.updateEmployee = (id, restaurantId, data, callback) => {
+
+    const sql = `
+        UPDATE users
+           SET full_name = ?,
+               mobile    = ?,
+               email     = ?,
+               role      = COALESCE(?, role),
+               status    = COALESCE(?, status)
+         WHERE id = ?
+           AND restaurant_id = ?
+           AND role <> 'super_admin'
+           AND deleted_at IS NULL
+    `;
+
+    db.query(
+        sql,
+        [
+            data.full_name,
+            data.mobile || null,
+            data.email || null,
+            data.role || null,
+            data.status || null,
+            id,
+            restaurantId
+        ],
+        callback
+    );
+
+};
+
+// Soft delete, matching how admins are removed: the row stays so the removal
+// syncs to the cloud and so past orders keep resolving their employee_id to a
+// real name, but the account disappears from the list and can no longer log in
+// (authModel filters on deleted_at IS NULL).
+exports.deleteEmployee = (id, restaurantId, callback) => {
+
+    db.query(
+        `UPDATE users
+            SET deleted_at = NOW()
+          WHERE id = ?
+            AND restaurant_id = ?
+            AND role <> 'super_admin'
+            AND deleted_at IS NULL`,
+        [id, restaurantId],
+        callback
     );
 
 };

@@ -79,6 +79,11 @@ function Menu() {
 
     const [search, setSearch] = useState("");
 
+    // Toolbar filters. "" means "all" for each.
+    const [categoryFilter, setCategoryFilter] = useState("");
+    const [foodTypeFilter, setFoodTypeFilter] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
+
     const [showModal, setShowModal] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
 
@@ -299,19 +304,30 @@ function Menu() {
 
     const filteredItems = menuItems.filter(item => {
 
-        return (
+        const term = search.toLowerCase();
 
-            item.item_name
-                .toLowerCase()
-                .includes(search.toLowerCase())
+        const matchesSearch =
+            !term ||
+            String(item.item_name || "").toLowerCase().includes(term) ||
+            String(item.category_name || "").toLowerCase().includes(term);
 
-            ||
+        const matchesCategory =
+            !categoryFilter || String(item.category_id) === String(categoryFilter);
 
-            item.category_name
-                .toLowerCase()
-                .includes(search.toLowerCase())
+        // The column stores "NonVeg"; older rows may carry "Non Veg".
+        const matchesFoodType =
+            !foodTypeFilter ||
+            String(item.food_type || "").replace(/\s+/g, "").toLowerCase() ===
+                foodTypeFilter.replace(/\s+/g, "").toLowerCase();
 
-        );
+        // `available` is a tinyint; 0 means the item is switched off.
+        const matchesStatus =
+            !statusFilter ||
+            (statusFilter === "available"
+                ? Number(item.available) !== 0
+                : Number(item.available) === 0);
+
+        return matchesSearch && matchesCategory && matchesFoodType && matchesStatus;
 
     });
 
@@ -497,9 +513,15 @@ function Menu() {
 
     </div>
 
-    <select className="toolbar-select">
+    {/* All three dropdowns were uncontrolled and had no onChange, so picking a
+        category, food type or status did nothing at all. */}
+    <select
+        className="toolbar-select"
+        value={categoryFilter}
+        onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
+    >
 
-        <option>All Categories</option>
+        <option value="">All Categories</option>
 
         {categories.map(category => (
 
@@ -514,25 +536,33 @@ function Menu() {
 
     </select>
 
-    <select className="toolbar-select">
+    <select
+        className="toolbar-select"
+        value={foodTypeFilter}
+        onChange={(e) => { setFoodTypeFilter(e.target.value); setCurrentPage(1); }}
+    >
 
-        <option>All Food Types</option>
+        <option value="">All Food Types</option>
 
-        <option>Veg</option>
+        <option value="Veg">Veg</option>
 
-        <option>Non Veg</option>
+        <option value="NonVeg">Non Veg</option>
 
-        <option>Egg</option>
+        <option value="Egg">Egg</option>
 
     </select>
 
-    <select className="toolbar-select">
+    <select
+        className="toolbar-select"
+        value={statusFilter}
+        onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+    >
 
-        <option>All Status</option>
+        <option value="">All Status</option>
 
-        <option>Available</option>
+        <option value="available">Available</option>
 
-        <option>Unavailable</option>
+        <option value="unavailable">Unavailable</option>
 
     </select>
 
