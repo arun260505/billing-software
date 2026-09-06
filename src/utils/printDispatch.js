@@ -3,6 +3,7 @@ import { buildBillText, buildKotText, buildTestText } from "./receiptText";
 import { printBill } from "./billPrinter";
 import { printKitchenTicket } from "./kitchenPrinter";
 import { printTestSlip } from "./testPrint";
+import { isNativeApp } from "../services/serverConfig";
 
 /**
  * One place that decides HOW a receipt reaches paper.
@@ -39,14 +40,26 @@ function reasonFrom(err) {
  * @param {function} args.buildText  payload -> text for the printer
  * @param {function} args.fallback   opens the browser print dialog
  */
+// The browser print dialog only makes sense on a real browser (the cashier PC).
+// On the phone (Capacitor) there is no thermal printer and no useful dialog, so
+// opening the HTML template just dumps a confusing page into the waiter's app.
+// There, tell the waiter what went wrong instead — almost always "no printer set
+// on the till", which the manager fixes on the cashier's Printer page.
+function onFailure(reason, fallback) {
+    if (isNativeApp()) {
+        try { window.alert(`Couldn't print: ${reason}`); } catch { /* no window */ }
+        return;
+    }
+    fallback();
+}
+
 async function dispatch({ payload, target, buildText, fallback }) {
     let text;
     try {
         text = buildText(payload);
     } catch (e) {
-        // A formatting bug must not swallow the receipt — show the dialog.
-        console.error("Receipt formatting failed, falling back to the dialog:", e);
-        fallback();
+        console.error("Receipt formatting failed:", e);
+        onFailure("could not format the receipt.", fallback);
         return { direct: false, reason: "Could not format the receipt." };
     }
 
@@ -55,8 +68,8 @@ async function dispatch({ payload, target, buildText, fallback }) {
         return { direct: true, printer: data?.data?.printer };
     } catch (err) {
         const reason = reasonFrom(err);
-        console.warn(`Direct print unavailable (${reason}) — using the print dialog.`);
-        fallback();
+        console.warn(`Direct print unavailable (${reason})`);
+        onFailure(reason, fallback);
         return { direct: false, reason };
     }
 }
