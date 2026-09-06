@@ -132,6 +132,14 @@ $tpl = $tpl -replace "(?m)^PORT=.*", ("PORT=" + $Port)
 $tpl = $tpl -replace "(?m)^DB_PORT=.*", ("DB_PORT=" + $DbPort)
 $tpl | Out-File (Join-Path $backend ".env") -Encoding ascii
 
+# 4b) Honour the activation key entered in THIS install. On a reinstall the data
+# folder is kept, so the old activation row (restaurant_uuid + sync_key) is still
+# there and the server would treat the till as "already activated" and ignore the
+# key just entered. Clear it so the server re-activates with the entered key on
+# next start. Harmless on a fresh DB (the table won't exist yet - error ignored);
+# re-activation on the SAME machine is accepted by the cloud, so no reset needed.
+& $mysql -u inwallz "--password=$dbPass" -h 127.0.0.1 "--port=$DbPort" inwallz_billing -e "UPDATE activation SET restaurant_uuid=NULL, sync_key=NULL, activated_at=NULL WHERE id=1;" 2>$null | Out-Null
+
 # 5) Register the backend service (depends on MySQL).
 Say "Registering InWallzServer service"
 $backendShort = $fso.GetFolder($backend).ShortPath
