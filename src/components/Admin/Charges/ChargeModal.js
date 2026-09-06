@@ -20,6 +20,9 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
         // "Apply to all, but the cashier can drop it" — only for an auto-applied
         // ordinary charge. It reaches the bill as a pre-selected, removable chip.
         removable: false,
+        // For a removable extra, where it STARTS ticked. Cashier on, waiter off.
+        preselect_cashier: true,
+        preselect_waiter: false,
         applies_dinein: true,
         applies_takeaway: false,
         applies_delivery: false,
@@ -41,6 +44,11 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                 amount: charge.amount || "",
                 auto_apply: Boolean(Number(charge.auto_apply)),
                 removable: Boolean(Number(charge.removable)),
+                // A row saved before this feature has no columns yet: cashier
+                // defaults on, waiter off — the same as the DB defaults.
+                preselect_cashier: charge.preselect_cashier === undefined || charge.preselect_cashier === null
+                    ? true : Boolean(Number(charge.preselect_cashier)),
+                preselect_waiter: Boolean(Number(charge.preselect_waiter)),
                 applies_dinein: Boolean(charge.applies_dinein),
                 applies_takeaway: Boolean(charge.applies_takeaway),
                 applies_delivery: Boolean(charge.applies_delivery),
@@ -77,14 +85,18 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
         e.preventDefault();
         if (!validate()) return;
         const auto_apply = isTaxLike ? true : form.auto_apply;
+        // Removable only makes sense for an auto-applied ordinary charge; GST
+        // and service stay locked, and an opt-in chip is already optional.
+        const removable = (!isTaxLike && auto_apply) ? form.removable : false;
         onSave({
             ...form,
             amount: Number(form.amount),
             // A tax the cashier could forget to tap is not a tax.
             auto_apply,
-            // Removable only makes sense for an auto-applied ordinary charge; GST
-            // and service stay locked, and an opt-in chip is already optional.
-            removable: (!isTaxLike && auto_apply) ? form.removable : false
+            removable,
+            // Where a removable extra starts ticked — only meaningful when removable.
+            preselect_cashier: removable ? form.preselect_cashier : false,
+            preselect_waiter: removable ? form.preselect_waiter : false
         });
     };
 
@@ -295,6 +307,39 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                                 >
                                     <span className="toggle-knob" />
                                 </button>
+                            </div>
+                        )}
+
+                        {/* Where a removable extra STARTS ticked. The counter
+                            usually adds parcel/packing, so cashier defaults on;
+                            the waiter bills what was eaten, so waiter defaults off.
+                            Either can be flipped per charge. */}
+                        {!isTaxLike && form.auto_apply && form.removable && (
+                            <div className="toggle-row" style={{ paddingLeft: "12px", borderLeft: "2px solid #eef1f6" }}>
+                                <span className="toggle-label">
+                                    Start ticked on…
+                                    <span style={{ display: "block", fontWeight: 400, fontSize: "12px", color: "#94A3B8" }}>
+                                        On the chosen screens it comes up already ticked; on the others it's shown unticked to add when needed.
+                                    </span>
+                                </span>
+                                <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+                                    <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "13px", fontWeight: 600 }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={form.preselect_cashier}
+                                            onChange={() => setForm({ ...form, preselect_cashier: !form.preselect_cashier })}
+                                        />
+                                        Cashier
+                                    </label>
+                                    <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "13px", fontWeight: 600 }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={form.preselect_waiter}
+                                            onChange={() => setForm({ ...form, preselect_waiter: !form.preselect_waiter })}
+                                        />
+                                        Waiter
+                                    </label>
+                                </div>
                             </div>
                         )}
 

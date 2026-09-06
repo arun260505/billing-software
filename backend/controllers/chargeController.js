@@ -24,6 +24,10 @@ const chargeFromBody = (body) => {
     // A tax or service charge is meaningless as an opt-in chip the cashier
     // may forget to tap, so those always apply automatically.
     const auto_apply = charge_role === ROLES.CHARGE ? (body.auto_apply ? 1 : 0) : 1;
+    // "Apply to all, but the cashier can drop it": only an auto-applied ordinary
+    // charge (packing, AC) can be removable. GST / service stay locked, and an
+    // opt-in chip is already the cashier's to add or not.
+    const removable = (charge_role === ROLES.CHARGE && auto_apply && body.removable) ? 1 : 0;
     return {
         charge_name: (body.charge_name || "").trim(),
         description: (body.description || "").trim() || null,
@@ -31,10 +35,11 @@ const chargeFromBody = (body) => {
         charge_role,
         amount: Number(body.amount) || 0,
         auto_apply,
-        // "Apply to all, but the cashier can drop it": only an auto-applied
-        // ordinary charge (packing, AC) can be removable. GST / service stay
-        // locked, and an opt-in chip is already the cashier's to add or not.
-        removable: (charge_role === ROLES.CHARGE && auto_apply && body.removable) ? 1 : 0,
+        removable,
+        // For a removable extra, admin chooses where it STARTS ticked. Only
+        // meaningful when removable; default cashier ON, waiter OFF.
+        preselect_cashier: removable ? (body.preselect_cashier ? 1 : 0) : 0,
+        preselect_waiter: removable ? (body.preselect_waiter ? 1 : 0) : 0,
         applies_dinein: body.applies_dinein ? 1 : 0,
         applies_takeaway: body.applies_takeaway ? 1 : 0,
         applies_delivery: body.applies_delivery ? 1 : 0,
@@ -230,6 +235,8 @@ exports.duplicateCharge = (req, res) => {
             amount: original.amount,
             auto_apply: original.auto_apply ? 1 : 0,
             removable: original.removable ? 1 : 0,
+            preselect_cashier: original.preselect_cashier ? 1 : 0,
+            preselect_waiter: original.preselect_waiter ? 1 : 0,
             applies_dinein: original.applies_dinein ? 1 : 0,
             applies_takeaway: original.applies_takeaway ? 1 : 0,
             applies_delivery: original.applies_delivery ? 1 : 0,

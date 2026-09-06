@@ -137,6 +137,12 @@ async function runSyncSchema() {
         // pre-selected, removable chip. Default 0 keeps GST/service locked and
         // every existing charge behaving exactly as before.
         await ensureColumn("charges", "removable", "TINYINT(1) NOT NULL DEFAULT 0");
+        // 012: for a removable extra, admin decides where it STARTS ticked.
+        // Cashier defaults ON (the counter usually adds parcel/packing); the
+        // waiter app defaults OFF (they bill what was eaten, ticking an extra
+        // only when the customer also parcels).
+        await ensureColumn("charges", "preselect_cashier", "TINYINT(1) NOT NULL DEFAULT 1");
+        await ensureColumn("charges", "preselect_waiter", "TINYINT(1) NOT NULL DEFAULT 0");
 
         if (firstRun) await backfillTaxCharges();
     }

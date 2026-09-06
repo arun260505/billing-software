@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { autoChargesFor, optionalChargesFor, billTotals } from "../../utils/rates";
+import { useState, useEffect } from "react";
+import { autoChargesFor, optionalChargesFor, preselectedWaiterChargesFor, billTotals } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
 // Bill preview the waiter reviews BEFORE sending to the cashier. Identical items
@@ -20,10 +20,19 @@ function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle
     const [adding, setAdding] = useState(false);
     const [search, setSearch] = useState("");
     const [method, setMethod] = useState("Cash");
-    // Extra charges (parcel, packing …) start UNticked on the waiter app — the
-    // waiter is billing what the table ate, and ticks an extra only when the
-    // customer also parcels something. GST / service stay locked below.
-    const [selectedCharges, setSelectedCharges] = useState([]);
+    // Extra charges (parcel, packing …). By default they start UNticked on the
+    // waiter app — the waiter bills what the table ate and ticks an extra only
+    // when the customer also parcels — but Admin can mark a charge to start
+    // ticked on the waiter too (preselect_waiter). GST/service stay locked below.
+    const [selectedCharges, setSelectedCharges] = useState(() => preselectedWaiterChargesFor(charges, "Dine-In"));
+
+    // Charges are fetched, so the list can arrive after first render; reseed the
+    // waiter-preselected extras when it (or its contents) changes.
+    const chargeKey = (Array.isArray(charges) ? charges : []).map((c) => c.id).join(",");
+    useEffect(() => {
+        setSelectedCharges(preselectedWaiterChargesFor(charges, "Dine-In"));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chargeKey]);
 
     // Only when the waiter settles the bill directly do the extras matter here;
     // when the bill goes to the cashier, the cashier picks them on their screen.

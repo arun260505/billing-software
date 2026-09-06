@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { autoChargesFor, optionalChargesFor, preselectedChargesFor, billTotals, money } from "../../utils/rates";
+import { autoChargesFor, optionalChargesFor, preselectedCashierChargesFor, billTotals, money } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
 // `charges` is the restaurant's charge list (Admin → Charges). The ones flagged
@@ -20,14 +20,14 @@ function TableBillModal({ table, items, menuItems, busy, charges = [], onSetQty,
     const [search, setSearch] = useState("");
     // Removable autos (a packing/AC fee marked "apply to all, but can be removed")
     // start selected, already in the total — the cashier taps to drop them.
-    const [selectedCharges, setSelectedCharges] = useState(() => preselectedChargesFor(charges, "Dine-In"));
+    const [selectedCharges, setSelectedCharges] = useState(() => preselectedCashierChargesFor(charges, "Dine-In"));
 
     // The charge list arrives after the first render (it's fetched), so seed the
     // pre-selected removable autos once it does. Keyed on the charge ids so it
     // runs when the list actually changes, not on every keystroke.
     const chargeKey = (Array.isArray(charges) ? charges : []).map((c) => c.id).join(",");
     useEffect(() => {
-        setSelectedCharges(preselectedChargesFor(charges, "Dine-In"));
+        setSelectedCharges(preselectedCashierChargesFor(charges, "Dine-In"));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [chargeKey]);
 

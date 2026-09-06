@@ -185,6 +185,9 @@ function Charges() {
                 // Preserve removability across an on/off toggle, exactly like the
                 // other flags — an update replaces the whole row.
                 removable: Boolean(Number(charge.removable)),
+                preselect_cashier: charge.preselect_cashier === undefined || charge.preselect_cashier === null
+                    ? true : Boolean(Number(charge.preselect_cashier)),
+                preselect_waiter: Boolean(Number(charge.preselect_waiter)),
                 applies_dinein: Boolean(Number(charge.applies_dinein)),
                 applies_takeaway: Boolean(Number(charge.applies_takeaway)),
                 applies_delivery: Boolean(Number(charge.applies_delivery)),

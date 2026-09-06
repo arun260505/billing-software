@@ -107,9 +107,24 @@ export function optionalChargesFor(charges, orderType) {
     return applicableCharges(charges, orderType).filter((c) => !isLockedAuto(c));
 }
 
-/** The removable autos for this order type — the chips that start selected. */
-export function preselectedChargesFor(charges, orderType) {
-    return applicableCharges(charges, orderType).filter(isPreselectedCharge);
+// For a removable extra, admin decides where it STARTS ticked. Cashier defaults
+// ON (a row with no column yet reads as on); the waiter app defaults OFF.
+const preselectsCashier = (c) =>
+    isPreselectedCharge(c) &&
+    (c.preselect_cashier === undefined || c.preselect_cashier === null
+        ? true
+        : Boolean(Number(c.preselect_cashier)));
+const preselectsWaiter = (c) =>
+    isPreselectedCharge(c) && Boolean(Number(c.preselect_waiter));
+
+/** Removable extras that start TICKED on the cashier bill. */
+export function preselectedCashierChargesFor(charges, orderType) {
+    return applicableCharges(charges, orderType).filter(preselectsCashier);
+}
+
+/** Removable extras that start TICKED on the waiter app. */
+export function preselectedWaiterChargesFor(charges, orderType) {
+    return applicableCharges(charges, orderType).filter(preselectsWaiter);
 }
 
 /**

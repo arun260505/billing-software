@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createPayment } from "../../services/paymentService";
 import { setOrderCharges } from "../../services/orderService";
 import { printBillNow } from "../../utils/printDispatch";
-import { optionalChargesFor, preselectedChargesFor, resolveCharges, money } from "../../utils/rates";
+import { optionalChargesFor, preselectedCashierChargesFor, resolveCharges, money } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
 // `onPrinted` (optional) fires with the order as it was printed, right after the
@@ -26,13 +26,13 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
 
     // Removable autos (a parcel/packing fee marked "apply to all, but can be
     // removed") start selected — already in the total, dropped with a tap.
-    const [selectedCharges, setSelectedCharges] = useState(() => preselectedChargesFor(charges, orderType));
+    const [selectedCharges, setSelectedCharges] = useState(() => preselectedCashierChargesFor(charges, orderType));
 
     // The charge list is fetched, so it can land after the first render; seed the
     // pre-selected removable autos once it (or the order type) changes.
     const chargeKey = (Array.isArray(charges) ? charges : []).map((c) => c.id).join(",");
     useEffect(() => {
-        setSelectedCharges(preselectedChargesFor(charges, orderType));
+        setSelectedCharges(preselectedCashierChargesFor(charges, orderType));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [chargeKey, orderType]);
 
