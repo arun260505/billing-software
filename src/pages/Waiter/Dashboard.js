@@ -440,6 +440,25 @@ function Dashboard() {
         }
     };
 
+    // Mark EVERY unserved item on this table served in one tap — a bill can't be
+    // generated until all items are served, so the waiter needs a shortcut.
+    const handleServeAllBill = async () => {
+        const unserved = previousItems.filter((it) => Number(it.served) !== 1);
+        if (unserved.length === 0) return;
+        setBillBusy(true);
+        setPreviousItems((prev) => prev.map((it) => ({ ...it, served: 1 })));
+        try {
+            await Promise.all(unserved.map((it) => markItemServed(it.id)));
+            await loadRunningOrders();
+            if (selectedTable) await refreshTableItems(selectedTable.id);
+        } catch (e) {
+            alert("Could not mark all items served.");
+            if (selectedTable) await refreshTableItems(selectedTable.id);
+        } finally {
+            setBillBusy(false);
+        }
+    };
+
     // Adjust a bill line's quantity (− / +). Only edits the existing order — it
     // never creates a new kitchen ticket — and totals are recomputed server-side.
     const handleSetBillQty = async (rowId, qty) => {
@@ -972,6 +991,9 @@ function Dashboard() {
                     onSend={placeOrder}
                     onCancelOrder={handleCancelOrder}
                     onClose={() => setShowCart(false)}
+                    /* Only the two-printer setup prints a kitchen ticket on send;
+                       otherwise nothing goes to a kitchen, so call it "Place Order". */
+                    sendLabel={shouldPrintKotOnSend(printerMode) ? "Send to Kitchen" : "Place Order"}
                 />
             )}
 
@@ -1017,6 +1039,7 @@ function Dashboard() {
                     onSetQty={handleSetBillQty}
                     onRemoveGroup={handleRemoveBillGroup}
                     onAddItem={handleAddBillItem}
+                    onServeAll={handleServeAllBill}
                     onConfirm={requestBill}
                     onSettle={settleAndPrint}
                     onClose={() => setShowBill(false)}

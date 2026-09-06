@@ -12,7 +12,7 @@ import useEscapeClose from "../../hooks/useEscapeClose";
 // When `canSettle` is true (Admin enabled "waiter can print bill"), the waiter
 // picks a payment method and the button becomes "Print & Settle" (onSettle).
 // Otherwise the bill is sent to the cashier to print/settle (onConfirm).
-function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle = false, onSetQty, onRemoveGroup, onAddItem, onConfirm, onSettle, onClose }) {
+function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle = false, onSetQty, onRemoveGroup, onAddItem, onServeAll, onConfirm, onSettle, onClose }) {
 
     // Esc closes the modal (see hooks/useEscapeClose).
     useEscapeClose(onClose);
@@ -52,6 +52,10 @@ function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle
     const totals = billTotals(subtotal, autoChargesFor(charges, "Dine-In"));
     const total = totals.grand_total;
     const billedLines = [...totals.tax_lines, ...totals.service_lines, ...totals.charge_lines];
+
+    // A bill can only be settled once every item is served. Count what's left so
+    // we can offer a one-tap "Serve all" and block Print & Settle until it's done.
+    const unservedCount = items.filter((it) => Number(it.served) !== 1).length;
 
     const inc = (g) => onSetQty(g.rows[0].id, Number(g.rows[0].quantity) + 1);
     const dec = (g) => {
@@ -152,6 +156,15 @@ function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle
                     <div className="bill-line bill-grand"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
                 </div>
 
+                {canSettle && unservedCount > 0 && (
+                    <div className="bill-serveall">
+                        <span>{unservedCount} item{unservedCount === 1 ? "" : "s"} not served yet</span>
+                        <button type="button" className="bill-serveall-btn" disabled={busy} onClick={onServeAll}>
+                            ✓ Serve all
+                        </button>
+                    </div>
+                )}
+
                 {canSettle && (
                     <div className="bill-pay">
                         <span className="bill-pay-label">Payment</span>
@@ -177,9 +190,11 @@ function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle
                         <button
                             className="bill-confirm"
                             onClick={() => onSettle && onSettle(method)}
-                            disabled={busy || groups.length === 0}
+                            disabled={busy || groups.length === 0 || unservedCount > 0}
                         >
-                            {busy ? "Working…" : `🧾 Print & Settle · ₹${total.toFixed(2)}`}
+                            {busy ? "Working…"
+                                : unservedCount > 0 ? "Serve all items first"
+                                : `🧾 Print & Settle · ₹${total.toFixed(2)}`}
                         </button>
                     ) : (
                         <button

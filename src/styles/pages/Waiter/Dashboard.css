@@ -1061,3 +1061,29 @@
     cursor: pointer;
 }
 .bill-pay-btn.active { background: #0f766e; border-color: #0f766e; color: #fff; }
+
+/* "Serve all" bar in the waiter bill screen (shown before Print & Settle) */
+.bill-serveall {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 8px 14px 0;
+    padding: 10px 12px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #9a3412;
+}
+.bill-serveall-btn {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #0f766e;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+}
+.bill-serveall-btn:disabled { opacity: .6; cursor: default; }
