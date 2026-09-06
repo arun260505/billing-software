@@ -319,7 +319,7 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                                 <span className="toggle-label">
                                     Start ticked on…
                                     <span style={{ display: "block", fontWeight: 400, fontSize: "12px", color: "#94A3B8" }}>
-                                        On the chosen screens it comes up already ticked; on the others it's shown unticked to add when needed.
+                                        Where it comes up already ticked. Elsewhere it's shown unticked to add when needed. A dine-in table follows "Dine-in tables" whether the waiter or cashier bills it.
                                     </span>
                                 </span>
                                 <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
@@ -329,7 +329,7 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                                             checked={form.preselect_cashier}
                                             onChange={() => setForm({ ...form, preselect_cashier: !form.preselect_cashier })}
                                         />
-                                        Cashier
+                                        Counter / takeaway
                                     </label>
                                     <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "13px", fontWeight: 600 }}>
                                         <input
@@ -337,7 +337,7 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                                             checked={form.preselect_waiter}
                                             onChange={() => setForm({ ...form, preselect_waiter: !form.preselect_waiter })}
                                         />
-                                        Waiter
+                                        Dine-in tables
                                     </label>
                                 </div>
                             </div>
