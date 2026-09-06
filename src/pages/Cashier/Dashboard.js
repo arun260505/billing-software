@@ -632,10 +632,11 @@ function Dashboard() {
                     await updateTableStatus(selectedTable.id, "OCCUPIED");
                 }
 
-                // Print the KOT to the kitchen printer — only the two-printer setup
-                // has one. Option 3 prints the kitchen copy behind the bill instead
-                // (see handleBillPrinted), option 1 uses the Kitchen Display.
-                if (shouldPrintKotOnSend(printerMode)) {
+                // Dine-in starts cooking the moment it's sent. A takeaway/parcel
+                // must be PAID first, so its kitchen ticket is held back and
+                // printed only after settle (see handleBillPrinted). Only dine-in
+                // prints its KOT here on the two-printer setup.
+                if (!isTakeaway && shouldPrintKotOnSend(printerMode)) {
                     printKotNow({
                         order: {
                             order_number: assignedOrderNumber,
@@ -688,7 +689,15 @@ function Dashboard() {
     // order — the customer bill, then the kitchen bill. BillModal calls this once
     // the customer bill has gone out, passing how it went.
     const handleBillPrinted = (printedOrder, billResult) => {
-        if (!shouldPrintKotWithBill(printerMode, printedOrder?.isCounter)) return;
+        // The kitchen copy of a COUNTER / parcel order is printed only now, after
+        // it's settled (paid): single-printer prints it behind the bill, and
+        // two-printer sends it to the kitchen printer (its on-send KOT was held
+        // back). Dine-in already printed its KOT when it was sent; the kitchen
+        // display setup prints nothing.
+        const isCounter = Boolean(printedOrder?.isCounter);
+        const wantsKot = isCounter &&
+            (shouldPrintKotWithBill(printerMode, isCounter) || shouldPrintKotOnSend(printerMode));
+        if (!wantsKot) return;
 
         const kot = {
             order_number: printedOrder.order_number,

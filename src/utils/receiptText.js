@@ -334,6 +334,7 @@ export function buildKotText({ order = {}, format = {} }) {
     out.push(bold(lr(waiter ? `Waiter: ${waiter}` : "", timeStr, W)));
 
     out.push(repeat("-", W));
+    out.push(bold("QTY  ITEM"));   // label the columns so the qty is unmistakable
 
     // Items: "<qty>  <name>", bold, one line each — no blank lines.
     let totalQty = 0;
@@ -341,7 +342,7 @@ export function buildKotText({ order = {}, format = {} }) {
         const qty = Number(it.quantity || 1);
         totalQty += qty;
         const name = it.item_name || it.name || "Item";
-        const prefix = `${qty}`.padEnd(3);          // e.g. "2  "
+        const prefix = `${qty}`.padEnd(5);          // aligns the name under "ITEM"
         const indent = repeat(" ", prefix.length);
         const nameLines = wrap(name, W - prefix.length);
         nameLines.forEach((l, i) => out.push(bold((i === 0 ? prefix : indent) + l)));

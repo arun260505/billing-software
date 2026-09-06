@@ -106,8 +106,10 @@ $text = $text -replace "`r`n", "`n"
 $ESC = [char]27
 $GS  = [char]29
 $init = "$ESC@"                                     # ESC @  - reset printer
-# Feed a few lines so the content clears the cutter, then partial-cut.
-$cut  = "`n`n`n`n" + "$GS" + "V" + [char]66 + [char]0
+# Feed just enough to clear the cutter, then partial-cut. GS V 66 <n> also feeds
+# n dots and most printers auto-feed to the cutter, so 2 lines is plenty - 4 left
+# an obvious blank strip under every ticket.
+$cut  = "`n`n" + "$GS" + "V" + [char]66 + [char]0
 
 $payload = $init + $text + $cut
 

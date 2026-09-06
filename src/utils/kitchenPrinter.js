@@ -41,7 +41,7 @@ export function isParcelOrder(order = {}) {
 /**
  * Generate full HTML for KOT preview and thermal printing.
  */
-export function generateKitchenTicketHtml({ order = {}, restaurant = {}, format = {} }) {
+export function generateKitchenTicketHtml({ order = {}, format = {} }) {
     const cfg = { ...DEFAULT_KITCHEN_FORMAT, ...format };
     const is58mm = cfg.paper_size === "thermal-58";
 
@@ -62,51 +62,18 @@ export function generateKitchenTicketHtml({ order = {}, restaurant = {}, format 
 
     const heavyDivider = `<div style="border-top: 2px solid #000; margin: 8px 0;"></div>`;
     const dashedDivider = `<div style="border-top: 1px dashed #000; margin: 6px 0;"></div>`;
-    const doubleDivider = `<div style="border-top: 3px double #000; margin: 8px 0;"></div>`;
 
-    // ── 1. HEADER SECTION ──────────────────────────────────
-    let headerHtml = `<div style="text-align: center; margin-bottom: 6px;">`;
-
-    if (cfg.show_logo && restaurant.logo && typeof restaurant.logo === "string" && restaurant.logo.trim()) {
-        headerHtml += `<img src="${restaurant.logo}" alt="Logo" style="max-height: ${is58mm ? "36px" : "48px"}; max-width: 100%; object-fit: contain; display: block; margin: 0 auto 4px;" />`;
-    }
-
-    if (cfg.header_title && cfg.header_title.trim()) {
-        headerHtml += `<div style="font-size: ${is58mm ? "13px" : "15px"}; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; border-bottom: 1px solid #000; padding-bottom: 2px; display: inline-block;">${escapeHtml(cfg.header_title)}</div>`;
-    }
-
-    if (cfg.show_restaurant_name) {
-        const rName = restaurant.restaurant_name || "Restaurant";
-        headerHtml += `<div style="font-size: ${is58mm ? "12px" : "14px"}; font-weight: bold; text-transform: uppercase; margin-top: 2px;">${escapeHtml(rName)}</div>`;
-    }
-
-    const addrParts = [restaurant.address, restaurant.city].filter((p) => p && String(p).trim());
-    if (cfg.show_address && addrParts.length > 0) {
-        headerHtml += `<div style="font-size: ${is58mm ? "9px" : "11px"}; color: #222; margin-top: 1px;">${escapeHtml(addrParts.join(", "))}</div>`;
-    }
-
-    if (cfg.show_phone && restaurant.mobile && String(restaurant.mobile).trim()) {
-        headerHtml += `<div style="font-size: ${is58mm ? "9px" : "11px"};">Ph: ${escapeHtml(restaurant.mobile)}</div>`;
-    }
-
-    headerHtml += `</div>`;
-
-    // ── 2. ORDER TYPE HIGHLIGHT BANNER (MONOCHROME OPTIMIZED) ─────────────
-    // Dine-in gets the same boxed banner as parcel — the table number is the
-    // one thing a cook has to read across the pass, and it used to be buried in
-    // a small grey metadata row while takeaway got the whole box.
+    // Compact KOT: no restaurant name/address/phone/logo — the kitchen doesn't
+    // need them, and leaving them off saves paper. The ticket leads straight with
+    // the table (or PARCEL) banner, which is what the cook reads first.
     const bannerTitle = isParcel
         ? "*** PARCEL ***"
-        : (cfg.show_table_name ? `*** ${String(tableName).toUpperCase()} ***` : "*** DINE-IN ***");
-    const bannerSubtitle = isParcel ? "[ TAKEAWAY PACKING ]" : "[ DINE - IN ]";
+        : `*** ${String(tableName).toUpperCase()} ***`;
 
     const orderTypeBannerHtml = `
-        <div style="border: 2px solid #000; padding: ${is58mm ? "4px 2px" : "6px 4px"}; margin: 6px 0; text-align: center; background: #fff;">
+        <div style="border: 2px solid #000; padding: ${is58mm ? "4px 2px" : "6px 4px"}; margin: 4px 0; text-align: center; background: #fff;">
             <div style="font-size: ${is58mm ? "14px" : "17px"}; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; line-height: 1.1;">
                 ${escapeHtml(bannerTitle)}
-            </div>
-            <div style="font-size: ${is58mm ? "9px" : "11px"}; font-weight: bold; letter-spacing: 1px; margin-top: 2px;">
-                ${bannerSubtitle}
             </div>
         </div>
     `;
@@ -200,8 +167,6 @@ export function generateKitchenTicketHtml({ order = {}, restaurant = {}, format 
 
     return `
         <div style="${fontStyle} ${containerStyle}">
-            ${headerHtml}
-            ${doubleDivider}
             ${orderTypeBannerHtml}
             ${metaHtml}
             ${heavyDivider}
