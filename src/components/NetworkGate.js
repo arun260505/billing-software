@@ -12,12 +12,13 @@ import { discoverAndStoreTill } from "../services/discovery";
 import "../styles/NetworkGate.css";
 
 /**
- * Blocks the whole app at launch until the restaurant server answers.
+ * Blocks the whole app until the restaurant till answers.
  *
- * IMPORTANT — this gate runs ONCE, at startup. After it passes it never
- * re-blocks, because a WiFi dead spot mid-service must not throw a full-screen
- * wall over a waiter with an open cart. Dropouts during a session are the job
- * of the offline banner / retry handling, not of this gate.
+ * It checks once at launch, and then keeps a light heartbeat while online: if
+ * the till goes away (stopped, unplugged, off the network) it re-blocks after a
+ * short grace period, so the waiter can't keep taking orders against a till that
+ * isn't there. One missed beat is tolerated (a brief WiFi blip must not wall a
+ * waiter mid-order); it re-blocks only after two consecutive misses.
  */
 function NetworkGate({ children }) {
 
@@ -72,6 +73,25 @@ function NetworkGate({ children }) {
 
     }, [status, runCheck]);
 
+    // Heartbeat while online: if the till stops answering, re-block. Two
+    // consecutive misses (a ~20s grace) before walling, so a momentary WiFi
+    // hiccup doesn't kick a waiter out of an open cart.
+    useEffect(() => {
+        if (status !== "online") {
+            return undefined;
+        }
+        let misses = 0;
+        let cancelled = false;
+        const id = setInterval(async () => {
+            const ok = await isServerReachable();
+            if (cancelled) return;
+            if (ok) { misses = 0; return; }
+            misses += 1;
+            if (misses >= 2) setStatus("offline");
+        }, 10000);
+        return () => { cancelled = true; clearInterval(id); };
+    }, [status]);
+
     if (status === "online") {
         return children;
     }
@@ -100,11 +120,12 @@ function NetworkGate({ children }) {
 
                 <div className="netgate-icon">📶</div>
 
-                <h1>You are not on the restaurant network</h1>
+                <h1>Can&apos;t reach the restaurant till</h1>
 
                 <p className="netgate-body">
-                    This app only works on the restaurant&apos;s WiFi. Connect to it
-                    and try again.
+                    This app needs the restaurant till to be switched on and on the
+                    same WiFi. Make sure the till (billing PC) is running, then try
+                    again.
                 </p>
 
                 <div className="netgate-actions">
