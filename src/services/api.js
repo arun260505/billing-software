@@ -4,10 +4,10 @@ import { resolveApiBaseUrl } from "./serverConfig";
 // Native APK: the per-device server address the user configured on first launch.
 // Browser (cloud/cashier/dev): the build-time REACT_APP_API_URL, else localhost.
 // Without a timeout axios waits forever, so a till that has gone away mid-shift
-// leaves the waiter staring at "Sending…" with no error and no way back — the
-// order is neither placed nor refused. 20s is well past a slow LAN round trip
-// and well short of a waiter giving up on the app.
-const REQUEST_TIMEOUT_MS = 20000;
+// leaves the waiter staring at "Sending…" with no error and no way back. 8s is
+// well past a normal LAN round trip (a bill/KOT is a few hundred bytes) and short
+// enough that a waiter isn't left staring when the till PC has been switched off.
+const REQUEST_TIMEOUT_MS = 8000;
 
 const api = axios.create({
     baseURL: resolveApiBaseUrl(),
@@ -76,6 +76,11 @@ api.interceptors.response.use(
             error.friendlyMessage = error.code === "ECONNABORTED"
                 ? "The restaurant server did not respond. Check the WiFi and try again — your order was NOT sent."
                 : "Could not reach the restaurant server. Check the WiFi and try again — your order was NOT sent.";
+
+            // Tell the app the till just became unreachable so the gate can put
+            // up the "can't reach the till" screen immediately, instead of the
+            // waiter finding out only on the next heartbeat.
+            try { window.dispatchEvent(new Event("inwallz:server-unreachable")); } catch { /* SSR/no window */ }
         }
 
         return Promise.reject(error);

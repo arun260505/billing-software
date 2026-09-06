@@ -75,13 +75,17 @@ function NetworkGate({ children }) {
 
     // Heartbeat while online: if the till stops answering, re-block. Two
     // consecutive misses (a ~20s grace) before walling, so a momentary WiFi
-    // hiccup doesn't kick a waiter out of an open cart.
+    // hiccup doesn't kick a waiter out of an open cart. AND react at once when a
+    // real request (e.g. sending an order) just failed to reach the till — that
+    // is a concrete signal the till is gone, so confirm and block immediately
+    // rather than making the waiter wait for the next heartbeat.
     useEffect(() => {
         if (status !== "online") {
             return undefined;
         }
         let misses = 0;
         let cancelled = false;
+
         const id = setInterval(async () => {
             const ok = await isServerReachable();
             if (cancelled) return;
@@ -89,7 +93,20 @@ function NetworkGate({ children }) {
             misses += 1;
             if (misses >= 2) setStatus("offline");
         }, 10000);
-        return () => { cancelled = true; clearInterval(id); };
+
+        const onUnreachable = async () => {
+            // Confirm with one probe so a single odd request doesn't wall the
+            // app; if the till really isn't answering, block now.
+            const ok = await isServerReachable();
+            if (!cancelled && !ok) setStatus("offline");
+        };
+        window.addEventListener("inwallz:server-unreachable", onUnreachable);
+
+        return () => {
+            cancelled = true;
+            clearInterval(id);
+            window.removeEventListener("inwallz:server-unreachable", onUnreachable);
+        };
     }, [status]);
 
     if (status === "online") {
