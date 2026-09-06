@@ -526,11 +526,15 @@ function Dashboard() {
             // that Admin has allowed waiter billing (else it refuses). Pass NO
             // optional charges - the server auto-applies GST/service itself, so
             // sending the auto charges here would double them.
-            await settleTable(table.id, [{ method, amount: total }], total, []);
+            const settled = await settleTable(table.id, [{ method, amount: total }], total, []);
+
+            // Use the REAL order number the settle returned, not a fabricated
+            // "TBL-<table>-<clock>" that matches nothing in the database.
+            const billNumber = settled?.data?.data?.order_number || `Table ${table.table_number}`;
 
             printBillNow({
                 order: {
-                    order_number: `TBL-${table.table_number}-${Date.now().toString().slice(-4)}`,
+                    order_number: billNumber,
                     tableName: `Table ${table.table_number}`,
                     table_number: table.table_number,
                     items,

@@ -48,7 +48,7 @@ export function generateKitchenTicketHtml({ order = {}, restaurant = {}, format 
     const items = order.items || [];
     const dateStr = order.date || new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     const timeStr = order.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const orderNumber = order.order_number || "ORD-1024";
+    const orderNumber = order.order_number || "";
 
     const isParcel = isParcelOrder(order);
     const tableName = isParcel
@@ -115,8 +115,9 @@ export function generateKitchenTicketHtml({ order = {}, restaurant = {}, format 
     let metaHtml = `<div style="font-size: ${is58mm ? "10px" : "12px"}; margin: 4px 0;">`;
     const metaRows = [];
 
-    if (cfg.show_order_number) {
-        metaRows.push(`<div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58mm ? "11px" : "13px"};"><span>KOT / ORD:</span><span>#${escapeHtml(orderNumber)}</span></div>`);
+    // Dine-in reads the table banner above; only a parcel needs a token number.
+    if (cfg.show_order_number && isParcel && orderNumber) {
+        metaRows.push(`<div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58mm ? "11px" : "13px"};"><span>Token:</span><span>#${escapeHtml(orderNumber)}</span></div>`);
     }
 
     if (cfg.show_order_type) {
@@ -130,8 +131,10 @@ export function generateKitchenTicketHtml({ order = {}, restaurant = {}, format 
         metaRows.push(`<div style="display: flex; justify-content: space-between;"><span>Time:</span><span>${escapeHtml(dtParts.join(" | "))}</span></div>`);
     }
 
-    if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) {
-        metaRows.push(`<div style="display: flex; justify-content: space-between;"><span>Server / Waiter:</span><span>${escapeHtml(order.waiter_name || order.waiter)}</span></div>`);
+    // Who took the order, in bold — the kitchen hands the dish back to them.
+    const kotWaiter = order.waiter_name || order.waiter;
+    if (kotWaiter) {
+        metaRows.push(`<div style="display: flex; justify-content: space-between; font-weight: bold;"><span>Waiter:</span><span>${escapeHtml(kotWaiter)}</span></div>`);
     }
 
     if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) {

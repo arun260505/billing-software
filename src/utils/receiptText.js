@@ -307,7 +307,7 @@ export function buildKotText({ order = {}, restaurant = {}, format = {} }) {
     const items = order.items || [];
     const dateStr = order.date || new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     const timeStr = order.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const orderNumber = order.order_number || "ORD-1024";
+    const orderNumber = order.order_number || "";
 
     const isParcel = isParcelOrder(order);
     const tableName = isParcel
@@ -338,9 +338,9 @@ export function buildKotText({ order = {}, restaurant = {}, format = {} }) {
     out.push(bold(center(isParcel ? "[ TAKEAWAY PACKING ]" : "[ DINE - IN ]", W)));
     out.push(repeat("=", W));
 
-    // The number the pass calls out when the dish goes up — same weight as the
-    // table banner, so both are readable at arm's length.
-    if (cfg.show_order_number) out.push(heading(lr("KOT / ORD:", `#${orderNumber}`, W)));
+    // Dine-in reads the table banner above, so it needs no order number. Only a
+    // parcel/takeaway carries a token number (to match the packed order at pickup).
+    if (cfg.show_order_number && isParcel && orderNumber) out.push(heading(lr("Token:", `#${orderNumber}`, W)));
     if (cfg.show_order_type) out.push(lr("Type:", isParcel ? "PARCEL / TAKEAWAY" : "DINE-IN", W));
 
     const dt = [];
@@ -348,7 +348,10 @@ export function buildKotText({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_time) dt.push(timeStr);
     if (dt.length) out.push(lr("Time:", dt.join(" | "), W));
 
-    if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) out.push(lr("Waiter:", order.waiter_name || order.waiter, W));
+    // Who took the order, in bold — the kitchen wants to know at a glance which
+    // waiter to hand the dish back to.
+    const waiter = order.waiter_name || order.waiter;
+    if (waiter) out.push(bold(lr("Waiter:", waiter, W)));
     if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) out.push(lr("Cashier:", order.cashier_name || order.cashier, W));
     if (cfg.show_customer_name && order.customer_name) out.push(lr("Customer:", order.customer_name, W));
 
