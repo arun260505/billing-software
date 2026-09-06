@@ -57,6 +57,13 @@ function NetworkGate({ children }) {
             return undefined;
         }
 
+        // After a WiFi drop+return, the Android WebView's networking often stays
+        // wedged: new requests keep failing until the page itself is reloaded
+        // (which is why clearing the app from recents fixes it but an in-place
+        // re-check doesn't). So on the network coming back, RELOAD rather than
+        // re-probe — it resets the WebView's network stack, and the persistent
+        // cart is restored from storage after the reload.
+        const reload = () => window.location.reload();
         const recheck = () => {
             if (document.visibilityState === "visible") {
                 runCheck();
@@ -64,11 +71,11 @@ function NetworkGate({ children }) {
         };
 
         document.addEventListener("visibilitychange", recheck);
-        window.addEventListener("online", runCheck);
+        window.addEventListener("online", reload);
 
         return () => {
             document.removeEventListener("visibilitychange", recheck);
-            window.removeEventListener("online", runCheck);
+            window.removeEventListener("online", reload);
         };
 
     }, [status, runCheck]);
@@ -150,7 +157,7 @@ function NetworkGate({ children }) {
                     <button
                         type="button"
                         className="netgate-btn netgate-btn-primary"
-                        onClick={runCheck}
+                        onClick={() => window.location.reload()}
                     >
                         Try Again
                     </button>
