@@ -379,6 +379,26 @@ exports.rebillOrder = (req, res) => {
 
 };
 
+// PUT /api/orders/:id/charges — store the per-bill charges the cashier picked on
+// a counter/takeaway order and recompute its grand_total, before payment.
+// Only name/type/amount are read; the rupee value is resolved server-side, so a
+// charge cannot be worth whatever the screen claims. Returns the new grand_total.
+exports.setOrderCharges = (req, res) => {
+
+    const charges = Array.isArray(req.body.charges) ? req.body.charges : [];
+
+    orderModel.setOrderCharges(
+        req.params.id,
+        req.user.restaurant_id,
+        charges,
+        (err, result) => {
+            if (err) return error(res, err.message, 400);
+            return success(res, "Bill charges applied.", result || null);
+        }
+    );
+
+};
+
 // GET /api/orders/table/:tableId/items — a table's active (unpaid) items, merged
 exports.getTableActiveItems = (req, res) => {
 

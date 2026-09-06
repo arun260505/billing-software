@@ -34,6 +34,10 @@ router.get("/bills/today", billing, orderController.getTodaysBills);
 router.get("/bills/:id", billing, orderController.getBill);
 router.post("/:id/item", billing, orderController.addItemToOrder);   // add to THIS bill
 router.put("/:id/rebill", billing, orderController.rebillOrder);     // recompute + sync payment
+// Fix the picked per-bill charges onto a counter/takeaway order before payment,
+// so a removable auto charge (parcel) or an opt-in chip is actually stored and
+// counted, not just added to the amount collected.
+router.put("/:id/charges", billing, orderController.setOrderCharges);
 
 router.get("/:id/items", staff, orderController.getOrderDetails);
 router.get("/:id", staff, orderController.getOrderById);

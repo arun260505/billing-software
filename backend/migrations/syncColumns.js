@@ -132,6 +132,11 @@ async function runSyncSchema() {
 
         await ensureColumn("charges", "charge_role", "VARCHAR(10) NOT NULL DEFAULT 'Charge'");
         await ensureColumn("charges", "auto_apply", "TINYINT(1) NOT NULL DEFAULT 0");
+        // 011: an auto-applied ordinary charge (packing, AC) can be marked
+        // "apply to all, but the cashier can drop it" — it reaches the bill as a
+        // pre-selected, removable chip. Default 0 keeps GST/service locked and
+        // every existing charge behaving exactly as before.
+        await ensureColumn("charges", "removable", "TINYINT(1) NOT NULL DEFAULT 0");
 
         if (firstRun) await backfillTaxCharges();
     }

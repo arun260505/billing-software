@@ -67,8 +67,21 @@ const appliesToOrderType = (charge, orderType) => {
 const isActiveCharge = (c) => String(c.status || "Active") === "Active";
 
 /**
+ * A charge the biller applies on its own, with nobody choosing it: auto_apply
+ * AND not removable. A removable auto charge (e.g. a packing fee an admin marked
+ * "apply to all, but the cashier can drop it") is deliberately NOT applied here —
+ * it reaches the bill as a pre-selected chip the screen sends back at settle, so
+ * removing it actually removes it. Only the locked autos (GST, service) are
+ * enforced server-side. Rows with no removable column (older data, stored
+ * order_charges) read as not-removable, so their behaviour is unchanged.
+ */
+const isLockedAuto = (c) =>
+    Boolean(Number(c.auto_apply)) && !Boolean(Number(c.removable));
+
+/**
  * The charges that belong on a bill: active, valid, matching the order type.
- * `onlyAuto` keeps just the ones that apply without the cashier picking them.
+ * `onlyAuto` keeps just the locked autos — the ones applied without anyone
+ * choosing them (see isLockedAuto).
  */
 const applicableCharges = (charges, orderType, onlyAuto = false) =>
     (Array.isArray(charges) ? charges : []).filter(
@@ -76,7 +89,7 @@ const applicableCharges = (charges, orderType, onlyAuto = false) =>
             isValidCharge(c) &&
             isActiveCharge(c) &&
             appliesToOrderType(c, orderType) &&
-            (!onlyAuto || Boolean(Number(c.auto_apply)))
+            (!onlyAuto || isLockedAuto(c))
     );
 
 /**
@@ -170,6 +183,7 @@ module.exports = {
     normalizeRole,
     isValidCharge,
     appliesToOrderType,
+    isLockedAuto,
     applicableCharges,
     resolveCharges,
     splitCharges,

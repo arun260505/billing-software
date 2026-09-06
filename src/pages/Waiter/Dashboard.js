@@ -16,7 +16,7 @@ import printerSettingService from "../../services/printerSettingService";
 import { DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
 import { DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
 import { printKotNow, printBillNow } from "../../utils/printDispatch";
-import { autoChargesFor, billTotals } from "../../utils/rates";
+import { autoChargesFor, preselectedChargesFor, billTotals } from "../../utils/rates";
 import {
     DEFAULT_PRINTER_MODE,
     normalizePrinterMode,
@@ -534,18 +534,22 @@ function Dashboard() {
             const items = previousItems;
             const sub = items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0);
             const autoCharges = autoChargesFor(charges, "Dine-In");
+            // Removable autos (a packing/AC fee marked "apply to all, but can be
+            // removed"). The server does NOT apply these on its own, so the waiter
+            // bill sends them explicitly and they're totalled in here.
+            const removableAutos = preselectedChargesFor(charges, "Dine-In");
             const {
                 tax: gstAmt,
                 service_charge: svc,
                 charge_lines: resolvedCharges,
                 grand_total: total
-            } = billTotals(sub, autoCharges);
+            } = billTotals(sub, [...autoCharges, ...removableAutos]);
 
             // Settle: the backend records payment + frees the table, and enforces
-            // that Admin has allowed waiter billing (else it refuses). Pass NO
-            // optional charges - the server auto-applies GST/service itself, so
-            // sending the auto charges here would double them.
-            const settled = await settleTable(table.id, [{ method, amount: total }], total, []);
+            // that Admin has allowed waiter billing (else it refuses). GST/service
+            // are locked autos the server applies itself — sending them here would
+            // double them — so only the removable autos (role 'Charge') go up.
+            const settled = await settleTable(table.id, [{ method, amount: total }], total, removableAutos);
 
             // Use the REAL order number the settle returned, not a fabricated
             // "TBL-<table>-<clock>" that matches nothing in the database.

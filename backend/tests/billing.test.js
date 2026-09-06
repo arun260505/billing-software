@@ -252,6 +252,27 @@ test("stored order_charges rows carry no applies_* flags and always apply", () =
     assert.strictEqual(applicableCharges(stored, "Dine-In").length, 1);
 });
 
+test("a removable auto charge is not enforced server-side", () => {
+    // "Apply to all, but the cashier can drop it": it reaches the bill as a
+    // pre-selected chip the screen sends back at settle, so the biller must NOT
+    // apply it on its own — otherwise removing the chip would remove nothing.
+    const rows = [
+        { id: 1, charge_name: "GST 5%", charge_role: "Tax", charge_type: "Percentage",
+          amount: 5, auto_apply: 1, removable: 0, applies_takeaway: 1, status: "Active" },
+        { id: 2, charge_name: "Parcel", charge_role: "Charge", charge_type: "Fixed",
+          amount: 20, auto_apply: 1, removable: 1, applies_takeaway: 1, status: "Active" }
+    ];
+    // Only the locked GST is auto-applied; the removable parcel is left out.
+    assert.deepStrictEqual(
+        applicableCharges(rows, "Takeaway", true).map((c) => c.id),
+        [1]
+    );
+    // A plain auto charge (removable absent / 0) is still enforced as before.
+    const legacy = [{ id: 9, charge_name: "Packing", charge_role: "Charge",
+        charge_type: "Fixed", amount: 10, auto_apply: 1, applies_takeaway: 1, status: "Active" }];
+    assert.deepStrictEqual(applicableCharges(legacy, "Takeaway", true).map((c) => c.id), [9]);
+});
+
 test("no charges means charges_total is 0, not undefined", () => {
     // orders.charges_total is NOT NULL, so undefined here would fail the insert.
     assert.strictEqual(totalsFromSubtotal(100).charges_total, 0);

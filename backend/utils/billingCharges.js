@@ -39,7 +39,7 @@ const getCharges = (restaurantId, callback) => {
     }
 
     db.query(
-        `SELECT id, charge_name, charge_type, charge_role, amount, auto_apply,
+        `SELECT id, charge_name, charge_type, charge_role, amount, auto_apply, removable,
                 applies_dinein, applies_takeaway, applies_delivery, status
          FROM charges
          WHERE restaurant_id = ? AND status = 'Active' AND deleted_at IS NULL`,

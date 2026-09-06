@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { autoChargesFor, billTotals } from "../../utils/rates";
+import { allAutoChargesFor, billTotals } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
 // A settled bill, opened for correction: adjust a quantity that was rung up
@@ -45,7 +45,7 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
         tax_lines: taxLines,
         service_lines: serviceLines,
         charge_lines: chargeLines
-    } = billTotals(subtotal, autoChargesFor(charges, bill.order_type || (bill.table_name ? "Dine-In" : "Takeaway")));
+    } = billTotals(subtotal, allAutoChargesFor(charges, bill.order_type || (bill.table_name ? "Dine-In" : "Takeaway")));
 
     // What the customer was actually charged when this bill was settled.
     const charged = Number(chargedTotal || 0);

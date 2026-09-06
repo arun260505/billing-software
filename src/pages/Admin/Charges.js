@@ -182,6 +182,9 @@ function Charges() {
                 charge_role: charge.charge_role || "Charge",
                 amount: Number(charge.amount),
                 auto_apply: Boolean(Number(charge.auto_apply)),
+                // Preserve removability across an on/off toggle, exactly like the
+                // other flags — an update replaces the whole row.
+                removable: Boolean(Number(charge.removable)),
                 applies_dinein: Boolean(Number(charge.applies_dinein)),
                 applies_takeaway: Boolean(Number(charge.applies_takeaway)),
                 applies_delivery: Boolean(Number(charge.applies_delivery)),

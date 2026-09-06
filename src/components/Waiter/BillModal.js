@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { autoChargesFor, billTotals } from "../../utils/rates";
+import { autoChargesFor, preselectedChargesFor, billTotals } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
 // Bill preview the waiter reviews BEFORE sending to the cashier. Identical items
@@ -49,7 +49,10 @@ function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle
     // whole rupees and 2% missing, so this preview quoted a different total
     // from the cashier screen for the same table. Now the shared calculation.
     const subtotal = groups.reduce((s, g) => s + g.price * g.qty, 0);
-    const totals = billTotals(subtotal, autoChargesFor(charges, "Dine-In"));
+    // Locked autos (GST/service) plus any removable autos (a packing/AC fee set
+    // to apply to every bill) — both are on a waiter bill; the waiter screen has
+    // no chips, so removable autos are shown and charged like the rest.
+    const totals = billTotals(subtotal, [...autoChargesFor(charges, "Dine-In"), ...preselectedChargesFor(charges, "Dine-In")]);
     const total = totals.grand_total;
     const billedLines = [...totals.tax_lines, ...totals.service_lines, ...totals.charge_lines];
 

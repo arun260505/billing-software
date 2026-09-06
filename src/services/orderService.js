@@ -53,6 +53,13 @@ export const addItemToOrder = (orderId, menuItemId, quantity = 1) =>
 export const rebillOrder = (orderId, paymentMethod) =>
   api.put(`/orders/${orderId}/rebill`, { payment_method: paymentMethod });
 
+// Store the per-bill charges picked on a counter/takeaway order (a removable
+// parcel fee, an opt-in charge) and recompute its grand_total, before payment.
+// The backend resolves each charge to rupees itself; only name/type/amount are
+// read. Returns the authoritative grand_total to collect.
+export const setOrderCharges = (orderId, charges = []) =>
+  api.put(`/orders/${orderId}/charges`, { charges });
+
 export const markOrderServed = (id) =>
   api.put(`/orders/${id}/serve`);
 

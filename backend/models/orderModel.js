@@ -752,6 +752,45 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
 
 };
 
+/*
+| Fix the per-bill charges the cashier picked onto ONE order and recompute its
+| grand_total — the counter / takeaway equivalent of what settleTable does for a
+| whole table. A counter order is settled with a plain payment (paymentController),
+| so without this the charges picked at the bill screen (a removable parcel fee,
+| an opt-in packing charge) would be paid for but never stored on the order, and
+| reports summing grand_total would under-count them.
+|
+| Returns the recomputed grand_total and the order's number so the screen pays
+| the authoritative figure and prints the stored bill number.
+*/
+const setOrderCharges = (orderId, restaurantId, charges, callback) => {
+
+    db.query(
+        `SELECT id, order_number, subtotal, charges_total, grand_total
+         FROM orders WHERE id=? AND restaurant_id=? AND deleted_at IS NULL LIMIT 1`,
+        [orderId, restaurantId],
+        (err, rows) => {
+            if (err) return callback(err);
+            if (!rows.length) return callback(new Error("Order not found."));
+
+            const order = rows[0];
+
+            // applyBillCharges works on an array of a table's orders and pins the
+            // charges onto orders[0]; a counter bill is a single order, so pass
+            // just this one.
+            applyBillCharges([order], restaurantId, charges, (err) => {
+                if (err) return callback(err);
+                callback(null, {
+                    order_id: order.id,
+                    order_number: order.order_number,
+                    grand_total: money(order.grand_total)
+                });
+            });
+        }
+    );
+
+};
+
 // Insert a Success payment for an order, numbered PAY-<date>-NNNN.
 const recordPayment = (orderId, restaurantId, method, amount, remarks, callback) => {
 
@@ -1234,6 +1273,7 @@ module.exports = {
     getTodaysOrderCount,
     getTableActiveItems,
     settleTable,
+    setOrderCharges,
     markServed,
     markTableServed,
     markItemServed,

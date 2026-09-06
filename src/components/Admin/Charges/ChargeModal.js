@@ -17,6 +17,9 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
         charge_role: "Charge",
         amount: "",
         auto_apply: false,
+        // "Apply to all, but the cashier can drop it" — only for an auto-applied
+        // ordinary charge. It reaches the bill as a pre-selected, removable chip.
+        removable: false,
         applies_dinein: true,
         applies_takeaway: false,
         applies_delivery: false,
@@ -37,6 +40,7 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                 charge_role: charge.charge_role || "Charge",
                 amount: charge.amount || "",
                 auto_apply: Boolean(Number(charge.auto_apply)),
+                removable: Boolean(Number(charge.removable)),
                 applies_dinein: Boolean(charge.applies_dinein),
                 applies_takeaway: Boolean(charge.applies_takeaway),
                 applies_delivery: Boolean(charge.applies_delivery),
@@ -72,11 +76,15 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!validate()) return;
+        const auto_apply = isTaxLike ? true : form.auto_apply;
         onSave({
             ...form,
             amount: Number(form.amount),
             // A tax the cashier could forget to tap is not a tax.
-            auto_apply: isTaxLike ? true : form.auto_apply
+            auto_apply,
+            // Removable only makes sense for an auto-applied ordinary charge; GST
+            // and service stay locked, and an opt-in chip is already optional.
+            removable: (!isTaxLike && auto_apply) ? form.removable : false
         });
     };
 
@@ -255,11 +263,40 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                                 type="button"
                                 className={`toggle-switch ${(isTaxLike || form.auto_apply) ? "on" : ""}`}
                                 disabled={isTaxLike}
-                                onClick={() => setForm({ ...form, auto_apply: !form.auto_apply })}
+                                onClick={() => setForm({
+                                    ...form,
+                                    auto_apply: !form.auto_apply,
+                                    // Turning auto off makes "can remove" meaningless.
+                                    removable: form.auto_apply ? false : form.removable
+                                })}
                             >
                                 <span className="toggle-knob" />
                             </button>
                         </div>
+
+                        {/* Only an auto-applied ordinary charge can be removable:
+                            it lands on every matching bill already ticked, and the
+                            cashier taps it off when it doesn't apply. GST / service
+                            stay locked; an opt-in chip is the cashier's to add. */}
+                        {!isTaxLike && form.auto_apply && (
+                            <div className="toggle-row">
+                                <span className="toggle-label">
+                                    Cashier can remove it from a bill
+                                    <span style={{ display: "block", fontWeight: 400, fontSize: "12px", color: "#94A3B8" }}>
+                                        {form.removable
+                                            ? "Shown already ticked on the bill screen; the cashier can tap it off."
+                                            : "Locked on every matching bill — nobody can take it off."}
+                                    </span>
+                                </span>
+                                <button
+                                    type="button"
+                                    className={`toggle-switch ${form.removable ? "on" : ""}`}
+                                    onClick={() => setForm({ ...form, removable: !form.removable })}
+                                >
+                                    <span className="toggle-knob" />
+                                </button>
+                            </div>
+                        )}
 
                         <div className="toggle-row">
                             <span className="toggle-label">Charge Status</span>

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPayment } from "../../services/paymentService";
+import { setOrderCharges } from "../../services/orderService";
 import { printBillNow } from "../../utils/printDispatch";
-import { optionalChargesFor, resolveCharges, money } from "../../utils/rates";
+import { optionalChargesFor, preselectedChargesFor, resolveCharges, money } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
 // `onPrinted` (optional) fires with the order as it was printed, right after the
@@ -19,10 +20,21 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
     const [splitMode, setSplitMode] = useState(false);
     const [splitAmounts, setSplitAmounts] = useState({ Cash: "", Card: "", UPI: "", Wallet: "" });
     const [loading, setLoading] = useState(false);
-    const [selectedCharges, setSelectedCharges] = useState([]);
 
     const orderType = order.isCounter ? "Takeaway" : "Dine-In";
     const pickableCharges = optionalChargesFor(charges, orderType);
+
+    // Removable autos (a parcel/packing fee marked "apply to all, but can be
+    // removed") start selected — already in the total, dropped with a tap.
+    const [selectedCharges, setSelectedCharges] = useState(() => preselectedChargesFor(charges, orderType));
+
+    // The charge list is fetched, so it can land after the first render; seed the
+    // pre-selected removable autos once it (or the order type) changes.
+    const chargeKey = (Array.isArray(charges) ? charges : []).map((c) => c.id).join(",");
+    useEffect(() => {
+        setSelectedCharges(preselectedChargesFor(charges, orderType));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chargeKey, orderType]);
 
     // The tax / service lines behind order.total, named as the restaurant named
     // them. They used to be printed here as a hardcoded "GST (5%)".
@@ -79,6 +91,14 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
     const handleConfirm = async () => {
         setLoading(true);
         try {
+            // Persist the picked charges onto the order and recompute its total
+            // BEFORE taking payment, so a removable parcel fee or an opt-in charge
+            // is actually stored and counted — not merely added to the amount
+            // collected. Only needed when this bill has such charges to manage.
+            if (pickableCharges.length > 0 && order.order_id) {
+                await setOrderCharges(order.order_id, selectedCharges);
+            }
+
             if (splitMode) {
                 // Create one payment per split method; the backend reconciles to Paid
                 // once the split amounts cover the grand total.

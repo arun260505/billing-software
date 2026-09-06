@@ -14,8 +14,8 @@ const getChargeById = (id, restaurantId, callback) => {
 const createCharge = (charge, callback) => {
     const sql = `INSERT INTO charges
         (restaurant_id, charge_name, description, charge_type, charge_role, amount,
-         auto_apply, applies_dinein, applies_takeaway, applies_delivery, apply_tax, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+         auto_apply, removable, applies_dinein, applies_takeaway, applies_delivery, apply_tax, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     db.query(sql, [
         charge.restaurant_id,
         charge.charge_name,
@@ -24,6 +24,7 @@ const createCharge = (charge, callback) => {
         normalizeRole(charge.charge_role),
         charge.amount,
         charge.auto_apply ? 1 : 0,
+        charge.removable ? 1 : 0,
         charge.applies_dinein ? 1 : 0,
         charge.applies_takeaway ? 1 : 0,
         charge.applies_delivery ? 1 : 0,
@@ -35,7 +36,7 @@ const createCharge = (charge, callback) => {
 const updateCharge = (id, restaurantId, charge, callback) => {
     const sql = `UPDATE charges SET
         charge_name=?, description=?, charge_type=?, charge_role=?, amount=?,
-        auto_apply=?, applies_dinein=?, applies_takeaway=?, applies_delivery=?,
+        auto_apply=?, removable=?, applies_dinein=?, applies_takeaway=?, applies_delivery=?,
         apply_tax=?, status=?
         WHERE id=? AND restaurant_id=?`;
     db.query(sql, [
@@ -45,6 +46,7 @@ const updateCharge = (id, restaurantId, charge, callback) => {
         normalizeRole(charge.charge_role),
         charge.amount,
         charge.auto_apply ? 1 : 0,
+        charge.removable ? 1 : 0,
         charge.applies_dinein ? 1 : 0,
         charge.applies_takeaway ? 1 : 0,
         charge.applies_delivery ? 1 : 0,

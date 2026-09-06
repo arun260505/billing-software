@@ -63,8 +63,26 @@ export function appliesToOrderType(charge, orderType) {
 const isActiveCharge = (c) => String(c.status || "Active") === "Active";
 
 /**
+ * A charge the bill applies on its own, locked, with nobody choosing it:
+ * auto_apply AND not removable — this is where GST / service charge live.
+ * Mirrors backend/utils/billing.js isLockedAuto.
+ */
+export const isLockedAuto = (c) =>
+    Boolean(Number(c.auto_apply)) && !Boolean(Number(c.removable));
+
+/**
+ * A charge that shows on the bill screen as a PRE-SELECTED chip: applied to
+ * every matching bill, but the cashier/waiter can tap it off (auto_apply AND
+ * removable). A packing / parcel fee an admin marked "apply to all, but can be
+ * removed".
+ */
+export const isPreselectedCharge = (c) =>
+    Boolean(Number(c.auto_apply)) && Boolean(Number(c.removable));
+
+/**
  * The charges that belong on a bill: active, valid, matching the order type.
- * `onlyAuto` keeps just the ones applied without the cashier choosing them.
+ * `onlyAuto` keeps just the LOCKED autos — the ones applied without anyone
+ * choosing them (see isLockedAuto).
  */
 export function applicableCharges(charges, orderType, onlyAuto = false) {
     return (Array.isArray(charges) ? charges : []).filter(
@@ -72,18 +90,36 @@ export function applicableCharges(charges, orderType, onlyAuto = false) {
             isValidCharge(c) &&
             isActiveCharge(c) &&
             appliesToOrderType(c, orderType) &&
-            (!onlyAuto || Boolean(Number(c.auto_apply)))
+            (!onlyAuto || isLockedAuto(c))
     );
 }
 
-/** GST / service charge / standing fees — on the bill before anyone touches it. */
+/** GST / service charge / locked fees — on the bill before anyone touches it. */
 export function autoChargesFor(charges, orderType) {
     return applicableCharges(charges, orderType, true);
 }
 
-/** The opt-in charges the cashier can add — the chips on the bill screen. */
+/**
+ * The chips on the bill screen: everything that is not a locked auto. Opt-in
+ * charges start unselected; removable autos (isPreselectedCharge) start selected.
+ */
 export function optionalChargesFor(charges, orderType) {
-    return applicableCharges(charges, orderType).filter((c) => !Number(c.auto_apply));
+    return applicableCharges(charges, orderType).filter((c) => !isLockedAuto(c));
+}
+
+/** The removable autos for this order type — the chips that start selected. */
+export function preselectedChargesFor(charges, orderType) {
+    return applicableCharges(charges, orderType).filter(isPreselectedCharge);
+}
+
+/**
+ * Every charge that applies to a matching bill on its own — locked AND removable
+ * autos. Used only where a bill's charges are being RE-derived rather than picked
+ * (correcting a settled bill), so a removable auto that was on the bill stays on
+ * it. The chip screens use autoChargesFor + optionalChargesFor instead.
+ */
+export function allAutoChargesFor(charges, orderType) {
+    return applicableCharges(charges, orderType).filter((c) => Boolean(Number(c.auto_apply)));
 }
 
 /**

@@ -21,15 +21,20 @@ const ROLE_TYPES = ["Fixed", "Percentage"];
 
 const chargeFromBody = (body) => {
     const charge_role = normalizeRole(body.charge_role);
+    // A tax or service charge is meaningless as an opt-in chip the cashier
+    // may forget to tap, so those always apply automatically.
+    const auto_apply = charge_role === ROLES.CHARGE ? (body.auto_apply ? 1 : 0) : 1;
     return {
         charge_name: (body.charge_name || "").trim(),
         description: (body.description || "").trim() || null,
         charge_type: (body.charge_type || "").trim(),
         charge_role,
         amount: Number(body.amount) || 0,
-        // A tax or service charge is meaningless as an opt-in chip the cashier
-        // may forget to tap, so those always apply automatically.
-        auto_apply: charge_role === ROLES.CHARGE ? (body.auto_apply ? 1 : 0) : 1,
+        auto_apply,
+        // "Apply to all, but the cashier can drop it": only an auto-applied
+        // ordinary charge (packing, AC) can be removable. GST / service stay
+        // locked, and an opt-in chip is already the cashier's to add or not.
+        removable: (charge_role === ROLES.CHARGE && auto_apply && body.removable) ? 1 : 0,
         applies_dinein: body.applies_dinein ? 1 : 0,
         applies_takeaway: body.applies_takeaway ? 1 : 0,
         applies_delivery: body.applies_delivery ? 1 : 0,
@@ -224,6 +229,7 @@ exports.duplicateCharge = (req, res) => {
             charge_role: original.charge_role,
             amount: original.amount,
             auto_apply: original.auto_apply ? 1 : 0,
+            removable: original.removable ? 1 : 0,
             applies_dinein: original.applies_dinein ? 1 : 0,
             applies_takeaway: original.applies_takeaway ? 1 : 0,
             applies_delivery: original.applies_delivery ? 1 : 0,
