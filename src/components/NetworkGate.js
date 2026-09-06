@@ -48,37 +48,45 @@ function NetworkGate({ children }) {
         runCheck();
     }, [runCheck]);
 
-    // While blocked, re-check when the waiter comes back from the WiFi settings
-    // screen so connecting to the right network recovers on its own. Bound only
-    // in the blocked state, so a live session is never re-probed.
+    // While blocked (offline / stuck searching), keep probing the till on a timer
+    // and RELOAD the moment it answers again. This is what auto-recovers the app:
+    //  - when only the till's internet is toggled, the PHONE's network never
+    //    changes, so the browser 'online' event never fires — a poll is the only
+    //    signal the till is back;
+    //  - after a WiFi drop+return the Android WebView's networking stays wedged,
+    //    so an in-place re-probe hangs forever (why clearing from recents was the
+    //    only fix). A reload resets the WebView's network stack, and the
+    //    persistent cart is restored afterwards, so nothing is lost.
     useEffect(() => {
 
-        if (status !== "offline") {
+        if (status === "online") {
             return undefined;
         }
 
-        // After a WiFi drop+return, the Android WebView's networking often stays
-        // wedged: new requests keep failing until the page itself is reloaded
-        // (which is why clearing the app from recents fixes it but an in-place
-        // re-check doesn't). So on the network coming back, RELOAD rather than
-        // re-probe — it resets the WebView's network stack, and the persistent
-        // cart is restored from storage after the reload.
-        const reload = () => window.location.reload();
-        const recheck = () => {
-            if (document.visibilityState === "visible") {
-                runCheck();
-            }
-        };
+        let cancelled = false;
+        const reloadNow = () => { if (!cancelled) window.location.reload(); };
 
-        document.addEventListener("visibilitychange", recheck);
-        window.addEventListener("online", reload);
+        const id = setInterval(async () => {
+            if (await isServerReachable() && !cancelled) reloadNow();
+        }, 5000);
+
+        // When the waiter returns to the app, probe once right away (background
+        // timers are throttled, so the poll may have been asleep) and reload if
+        // the till is back. The phone's own 'online' event is a clean restart cue.
+        const onVisible = async () => {
+            if (document.visibilityState === "visible" && await isServerReachable() && !cancelled) reloadNow();
+        };
+        document.addEventListener("visibilitychange", onVisible);
+        window.addEventListener("online", reloadNow);
 
         return () => {
-            document.removeEventListener("visibilitychange", recheck);
-            window.removeEventListener("online", reload);
+            cancelled = true;
+            clearInterval(id);
+            document.removeEventListener("visibilitychange", onVisible);
+            window.removeEventListener("online", reloadNow);
         };
 
-    }, [status, runCheck]);
+    }, [status]);
 
     // Heartbeat while online: if the till stops answering, re-block. Two
     // consecutive misses (a ~20s grace) before walling, so a momentary WiFi
@@ -99,7 +107,7 @@ function NetworkGate({ children }) {
             if (ok) { misses = 0; return; }
             misses += 1;
             if (misses >= 2) setStatus("offline");
-        }, 10000);
+        }, 5000);
 
         const onUnreachable = async () => {
             // Confirm with one probe so a single odd request doesn't wall the
