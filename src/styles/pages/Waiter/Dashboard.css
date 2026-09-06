@@ -1087,3 +1087,25 @@
     cursor: pointer;
 }
 .bill-serveall-btn:disabled { opacity: .6; cursor: default; }
+
+/* Waiter bill: optional extra-charge chips (parcel, packing …). They start
+   OFF; the waiter taps one on only when the customer also parcels. */
+.waiter-app .wbill-charges { margin: 8px 0 4px; }
+.waiter-app .wbill-charges-label {
+    font-size: 11px; font-weight: 700; color: #64748b;
+    text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
+}
+.waiter-app .wbill-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.waiter-app .wbill-chip {
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: 1px; padding: 6px 12px; border-radius: 10px;
+    border: 1.5px solid #e2e8f0; background: #fff;
+    cursor: pointer; transition: all .15s;
+}
+.waiter-app .wbill-chip:disabled { opacity: .6; cursor: default; }
+.waiter-app .wbill-chip.active {
+    border-color: #16a34a; background: #f0fdf4;
+}
+.waiter-app .wbill-chip-name { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+.waiter-app .wbill-chip-val { font-size: 11px; color: #64748b; }
+.waiter-app .wbill-chip.active .wbill-chip-val { color: #16a34a; }

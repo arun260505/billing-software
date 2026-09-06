@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { autoChargesFor, preselectedChargesFor, billTotals } from "../../utils/rates";
+import { autoChargesFor, optionalChargesFor, billTotals } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 
 // Bill preview the waiter reviews BEFORE sending to the cashier. Identical items
@@ -20,6 +20,22 @@ function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle
     const [adding, setAdding] = useState(false);
     const [search, setSearch] = useState("");
     const [method, setMethod] = useState("Cash");
+    // Extra charges (parcel, packing …) start UNticked on the waiter app — the
+    // waiter is billing what the table ate, and ticks an extra only when the
+    // customer also parcels something. GST / service stay locked below.
+    const [selectedCharges, setSelectedCharges] = useState([]);
+
+    // Only when the waiter settles the bill directly do the extras matter here;
+    // when the bill goes to the cashier, the cashier picks them on their screen.
+    const pickableCharges = canSettle ? optionalChargesFor(charges, "Dine-In") : [];
+
+    const toggleCharge = (charge) => {
+        setSelectedCharges((prev) =>
+            prev.find((c) => c.id === charge.id)
+                ? prev.filter((c) => c.id !== charge.id)
+                : [...prev, charge]
+        );
+    };
 
     const pick = (mi) => {
         onAddItem(mi);
@@ -49,10 +65,9 @@ function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle
     // whole rupees and 2% missing, so this preview quoted a different total
     // from the cashier screen for the same table. Now the shared calculation.
     const subtotal = groups.reduce((s, g) => s + g.price * g.qty, 0);
-    // Locked autos (GST/service) plus any removable autos (a packing/AC fee set
-    // to apply to every bill) — both are on a waiter bill; the waiter screen has
-    // no chips, so removable autos are shown and charged like the rest.
-    const totals = billTotals(subtotal, [...autoChargesFor(charges, "Dine-In"), ...preselectedChargesFor(charges, "Dine-In")]);
+    // Locked autos (GST/service) are always on; the extras the waiter ticked
+    // (selectedCharges) are added on top.
+    const totals = billTotals(subtotal, [...autoChargesFor(charges, "Dine-In"), ...selectedCharges]);
     const total = totals.grand_total;
     const billedLines = [...totals.tax_lines, ...totals.service_lines, ...totals.charge_lines];
 
@@ -151,6 +166,33 @@ function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle
 
                 <div className="bill-totals">
                     <div className="bill-line"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+
+                    {/* Extra charges the waiter can add (parcel, packing …). They
+                        start OFF — tapped on only when the customer also parcels. */}
+                    {pickableCharges.length > 0 && (
+                        <div className="wbill-charges">
+                            <div className="wbill-charges-label">Additional Charges</div>
+                            <div className="wbill-chip-grid">
+                                {pickableCharges.map((c) => {
+                                    const active = selectedCharges.some((sc) => sc.id === c.id);
+                                    const value = c.charge_type === "Percentage" ? `${c.amount}%` : `₹${c.amount}`;
+                                    return (
+                                        <button
+                                            key={c.id}
+                                            type="button"
+                                            className={`wbill-chip${active ? " active" : ""}`}
+                                            disabled={busy}
+                                            onClick={() => toggleCharge(c)}
+                                        >
+                                            <span className="wbill-chip-name">{c.charge_name}</span>
+                                            <span className="wbill-chip-val">{value}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {billedLines.map((c, i) => (
                         <div className="bill-line" key={`${c.charge_name}-${i}`}>
                             <span>{c.charge_name}</span><span>₹{c.amount.toFixed(2)}</span>
@@ -192,7 +234,7 @@ function BillModal({ tableLabel, items, menuItems, busy, charges = [], canSettle
                     {canSettle ? (
                         <button
                             className="bill-confirm"
-                            onClick={() => onSettle && onSettle(method)}
+                            onClick={() => onSettle && onSettle(method, selectedCharges)}
                             disabled={busy || groups.length === 0 || unservedCount > 0}
                         >
                             {busy ? "Working…"
