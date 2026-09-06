@@ -1,13 +1,3 @@
-import startersImage from "../../assets/startersImage.jpg";
-import breakfastImage from "../../assets/breakfastImage.jpg";
-import lunchImage from "../../assets/lunchImage.jpg";
-import dinnerImage from "../../assets/dinnerImage.jpg";
-import dessertsImage from "../../assets/dessertsImage.jpg";
-import beveragesImage from "../../assets/beveragesImage.jpg";
-import juicesImage from "../../assets/juicesImage.jpg";
-import iceCreamImage from "../../assets/iceCreamImage.jpg";
-import comboImage from "../../assets/comboImage.jpg";
-
 function CartItem({ item, increaseQuantity, decreaseQuantity, removeItem, setNote }) {
     const quantity         = Number(item.quantity) || 0;
     const originalQuantity = Number(item.originalQuantity) || 0;
@@ -19,26 +9,8 @@ function CartItem({ item, increaseQuantity, decreaseQuantity, removeItem, setNot
     const quantityDecreased = !item.isNew && item.originalQuantity !== undefined && quantity < originalQuantity;
     const cancelledCount    = quantityDecreased ? originalQuantity - quantity : 0;
 
-    const categoryImages = {
-        "Starters":   startersImage,
-        "Breakfast":  breakfastImage,
-        "Lunch":      lunchImage,
-        "Dinner":     dinnerImage,
-        "Desserts":   dessertsImage,
-        "Beverages":  beveragesImage,
-        "Juices":     juicesImage,
-        "Ice Cream":  iceCreamImage,
-        "Combo Meals":comboImage,
-    };
-    const image = categoryImages[item.category_name] || lunchImage;
-
     return (
-        <div className={`cart-item-row${item.isNew ? " cir-new" : ""}`}>
-            {/* Food image */}
-            <div className="cir-img-wrap">
-                <img src={image} alt={item.item_name} className="cir-img" />
-            </div>
-
+        <div className={`cart-item-row cir-noimg${item.isNew ? " cir-new" : ""}`}>
             {/* Info */}
             <div className="cir-info">
                 <span className="cir-name">{item.item_name || item.name}</span>

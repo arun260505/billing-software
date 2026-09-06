@@ -6,7 +6,10 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 
 router.use(authMiddleware);
 
-router.get("/", roleMiddleware(["admin", "cashier"]), chargeController.getCharges);
+// Waiter needs to READ the charge list so the app's bill preview totals GST /
+// service the same way the till does — otherwise the waiter's total omits them
+// and the settle is refused for not matching. Writes stay admin-only below.
+router.get("/", roleMiddleware(["admin", "cashier", "waiter"]), chargeController.getCharges);
 router.get("/summary", roleMiddleware(["admin"]), chargeController.getChargeSummary);
 router.post("/", roleMiddleware(["admin"]), chargeController.createCharge);
 router.put("/:id", roleMiddleware(["admin"]), chargeController.updateCharge);
