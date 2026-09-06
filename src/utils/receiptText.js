@@ -299,13 +299,12 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
  * The kitchen ticket as text. Big and sparse on purpose — a cook reads this
  * across a pass, so quantities lead and prices never appear.
  */
-export function buildKotText({ order = {}, restaurant = {}, format = {} }) {
+export function buildKotText({ order = {}, format = {} }) {
     const cfg = { ...DEFAULT_KITCHEN_FORMAT, ...format };
     const W = widthFor(cfg.paper_size);
     const out = [];
 
     const items = order.items || [];
-    const dateStr = order.date || new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     const timeStr = order.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const orderNumber = order.order_number || "";
 
@@ -314,81 +313,46 @@ export function buildKotText({ order = {}, restaurant = {}, format = {} }) {
         ? "PARCEL / TAKEAWAY"
         : (order.tableName || order.table_name || (order.table_number ? `Table ${order.table_number}` : "Dine-In"));
 
-    if (cfg.header_title && cfg.header_title.trim()) {
-        out.push(bold(center(cfg.header_title.trim().toUpperCase(), W)));
-    }
-    if (cfg.show_restaurant_name) {
-        out.push(bold(center((restaurant.restaurant_name || "Restaurant").toUpperCase(), W)));
-    }
-    const addr = [restaurant.address, restaurant.city].filter((p) => p && String(p).trim()).join(", ");
-    if (cfg.show_address && addr) wrap(addr, W).forEach((l) => out.push(center(l, W)));
-    if (cfg.show_phone && restaurant.mobile) out.push(center(`Ph: ${restaurant.mobile}`, W));
+    // Compact kitchen ticket. No restaurant name/address/phone (the kitchen does
+    // not need them) and no blank lines between items — just what the cook needs,
+    // for roughly half the paper.
 
     out.push(repeat("=", W));
-
-    // Dine-in gets the same banner as parcel — the table number is what a cook
-    // reads first, so it leads the ticket instead of sitting in a metadata row.
-    // Emphasised and double height: this is the line read from across the pass.
+    // Table (or PARCEL) banner — the first thing the cook reads, big + bold.
     out.push(heading(center(
-        isParcel
-            ? "*** PARCEL ***"
-            : (cfg.show_table_name ? `*** ${String(tableName).toUpperCase()} ***` : "*** DINE-IN ***"),
+        isParcel ? "*** PARCEL ***" : `*** ${String(tableName).toUpperCase()} ***`,
         W
     )));
-    out.push(bold(center(isParcel ? "[ TAKEAWAY PACKING ]" : "[ DINE - IN ]", W)));
     out.push(repeat("=", W));
 
-    // Dine-in reads the table banner above, so it needs no order number. Only a
-    // parcel/takeaway carries a token number (to match the packed order at pickup).
-    if (cfg.show_order_number && isParcel && orderNumber) out.push(heading(lr("Token:", `#${orderNumber}`, W)));
-    if (cfg.show_order_type) out.push(lr("Type:", isParcel ? "PARCEL / TAKEAWAY" : "DINE-IN", W));
+    // Parcel keeps a token number to match the packed order at pickup; dine-in
+    // reads the table banner above, so it carries no number.
+    if (isParcel && orderNumber) out.push(bold(lr("Token:", `#${orderNumber}`, W)));
 
-    const dt = [];
-    if (cfg.show_date) dt.push(dateStr);
-    if (cfg.show_time) dt.push(timeStr);
-    if (dt.length) out.push(lr("Time:", dt.join(" | "), W));
-
-    // Who took the order, in bold — the kitchen wants to know at a glance which
-    // waiter to hand the dish back to.
+    // Waiter (bold) on the left, time on the right — one line.
     const waiter = order.waiter_name || order.waiter;
-    if (waiter) out.push(bold(lr("Waiter:", waiter, W)));
-    if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) out.push(lr("Cashier:", order.cashier_name || order.cashier, W));
-    if (cfg.show_customer_name && order.customer_name) out.push(lr("Customer:", order.customer_name, W));
+    out.push(bold(lr(waiter ? `Waiter: ${waiter}` : "", timeStr, W)));
 
     out.push(repeat("-", W));
-    out.push(bold(cfg.show_item_qty ? "QTY  ITEM" : "ITEM"));
-    out.push(repeat("-", W));
 
+    // Items: "<qty>  <name>", bold, one line each — no blank lines.
     let totalQty = 0;
     items.forEach((it) => {
         const qty = Number(it.quantity || 1);
         totalQty += qty;
         const name = it.item_name || it.name || "Item";
-        const prefix = cfg.show_item_qty ? `${qty}x`.padEnd(5) : "";
+        const prefix = `${qty}`.padEnd(3);          // e.g. "2  "
         const indent = repeat(" ", prefix.length);
-
-        if (cfg.show_item_category && (it.category_name || it.category)) {
-            out.push(`${indent}[${it.category_name || it.category}]`);
-        }
-
-        // The dish and its quantity are what gets cooked — emphasised, while the
-        // category and any note stay light so the item still stands out.
-        const nameLines = cfg.show_item_name ? wrap(name, W - prefix.length) : [""];
+        const nameLines = wrap(name, W - prefix.length);
         nameLines.forEach((l, i) => out.push(bold((i === 0 ? prefix : indent) + l)));
-
+        // A cooking note matters, so keep it (light) right under its item.
         if (cfg.show_item_notes && (it.notes || it.note)) {
-            wrap(`** ${it.notes || it.note}`, W - prefix.length).forEach((l) => out.push(bold(indent + l)));
+            wrap(`** ${it.notes || it.note}`, W - prefix.length).forEach((l) => out.push(indent + l));
         }
-        out.push("");
     });
 
     out.push(repeat("-", W));
-    out.push(bold(lr("TOTAL ITEMS:", `${items.length} items (${totalQty} pcs)`, W)));
-
-    if (cfg.footer_text && cfg.footer_text.trim()) {
-        out.push("");
-        wrap(cfg.footer_text.trim().toUpperCase(), W).forEach((l) => out.push(center(l, W)));
-    }
+    out.push(bold(`Total: ${items.length} items / ${totalQty} pcs`));
 
     return out.join("\n");
 }
