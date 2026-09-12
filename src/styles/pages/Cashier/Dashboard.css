@@ -368,6 +368,86 @@
 .cashier-app .menuavail-toggle.is-on  { background: #dcfce7; color: #16a34a; }
 .cashier-app .menuavail-toggle.is-off { background: #fee2e2; color: #dc2626; }
 
+/* ── Running Orders (Shared with Waiter) ────────────────────────────────── */
+.cashier-app .running-orders-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999;
+}
+.cashier-app .running-orders {
+    background: #f8fafc; border-radius: 24px; padding: 24px 20px 10px;
+    width: 100%; max-width: 440px; max-height: 85vh;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex; flex-direction: column;
+}
+.cashier-app .running-orders-list {
+    flex: 1; overflow-y: auto; padding-bottom: 14px;
+    scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent;
+    padding-right: 4px;
+}
+.cashier-app .running-orders-list::-webkit-scrollbar { width: 6px; }
+.cashier-app .running-orders-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.cashier-app .running-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;
+}
+.cashier-app .running-header h2 { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; }
+.cashier-app .running-header button {
+    background: #f1f5f9; border: none; cursor: pointer;
+    width: 36px; height: 36px; border-radius: 50%;
+    font-size: 16px; font-weight: bold; color: #64748b;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+}
+.cashier-app .running-header button:active { background: #e2e8f0; }
+
+.cashier-app .running-card {
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;
+    padding: 16px; margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    display: flex; flex-direction: column; gap: 8px;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.cashier-app .running-card:active { transform: scale(0.98); }
+
+.cashier-app .running-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+}
+.cashier-app .running-card-header h3 { margin: 0; font-size: 15px; font-weight: 800; color: #0f172a; }
+.cashier-app .running-table-badge {
+    background: #e0e7ff; color: #4f46e5;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 700;
+}
+
+.cashier-app .running-card-body {
+    display: flex; flex-direction: column; gap: 6px;
+    background: #f8fafc; padding: 12px; border-radius: 12px;
+}
+.cashier-app .running-card-body p { 
+    margin: 0; font-size: 13px; color: #64748b; 
+    display: flex; justify-content: space-between; align-items: center;
+}
+.cashier-app .running-card-body strong { color: #0f172a; font-weight: 700; }
+.cashier-app .running-card-body .status-preparing { color: #d97706; }
+.cashier-app .running-card-body .status-ready { color: #059669; }
+
+.cashier-app .running-served-btn {
+    margin-top: 12px; width: 100%; padding: 12px;
+    border: none; border-radius: 12px;
+    background: #10b981; color: #ffffff;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: background 0.2s, transform 0.1s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.cashier-app .running-served-btn:active { background: #059669; transform: scale(0.98); }
+
 /* ── Table bill review (waiter-requested) — centered modal ───────────── */
 .cashier-app .tbill-overlay {
     position: fixed; inset: 0; z-index: 320; background: rgba(15,23,42,.55);
