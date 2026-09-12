@@ -162,6 +162,17 @@ const saveEdit = async () => {
 
 };
 
+const copyKey = async (key) => {
+    if (!key) return;
+    try {
+        await navigator.clipboard.writeText(key);
+        alert(`Activation key copied:\n${key}`);
+    } catch {
+        // Clipboard blocked (insecure origin / permissions) — show it to copy by hand.
+        window.prompt("Copy the activation key:", key);
+    }
+};
+
 const handleDelete = async (id) => {
 
     if (!window.confirm("Delete Admin?"))
@@ -344,6 +355,7 @@ const handleDelete = async (id) => {
                                     <th>ID</th>
                                     <th>Full Name</th>
                                     <th>Username</th>
+                                    <th>Activation Key</th>
                                     <th>Status</th>
                                     <th>Action</th>
 
@@ -379,6 +391,10 @@ const handleDelete = async (id) => {
                                             </td>
 
                                             <td data-label="Username">{admin.username}</td>
+
+                                            <td data-label="Activation Key">
+                                                <code className="activation-key">{admin.activation_key || "—"}</code>
+                                            </td>
 
                                             <td data-label="Status">
                                                 <select
@@ -419,6 +435,20 @@ const handleDelete = async (id) => {
                                         <td data-label="Full Name">{admin.full_name}</td>
 
                                         <td data-label="Username">{admin.username}</td>
+
+                                        <td data-label="Activation Key">
+                                            <code className="activation-key">{admin.activation_key || "—"}</code>
+                                            {admin.activation_key && (
+                                                <button
+                                                    type="button"
+                                                    className="copy-key-btn"
+                                                    title="Copy activation key"
+                                                    onClick={() => copyKey(admin.activation_key)}
+                                                >
+                                                    Copy
+                                                </button>
+                                            )}
+                                        </td>
 
                                         <td data-label="Status">
 

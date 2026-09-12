@@ -149,39 +149,56 @@ const createAdmin = async (req, res) => {
 
 };
 
-const getAdmins = (req, res) => {
+const getAdmins = async (req, res) => {
 
-    db.query(
+    try {
 
-        `SELECT
-            id,
-            username,
-            full_name,
-            status,
-            created_at
-        FROM users
-        WHERE role='admin' AND deleted_at IS NULL
-        ORDER BY id DESC`,
+        const dbp = db.promise();
 
-        (err, result) => {
+        // Each admin belongs to a restaurant, and the restaurant's activation key
+        // (INWZ-XXXX-XXXX) lives in restaurant_activations. Join it in so the
+        // super admin can read the key for ANY restaurant — not just at the
+        // moment it was created — and hand it to a technician re-installing a till.
+        const [result] = await dbp.query(
+            `SELECT
+                u.id,
+                u.username,
+                u.full_name,
+                u.status,
+                u.created_at,
+                u.restaurant_id,
+                ra.activation_key
+            FROM users u
+            LEFT JOIN restaurant_activations ra ON ra.restaurant_id = u.restaurant_id
+            WHERE u.role='admin' AND u.deleted_at IS NULL
+            ORDER BY u.id DESC`
+        );
 
-            if (err) {
-
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-
+        // A restaurant created before keys existed (or whose row is missing) has
+        // none yet — issue one now so the panel always shows a usable key.
+        for (const row of result) {
+            if (!row.activation_key && row.restaurant_id) {
+                try {
+                    row.activation_key = await ensureActivationRecord(dbp, row.restaurant_id);
+                } catch (keyErr) {
+                    console.error("Activation key backfill failed:", keyErr.message);
+                }
             }
-
-            res.json({
-                success: true,
-                admins: result
-            });
-
         }
 
-    );
+        res.json({
+            success: true,
+            admins: result
+        });
+
+    } catch (err) {
+
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
 
 };
 
