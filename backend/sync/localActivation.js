@@ -52,6 +52,21 @@ async function ensureActivated() {
         "UPDATE activation SET restaurant_uuid = ?, sync_key = ?, activated_at = NOW() WHERE id = 1",
         [resp.restaurant_uuid, resp.sync_key]
     );
+
+    // A fresh activation means this till just took on a restaurant's identity —
+    // possibly a DIFFERENT restaurant than the database was last synced for. A
+    // reinstall keeps the old MySQL data (and its pull cursor), so without this
+    // the down-sync would only ask the cloud for rows changed since the PREVIOUS
+    // restaurant's high-water mark and never pull the newly-activated
+    // restaurant's existing catalog/users — leaving its staff unable to log in.
+    // Clearing the cursor forces the next sync to download the new restaurant in
+    // full. A brand-new till has no rows here, so this is a harmless no-op there.
+    try {
+        await db.query("DELETE FROM sync_state");
+    } catch (e) {
+        console.error("Could not reset sync cursor after activation:", e.message);
+    }
+
     console.log(`✅ Activated as "${resp.restaurant_name}" (${resp.restaurant_uuid})`);
     return getStored();
 }
