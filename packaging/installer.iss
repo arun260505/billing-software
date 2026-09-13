@@ -66,6 +66,22 @@ begin
   end;
 end;
 
+// Runs BEFORE files are copied. On an in-place update the InWallz services are
+// running, so their binaries (mysqld/node .dlls) are locked and the copy fails
+// with "DeleteFile failed; code 5. Access is denied." Stop the services first so
+// the files can be replaced; the service installer restarts them afterwards.
+// No-op on a fresh machine (the services don't exist yet).
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  rc: Integer;
+begin
+  Exec(ExpandConstant('{cmd}'), '/c net stop InWallzServer', '', SW_HIDE, ewWaitUntilTerminated, rc);
+  Exec(ExpandConstant('{cmd}'), '/c net stop InWallzMySQL', '', SW_HIDE, ewWaitUntilTerminated, rc);
+  // Give Windows a moment to release the file handles after the services stop.
+  Sleep(2000);
+  Result := '';
+end;
+
 [Run]
 ; After files are copied, run the service installer with the entered key.
 Filename: "powershell.exe"; \
