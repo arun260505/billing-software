@@ -57,98 +57,58 @@
 
 }
 
-.input-group{
-
-    position:relative;
-
-    margin-bottom:22px;
-
+.login-page .input-group {
+    position: relative;
+    margin-bottom: 22px;
 }
 
-.input-icon{
-
-    position:absolute;
-
-    left:18px;
-
-    top:17px;
-
-    color:#666;
-
+.login-page .input-icon {
+    position: absolute;
+    left: 18px;
+    top: 17px;
+    color: #666;
 }
 
-.input-group input{
-
-    width:100%;
-
-    height:55px;
-
-    border:1px solid #d1d5db;
-
-    border-radius:10px;
-
-    padding-left:50px;
-
-    padding-right:50px;
-
-    outline:none;
-
-    font-size:15px;
-
-    transition:.3s;
-
+.login-page .input-group input {
+    width: 100%;
+    height: 55px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding-left: 50px;
+    padding-right: 50px;
+    outline: none;
+    font-size: 15px;
+    transition: .3s;
 }
 
-.input-group input:focus{
-
-    border:1px solid #2563eb;
-
-    box-shadow:0 0 8px rgba(37,99,235,.25);
-
+.login-page .input-group input:focus {
+    border: 1px solid #2563eb;
+    box-shadow: 0 0 8px rgba(37,99,235,.25);
 }
 
-.password-toggle{
-
-    position:absolute;
-
-    right:18px;
-
-    top:17px;
-
-    cursor:pointer;
-
-    color:#555;
-
+.login-page .password-toggle {
+    position: absolute;
+    right: 18px;
+    top: 17px;
+    cursor: pointer;
+    color: #555;
 }
 
-.login-btn{
-
-    width:100%;
-
-    height:55px;
-
-    border:none;
-
-    border-radius:10px;
-
-    background:#2563eb;
-
-    color:#fff;
-
-    font-size:17px;
-
-    font-weight:600;
-
-    cursor:pointer;
-
-    transition:.3s;
-
+.login-page .login-btn {
+    width: 100%;
+    height: 55px;
+    border: none;
+    border-radius: 10px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: .3s;
 }
 
-.login-btn:hover{
-
-    background:#1d4ed8;
-
+.login-page .login-btn:hover {
+    background: #1d4ed8;
 }
 /* Shown when the api layer bounced us here on a 401, so an expired shift token
    reads as "sign in again", not as an unexplained logout. */

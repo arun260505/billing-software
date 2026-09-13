@@ -495,11 +495,15 @@
 
 /* Per-item serve controls in the read-only order section */
 .waiter-app .wc-item-serve {
-    background: #16a34a; color: #fff; border: none; border-radius: 6px;
-    padding: 3px 12px; font-size: 11px; font-weight: 700; cursor: pointer;
+    background: #10b981; color: #fff; border: none; border-radius: 8px;
+    padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
 }
-.waiter-app .wc-item-serve:hover { background: #15803d; }
-.waiter-app .wc-served-tag { color: #16a34a; font-size: 11px; font-weight: 700; }
+.waiter-app .wc-item-serve:active { background: #059669; transform: scale(0.96); box-shadow: none; }
+.waiter-app .wc-served-tag { 
+    color: #059669; font-size: 13px; font-weight: 700; 
+    display: inline-flex; align-items: center; gap: 4px;
+}
 .waiter-app .wc-previous-row.served span:first-child { text-decoration: line-through; color: #9ca3af; }
 
 /* ============================================================================
@@ -837,14 +841,34 @@
 .waiter-app .ws-bill-chip:active { background: #6d28d9; }
 
 /* ── "Already sent to kitchen" — static strip above the menu ─────────── */
-.waiter-app .ws-sent { background: #f5f8ff; border-bottom: 8px solid #eef1f5; padding: 12px 14px; }
-.waiter-app .ws-sent-label { font-size: 12px; font-weight: 700; color: #4f46e5; margin-bottom: 8px; }
+.waiter-app .ws-sent { 
+    background: #ffffff; 
+    border-bottom: 8px solid #f1f5f9; 
+    padding: 18px 16px; 
+}
+.waiter-app .ws-sent-label { 
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 800; color: #1e293b; 
+    margin-bottom: 14px;
+}
+.waiter-app .ws-sent-label::before {
+    content: ''; display: block; width: 4px; height: 16px; 
+    background: #3b82f6; border-radius: 4px;
+}
 .waiter-app .ws-sent-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 7px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px; color: #0f172a; gap: 10px;
+    padding: 12px 14px; margin-bottom: 8px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+    font-size: 14px; font-weight: 700; color: #0f172a; gap: 10px;
+    transition: all 0.2s;
 }
-.waiter-app .ws-sent-row:last-child { border-bottom: none; }
-.waiter-app .ws-sent-row.served span:first-child { text-decoration: line-through; color: #9ca3af; }
+.waiter-app .ws-sent-row:last-child { margin-bottom: 0; }
+.waiter-app .ws-sent-row.served { 
+    background: #ffffff; border: 1px solid #f1f5f9; opacity: 0.65; 
+}
+.waiter-app .ws-sent-row.served span:first-child { 
+    text-decoration: line-through; color: #94a3b8; font-weight: 600;
+}
 
 /* ── Order review sheet (bottom sheet) ──────────────────────────────── */
 .waiter-app .cs-overlay {
