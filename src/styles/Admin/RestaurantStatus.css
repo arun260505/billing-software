@@ -56,7 +56,7 @@
     white-space:nowrap;
 }
 
-.ad-status-value.tone-good{ color:#7c3aed; }
+.ad-status-value.tone-good{ color:#2563eb; }
 .ad-status-value.tone-info{ color:#2563EB; }
 .ad-status-value.tone-warn{ color:#F59E0B; }
 
@@ -77,12 +77,12 @@
 }
 
 .ad-pill-success{
-    background:#f5f3ff;
-    color:#6d28d9;
+    background:#eff6ff;
+    color:#1d4ed8;
 }
 
 .ad-pill-success .ad-dot{
-    background:#7c3aed;
+    background:#2563eb;
 }
 
 .ad-pill-danger{

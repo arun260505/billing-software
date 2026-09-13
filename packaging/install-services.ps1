@@ -47,11 +47,41 @@ foreach ($svc in "InWallzServer", "InWallzMySQL") {
 }
 Start-Sleep -Seconds 2
 
-# 1) Per-machine secrets.
-Say "Generating per-machine secrets"
-Add-Type -AssemblyName System.Web
-$dbPass = ([System.Web.Security.Membership]::GeneratePassword(24, 0) -replace '[^A-Za-z0-9]', 'x') + "Aa1"
-$jwt    = -join ((1..64) | ForEach-Object { "{0:x}" -f (Get-Random -Max 16) })
+# 1) Update vs fresh install.
+# An UPDATE keeps the existing database, .env (DB password + JWT + activation
+# key) and the activation row untouched - only the app code is refreshed and the
+# services restarted. That is what makes reinstalling a new version over a
+# client's till safe: no data loss, no re-typing the activation key. A FRESH
+# install (no .env / no data) generates secrets and needs the activation key.
+$envFile = Join-Path $backend ".env"
+$isUpdate = $false
+$dbPass = $null
+$jwt = $null
+if ((Test-Path $envFile) -and (Test-Path (Join-Path $dataDir "mysql"))) {
+    $existingEnv = Get-Content $envFile -Raw
+    $mPass = [regex]::Match($existingEnv, "(?m)^DB_PASSWORD=(.*)$")
+    if ($mPass.Success -and $mPass.Groups[1].Value.Trim() -ne "") {
+        $isUpdate = $true
+        $dbPass = $mPass.Groups[1].Value.Trim()
+        # Keep the ports the existing install already uses.
+        $mPort = [regex]::Match($existingEnv, "(?m)^PORT=(\d+)")
+        if ($mPort.Success) { $Port = [int]$mPort.Groups[1].Value }
+        $mDbPort = [regex]::Match($existingEnv, "(?m)^DB_PORT=(\d+)")
+        if ($mDbPort.Success) { $DbPort = [int]$mDbPort.Groups[1].Value }
+    }
+}
+
+if ($isUpdate) {
+    Say "Existing install found - UPDATE mode (keeping database, .env and activation)"
+} else {
+    Say "Fresh install - generating per-machine secrets"
+    if (-not $ActivationKey -or $ActivationKey.Trim() -eq "") {
+        throw "An activation key is required for a new install."
+    }
+    Add-Type -AssemblyName System.Web
+    $dbPass = ([System.Web.Security.Membership]::GeneratePassword(24, 0) -replace '[^A-Za-z0-9]', 'x') + "Aa1"
+    $jwt    = -join ((1..64) | ForEach-Object { "{0:x}" -f (Get-Random -Max 16) })
+}
 
 # 2) Initialise MySQL, register + start its service.
 Say "Initialising MySQL"
@@ -120,25 +150,30 @@ if ((Test-Path $schema) -and ($tableCount -eq 0)) {
     Say "Existing database kept ($tableCount tables) - schema import skipped"
 }
 
-# 4) Write backend\.env from the template.
-Say "Writing backend .env"
-$tpl = Get-Content (Join-Path $backend ".env.template") -Raw
-$tpl = $tpl -replace "__DB_PASSWORD__", $dbPass
-$tpl = $tpl -replace "__JWT_SECRET__", $jwt
-$tpl = $tpl -replace "__ACTIVATION_KEY__", $ActivationKey
-$tpl = $tpl -replace "CLOUD_SYNC_URL=.*", ("CLOUD_SYNC_URL=" + $CloudUrl)
-# Anchor to line start so this does NOT also match DB_PORT.
-$tpl = $tpl -replace "(?m)^PORT=.*", ("PORT=" + $Port)
-$tpl = $tpl -replace "(?m)^DB_PORT=.*", ("DB_PORT=" + $DbPort)
-$tpl | Out-File (Join-Path $backend ".env") -Encoding ascii
+# 4) Write backend\.env from the template - FRESH install only. On an update the
+# existing .env (DB password + JWT + activation key) is kept as-is, so the till
+# stays connected to its data and its restaurant with nothing to re-enter.
+if (-not $isUpdate) {
+    Say "Writing backend .env"
+    $tpl = Get-Content (Join-Path $backend ".env.template") -Raw
+    $tpl = $tpl -replace "__DB_PASSWORD__", $dbPass
+    $tpl = $tpl -replace "__JWT_SECRET__", $jwt
+    $tpl = $tpl -replace "__ACTIVATION_KEY__", $ActivationKey
+    $tpl = $tpl -replace "CLOUD_SYNC_URL=.*", ("CLOUD_SYNC_URL=" + $CloudUrl)
+    # Anchor to line start so this does NOT also match DB_PORT.
+    $tpl = $tpl -replace "(?m)^PORT=.*", ("PORT=" + $Port)
+    $tpl = $tpl -replace "(?m)^DB_PORT=.*", ("DB_PORT=" + $DbPort)
+    $tpl | Out-File (Join-Path $backend ".env") -Encoding ascii
 
-# 4b) Honour the activation key entered in THIS install. On a reinstall the data
-# folder is kept, so the old activation row (restaurant_uuid + sync_key) is still
-# there and the server would treat the till as "already activated" and ignore the
-# key just entered. Clear it so the server re-activates with the entered key on
-# next start. Harmless on a fresh DB (the table won't exist yet - error ignored);
-# re-activation on the SAME machine is accepted by the cloud, so no reset needed.
-& $mysql -u inwallz "--password=$dbPass" -h 127.0.0.1 "--port=$DbPort" inwallz_billing -e "UPDATE activation SET restaurant_uuid=NULL, sync_key=NULL, activated_at=NULL WHERE id=1;" 2>$null | Out-Null
+    # 4b) Honour the activation key entered in THIS install. The data folder can be
+    # kept from a prior fresh attempt, so an old activation row would make the
+    # server think it is "already activated" and ignore the key just entered.
+    # Clear it so the server re-activates with the entered key. Skipped on an
+    # update, where the existing activation must be preserved.
+    & $mysql -u inwallz "--password=$dbPass" -h 127.0.0.1 "--port=$DbPort" inwallz_billing -e "UPDATE activation SET restaurant_uuid=NULL, sync_key=NULL, activated_at=NULL WHERE id=1;" 2>$null | Out-Null
+} else {
+    Say "Keeping existing .env and activation (update)"
+}
 
 # 5) Register the backend service (depends on MySQL).
 Say "Registering InWallzServer service"

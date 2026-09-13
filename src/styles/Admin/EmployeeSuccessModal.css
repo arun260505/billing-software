@@ -20,7 +20,7 @@
 
 .success-modal h2 {
     margin: 0 0 20px;
-    color: #7c3aed;
+    color: #2563eb;
     text-align: center;
 }
 
@@ -69,12 +69,12 @@
 }
 
 .ok-btn {
-    background: #7c3aed;
+    background: #2563eb;
     color: #fff;
 }
 
 .ok-btn:hover {
-    background: #6d28d9;
+    background: #1d4ed8;
 }
 
 @keyframes fadeIn {

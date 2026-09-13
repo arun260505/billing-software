@@ -81,9 +81,9 @@
     text-align:center;
 }
 
-.ad-pay-cash{ background:#f5f3ff; color:#6d28d9; }
+.ad-pay-cash{ background:#eff6ff; color:#1d4ed8; }
 .ad-pay-upi{ background:#EFF6FF; color:#1D4ED8; }
-.ad-pay-card{ background:#F3E8FF; color:#7C3AED; }
+.ad-pay-card{ background:#F3E8FF; color:#2563eb; }
 .ad-pay-wallet{ background:#FEF3C7; color:#B45309; }
 .ad-pay-bank-transfer{ background:#F1F5F9; color:#475569; }
 .ad-pay-split{ background:#FEE2E2; color:#B91C1C; }
@@ -101,11 +101,11 @@
 }
 
 .ad-st-pending{ background:#DBEAFE; color:#1D4ED8; }
-.ad-st-confirmed{ background:#F3E8FF; color:#7C3AED; }
+.ad-st-confirmed{ background:#F3E8FF; color:#2563eb; }
 .ad-st-preparing{ background:#FFEDD5; color:#C2410C; }
-.ad-st-ready{ background:#ede9fe; color:#6d28d9; }
-.ad-st-served{ background:#CCFBF1; color:#6d28d9; }
-.ad-st-completed{ background:#ddd6fe; color:#6d28d9; }
+.ad-st-ready{ background:#dbeafe; color:#1d4ed8; }
+.ad-st-served{ background:#CCFBF1; color:#1d4ed8; }
+.ad-st-completed{ background:#bfdbfe; color:#1d4ed8; }
 .ad-st-cancelled{ background:#FEE2E2; color:#B91C1C; }
 
 /* ── View All button ───────────────────────────────────────── */

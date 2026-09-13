@@ -237,8 +237,8 @@
     background: #fff;
     transition: border-color 0.18s;
 }.waiter-app .cart-item-row.cir-new {
-    border-color: #ddd6fe;
-    background: #f5f3ff;
+    border-color: #bfdbfe;
+    background: #eff6ff;
 }.waiter-app .cart-item-row:last-child { margin-bottom: 0; }.waiter-app .cir-img-wrap {
     width: 44px; height: 44px; border-radius: 8px;
     overflow: hidden; flex-shrink: 0;
@@ -417,17 +417,17 @@
 }
 .waiter-app .running-card-body strong { color: #0f172a; font-weight: 700; }
 .waiter-app .running-card-body .status-preparing { color: #d97706; }
-.waiter-app .running-card-body .status-ready { color: #7c3aed; }
+.waiter-app .running-card-body .status-ready { color: #2563eb; }
 
 .waiter-app .running-served-btn {
     margin-top: 12px; width: 100%; padding: 12px;
     border: none; border-radius: 12px;
-    background: #8b5cf6; color: #ffffff;
+    background: #3b82f6; color: #ffffff;
     font-size: 15px; font-weight: 700;
     cursor: pointer; transition: background 0.2s, transform 0.1s;
     display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.waiter-app .running-served-btn:active { background: #7c3aed; transform: scale(0.98); }
+.waiter-app .running-served-btn:active { background: #2563eb; transform: scale(0.98); }
 /* Read-only "already sent" section in the waiter cart */
 .waiter-app .wc-previous {
     background: #f4f7ff;
@@ -457,7 +457,7 @@
     border-top: 1px solid #e0e7ff;
     font-size: 11px;
     font-weight: 700;
-    color: #7c3aed;
+    color: #2563eb;
     text-align: center;
 }
 
@@ -468,13 +468,13 @@
     padding: 8px;
     border: none;
     border-radius: 8px;
-    background: #7c3aed;
+    background: #2563eb;
     color: #fff;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
 }
-.waiter-app .wc-bill-btn:hover { background: #6d28d9; }
+.waiter-app .wc-bill-btn:hover { background: #1d4ed8; }
 
 
 
@@ -485,23 +485,23 @@
     padding: 8px;
     border: none;
     border-radius: 8px;
-    background: #7c3aed;
+    background: #2563eb;
     color: #fff;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
 }
-.waiter-app .wc-served-btn:hover { background: #6d28d9; }
+.waiter-app .wc-served-btn:hover { background: #1d4ed8; }
 
 /* Per-item serve controls in the read-only order section */
 .waiter-app .wc-item-serve {
-    background: #8b5cf6; color: #fff; border: none; border-radius: 8px;
+    background: #3b82f6; color: #fff; border: none; border-radius: 8px;
     padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
     transition: all 0.2s; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
 }
-.waiter-app .wc-item-serve:active { background: #7c3aed; transform: scale(0.96); box-shadow: none; }
+.waiter-app .wc-item-serve:active { background: #2563eb; transform: scale(0.96); box-shadow: none; }
 .waiter-app .wc-served-tag { 
-    color: #7c3aed; font-size: 13px; font-weight: 700; 
+    color: #2563eb; font-size: 13px; font-weight: 700; 
     display: inline-flex; align-items: center; gap: 4px;
 }
 .waiter-app .wc-previous-row.served span:first-child { text-decoration: line-through; color: #9ca3af; }
@@ -588,13 +588,13 @@
 }
 
 /* free / available */
-.waiter-app .tsc-free { border-color: #c4b5fd; background: #f5f3ff; }
-.waiter-app .tsc-free .badge-free { background: #ede9fe; color: #7c3aed; }
+.waiter-app .tsc-free { border-color: #93c5fd; background: #eff6ff; }
+.waiter-app .tsc-free .badge-free { background: #dbeafe; color: #2563eb; }
 /* occupied */
 .waiter-app .tsc-occupied { border-color: #93c5fd; background: #eff6ff; }
 .waiter-app .tsc-occupied .badge-occupied { background: #dbeafe; color: #2563eb; }
 /* selected ring */
-.waiter-app .tsc-selected { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(13,148,136,.25); }
+.waiter-app .tsc-selected { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(13,148,136,.25); }
 
 /* ── Workspace: back bar, static "already sent", then the menu ────────── */
 .waiter-app .main-workspace { display: flex; flex-direction: column; gap: 0; padding: 0; }
@@ -622,7 +622,7 @@
     padding: 9px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
     cursor: pointer; white-space: nowrap;
 }
-.waiter-app .category-tabs .active-category { background: #7c3aed; color: #ffffff; }
+.waiter-app .category-tabs .active-category { background: #2563eb; color: #ffffff; }
 .waiter-app .category-tabs .tab-star { display: none; }
 
 /* ── Menu grid + clean cards (image 2) ──────────────────────────────── */
@@ -644,14 +644,14 @@
     margin-bottom: 10px; flex: 0 0 auto;
 }
 .waiter-app .veg-dot i { width: 8px; height: 8px; border-radius: 50%; display: block; }
-.waiter-app .veg-dot-veg    { border-color: #7c3aed; } .waiter-app .veg-dot-veg i    { background: #7c3aed; }
+.waiter-app .veg-dot-veg    { border-color: #2563eb; } .waiter-app .veg-dot-veg i    { background: #2563eb; }
 .waiter-app .veg-dot-nonveg { border-color: #dc2626; } .waiter-app .veg-dot-nonveg i { background: #dc2626; }
 .waiter-app .veg-dot-egg    { border-color: #d97706; } .waiter-app .veg-dot-egg i    { background: #d97706; }
 
 .waiter-app .menu-card .menu-details { display: flex; flex-direction: column; flex: 1; padding: 0; }
 .waiter-app .menu-name  { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 5px; line-height: 1.25; }
 .waiter-app .menu-desc  { font-size: 12px; color: #94a3b8; margin: 0 0 12px; line-height: 1.35; }
-.waiter-app .menu-price { font-size: 15px; font-weight: 800; color: #7c3aed; margin-top: auto; }
+.waiter-app .menu-price { font-size: 15px; font-weight: 800; color: #2563eb; margin-top: auto; }
 
 .waiter-app .menu-unavailable-tag {
     position: absolute; top: 10px; right: 10px; font-size: 10px; font-weight: 700;
@@ -676,7 +676,7 @@
 }
 .waiter-app .ws-back:active { background: #e2e6ec; }
 .waiter-app .ws-back svg { width: 16px; height: 16px; }
-.waiter-app .ws-back-table { font-size: 15px; font-weight: 800; color: #7c3aed; }
+.waiter-app .ws-back-table { font-size: 15px; font-weight: 800; color: #2563eb; }
 
 /* ── Menu card: price + add/stepper row ─────────────────────────────── */
 .waiter-app .menu-card-bottom {
@@ -687,7 +687,7 @@
 
 .waiter-app .mc-add {
     width: 34px; height: 34px; flex: 0 0 34px; border: none; border-radius: 10px;
-    background: #7c3aed; color: #fff; font-size: 22px; font-weight: 700;
+    background: #2563eb; color: #fff; font-size: 22px; font-weight: 700;
     line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 .waiter-app .mc-add:active { background: #0b7d72; }
@@ -698,10 +698,10 @@
 }
 .waiter-app .mc-step {
     width: 28px; height: 28px; border: none; border-radius: 8px; background: #ffffff;
-    color: #7c3aed; font-size: 18px; font-weight: 800; line-height: 1; cursor: pointer;
+    color: #2563eb; font-size: 18px; font-weight: 800; line-height: 1; cursor: pointer;
     display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,.08);
 }
-.waiter-app .mc-step-add { background: #7c3aed; color: #fff; }
+.waiter-app .mc-step-add { background: #2563eb; color: #fff; }
 .waiter-app .mc-step:active { filter: brightness(.95); }
 .waiter-app .mc-qty { min-width: 20px; text-align: center; font-size: 15px; font-weight: 800; color: #0f172a; }
 
@@ -710,10 +710,10 @@
 .waiter-app .ws-billbar { order: 3; width: 100%; padding: 14px 12px 22px; border-top: 8px solid #eef1f5; }
 .waiter-app .ws-bill-btn {
     width: 100%; padding: 12px; border-radius: 12px; cursor: pointer;
-    background: #ffffff; color: #7c3aed; border: 1.5px solid #ddd6fe;
+    background: #ffffff; color: #2563eb; border: 1.5px solid #bfdbfe;
     font-size: 14px; font-weight: 700;
 }
-.waiter-app .ws-bill-btn:active { background: #f5f3ff; }
+.waiter-app .ws-bill-btn:active { background: #eff6ff; }
 
 /* ── Order panel: content-driven height, compact empty state ─────────── */
 .waiter-app .workspace-cart { min-height: 0; }
@@ -755,7 +755,7 @@
     padding: 12px 0; border-bottom: 1px dashed #eef1f5; gap: 10px;
 }
 .waiter-app .bill-row-info { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.waiter-app .bill-qty { font-weight: 800; color: #7c3aed; }
+.waiter-app .bill-qty { font-weight: 800; color: #2563eb; }
 .waiter-app .bill-name { font-size: 14px; color: #0f172a; font-weight: 600; }
 .waiter-app .bill-row-right { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
 .waiter-app .bill-amt { font-weight: 700; color: #0f172a; }
@@ -776,7 +776,7 @@
 }
 .waiter-app .bill-confirm {
     flex: 1; padding: 14px; border-radius: 12px; border: none;
-    background: #7c3aed; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer;
+    background: #2563eb; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer;
 }
 .waiter-app .bill-confirm:disabled { background: #94a3b8; cursor: default; }
 
@@ -792,10 +792,10 @@
 }
 .waiter-app .bill-step {
     width: 26px; height: 26px; border: none; border-radius: 7px; background: #fff;
-    color: #7c3aed; font-size: 17px; font-weight: 800; line-height: 1; cursor: pointer;
+    color: #2563eb; font-size: 17px; font-weight: 800; line-height: 1; cursor: pointer;
     display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,.08);
 }
-.waiter-app .bill-step-add { background: #7c3aed; color: #fff; }
+.waiter-app .bill-step-add { background: #2563eb; color: #fff; }
 .waiter-app .bill-step:disabled { opacity: .5; cursor: default; }
 .waiter-app .bill-qty { min-width: 18px; text-align: center; font-size: 14px; font-weight: 800; color: #0f172a; }
 .waiter-app .bill-amt { min-width: 44px; text-align: right; }
@@ -804,11 +804,11 @@
 .waiter-app .wc-header-actions { display: flex; align-items: center; gap: 8px; }
 .waiter-app .wc-bill-icon {
     display: inline-flex; align-items: center; gap: 4px;
-    background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;
+    background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe;
     border-radius: 9px; padding: 7px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
     white-space: nowrap;
 }
-.waiter-app .wc-bill-icon:active { background: #ddd6fe; }
+.waiter-app .wc-bill-icon:active { background: #bfdbfe; }
 
 /* ── Always-visible Send to Kitchen bar (fixed to the phone column bottom) ── */
 .waiter-app .wc-sticky-send {
@@ -834,11 +834,11 @@
 .waiter-app .ws-backbar { justify-content: flex-start; }
 .waiter-app .ws-bill-chip {
     margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
-    background: #7c3aed; color: #fff; border: none;
+    background: #2563eb; color: #fff; border: none;
     border-radius: 11px; padding: 11px 20px; font-size: 15px; font-weight: 800; cursor: pointer;
-    white-space: nowrap; box-shadow: 0 2px 8px rgba(124,58,237,.35);
+    white-space: nowrap; box-shadow: 0 2px 8px rgba(37,99,235,.35);
 }
-.waiter-app .ws-bill-chip:active { background: #6d28d9; }
+.waiter-app .ws-bill-chip:active { background: #1d4ed8; }
 
 /* ── "Already sent to kitchen" — static strip above the menu ─────────── */
 .waiter-app .ws-sent { 
@@ -903,7 +903,7 @@
 }
 .waiter-app .cs-send {
     flex: 1; padding: 14px; border-radius: 12px; border: none;
-    background: #7c3aed; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer;
+    background: #2563eb; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer;
 }
 .waiter-app .cs-send:disabled { background: #94a3b8; cursor: default; }
 .waiter-app .cs-clear, .waiter-app .cs-cancel {
@@ -971,7 +971,7 @@
 /* ── Bill modal: add-an-item control ────────────────────────────────── */
 .waiter-app .bill-add-toggle {
     width: 100%; margin-top: 10px; padding: 12px; border-radius: 12px; cursor: pointer;
-    background: #f0fdfa; border: 1.5px dashed #5eead4; color: #7c3aed;
+    background: #f0fdfa; border: 1.5px dashed #5eead4; color: #2563eb;
     font-size: 14px; font-weight: 700;
 }
 .waiter-app .bill-add-toggle:disabled { opacity: .6; cursor: default; }
@@ -980,7 +980,7 @@
     width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid #e2e8f0;
     font-size: 14px; outline: none; background: #fff;
 }
-.waiter-app .bill-add-search:focus { border-color: #7c3aed; }
+.waiter-app .bill-add-search:focus { border-color: #2563eb; }
 .waiter-app .bill-add-list { max-height: 190px; overflow-y: auto; margin: 8px 0; }
 .waiter-app .bill-add-row {
     width: 100%; display: flex; align-items: center; gap: 10px;
@@ -991,7 +991,7 @@
 .waiter-app .bill-add-name { flex: 1; font-size: 14px; font-weight: 600; color: #0f172a; }
 .waiter-app .bill-add-price { font-size: 13px; font-weight: 700; color: #475569; }
 .waiter-app .bill-add-plus {
-    width: 26px; height: 26px; border-radius: 8px; background: #7c3aed; color: #fff;
+    width: 26px; height: 26px; border-radius: 8px; background: #2563eb; color: #fff;
     display: inline-flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800;
 }
 .waiter-app .bill-add-cancel {
@@ -1020,14 +1020,14 @@
     width: 100%; margin-bottom: 12px; padding: 12px 14px; border-radius: 10px;
     border: 1px solid #e2e8f0; background: #fff; font-size: 14px; outline: none;
 }
-.waiter-app .cs-notes:focus { border-color: #7c3aed; }
+.waiter-app .cs-notes:focus { border-color: #2563eb; }
 
 /* Per-line cooking note inside each cart item */
 .waiter-app .cir-note {
     width: 100%; margin-top: 6px; padding: 7px 10px; border-radius: 8px;
     border: 1px solid #e2e8f0; background: #f8fafc; font-size: 12px; outline: none;
 }
-.waiter-app .cir-note:focus { border-color: #7c3aed; background: #fff; }
+.waiter-app .cir-note:focus { border-color: #2563eb; background: #fff; }
 
 /* ═══════════════════════════════════════════════════════════════════════
    CASHIER AUTO-DISCOVERY STATUS BAR
@@ -1049,8 +1049,8 @@
 
 /* Connected state — subtle green tint */
 .waiter-app .cashier-connect-bar.ccb-connected {
-    background: #f5f3ff;
-    border-bottom-color: #ddd6fe;
+    background: #eff6ff;
+    border-bottom-color: #bfdbfe;
 }
 
 /* Disconnected / searching state — subtle amber tint */
@@ -1070,7 +1070,7 @@
     font-weight: 700;
     flex-shrink: 0;
 }
-.waiter-app .ccb-label.ccb-ok   { color: #5b21b6; }
+.waiter-app .ccb-label.ccb-ok   { color: #1e40af; }
 .waiter-app .ccb-label.ccb-fail { color: #92400e; }  /* amber, not red — it's searching */
 
 .waiter-app .ccb-ip {
@@ -1130,7 +1130,7 @@
     color: #334155;
     cursor: pointer;
 }
-.bill-pay-btn.active { background: #6d28d9; border-color: #6d28d9; color: #fff; }
+.bill-pay-btn.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
 
 /* "Serve all" bar in the waiter bill screen (shown before Print & Settle) */
 .bill-serveall {
@@ -1151,7 +1151,7 @@
     padding: 8px 14px;
     border: none;
     border-radius: 8px;
-    background: #6d28d9;
+    background: #1d4ed8;
     color: #fff;
     font-weight: 700;
     cursor: pointer;
@@ -1174,8 +1174,8 @@
 }
 .waiter-app .wbill-chip:disabled { opacity: .6; cursor: default; }
 .waiter-app .wbill-chip.active {
-    border-color: #7c3aed; background: #f5f3ff;
+    border-color: #2563eb; background: #eff6ff;
 }
 .waiter-app .wbill-chip-name { font-size: 13px; font-weight: 600; color: #1a1a2e; }
 .waiter-app .wbill-chip-val { font-size: 11px; color: #64748b; }
-.waiter-app .wbill-chip.active .wbill-chip-val { color: #7c3aed; }
+.waiter-app .wbill-chip.active .wbill-chip-val { color: #2563eb; }

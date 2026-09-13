@@ -336,8 +336,8 @@
 }
 
 .pay-paid {
-    background: #ede9fe;
-    color: #6d28d9;
+    background: #dbeafe;
+    color: #1d4ed8;
 }
 
 .pay-pending {
@@ -382,8 +382,8 @@
 }
 
 .badge-ready {
-    background: #ede9fe;
-    color: #6d28d9;
+    background: #dbeafe;
+    color: #1d4ed8;
 }
 
 .badge-served {
@@ -392,7 +392,7 @@
 }
 
 .badge-completed {
-    background: #5b21b6;
+    background: #1e40af;
     color: #FFFFFF;
 }
 
@@ -671,12 +671,12 @@
 }
 
 .orders-progress-step.done {
-    color: #5b21b6;
+    color: #1e40af;
 }
 
 .orders-progress-step.done .orders-progress-dot {
-    background: #8b5cf6;
-    border-color: #8b5cf6;
+    background: #3b82f6;
+    border-color: #3b82f6;
 }
 
 .orders-progress-bar {
@@ -687,7 +687,7 @@
 }
 
 .orders-progress-bar.done {
-    background: #8b5cf6;
+    background: #3b82f6;
 }
 
 .orders-cancelled-banner {

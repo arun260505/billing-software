@@ -27,6 +27,8 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputBaseFilename=InWallzSetup
+; The InWallz logo as the installer's own icon (staged from public/favicon.ico).
+SetupIconFile=staging\app\build\favicon.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

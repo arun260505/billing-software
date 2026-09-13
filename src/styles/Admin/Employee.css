@@ -220,9 +220,9 @@
 
 .status.active{
 
-    background:#ede9fe;
+    background:#dbeafe;
 
-    color:#6d28d9;
+    color:#1d4ed8;
 
 }
 
@@ -618,7 +618,7 @@
 
 .save-btn{
 
-    background:#7c3aed;
+    background:#2563eb;
 
     color:#fff;
 
@@ -636,7 +636,7 @@
 
 .save-btn:hover{
 
-    background:#6d28d9;
+    background:#1d4ed8;
 
 }
 

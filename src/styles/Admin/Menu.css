@@ -285,7 +285,7 @@ background:#2563EB;
 
 .summary-card.green .summary-icon{
 
-background:#7c3aed;
+background:#2563eb;
 
 }
 
@@ -567,16 +567,16 @@ background:#F9FAFB;
     margin-left:12px;
     font-size:12px;
     font-weight:600;
-    color:#6d28d9;
-    background:#f5f3ff;
-    border:1px solid #ddd6fe;
+    color:#1d4ed8;
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
     padding:2px 10px;
     border-radius:999px;
     cursor:pointer;
     transition:all 0.15s;
 }
 .cat-timing:hover{
-    background:#ede9fe;
+    background:#dbeafe;
 }
 .cat-timing.closed{
     color:#B45309;
@@ -701,9 +701,9 @@ font-weight:600;
 
 .veg{
 
-background:#ede9fe;
+background:#dbeafe;
 
-color:#6d28d9;
+color:#1d4ed8;
 
 }
 
@@ -739,9 +739,9 @@ font-weight:600;
 
 .available{
 
-background:#ede9fe;
+background:#dbeafe;
 
-color:#5b21b6;
+color:#1e40af;
 
 }
 
@@ -831,7 +831,7 @@ box-shadow:0 1px 3px rgba(0,0,0,.25);
 
 .toggle-switch input:checked + .toggle-slider{
 
-background:#8b5cf6;
+background:#3b82f6;
 
 }
 

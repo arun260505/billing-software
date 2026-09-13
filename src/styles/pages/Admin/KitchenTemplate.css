@@ -97,9 +97,9 @@
 }
 
 .kitchen-alert.success {
-    background: #f5f3ff;
-    color: #5b21b6;
-    border: 1px solid #ddd6fe;
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
 }
 
 .kitchen-alert.error {
