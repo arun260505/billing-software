@@ -894,7 +894,9 @@ const renderWhatsAppLine = (line) =>
 
 const toWhatsAppForm = (row = {}) => ({
     bill_delivery: normalizeBillDelivery(row.bill_delivery),
-    whatsapp_template: row.whatsapp_template || DEFAULT_WHATSAPP_TEMPLATE
+    whatsapp_template: row.whatsapp_template || DEFAULT_WHATSAPP_TEMPLATE,
+    // Salon-wide default for which WhatsApp bills open in. A till can override it.
+    whatsapp_via: row.whatsapp_via === "app" ? "app" : "web"
 });
 
 function TabBillsWhatsApp() {
@@ -953,6 +955,7 @@ function TabBillsWhatsApp() {
         try {
             const res = await settingsService.saveWhatsApp({
                 bill_delivery: data.bill_delivery,
+                whatsapp_via: data.whatsapp_via,
                 // The default is stored as "not customised", so a later
                 // improvement to the default reaches salons that never edited it.
                 whatsapp_template: data.whatsapp_template === DEFAULT_WHATSAPP_TEMPLATE ? "" : data.whatsapp_template
@@ -1021,6 +1024,26 @@ function TabBillsWhatsApp() {
                             </button>
                         );
                     })}
+                </div>
+            </section>
+
+            <section className="set-section">
+                <div className="set-section-head">
+                    <h3>Open bills in</h3>
+                    <p>Whether a bill opens in WhatsApp Web (browser) or the installed WhatsApp desktop app. A till can override this on its own screen if it needs to.</p>
+                </div>
+                <div className="set-field">
+                    <select
+                        className="set-select"
+                        value={data.whatsapp_via}
+                        onChange={(e) => update("whatsapp_via", e.target.value)}
+                        disabled={saving}
+                        aria-label="Open bills in"
+                    >
+                        <option value="web">WhatsApp Web (browser)</option>
+                        <option value="app">WhatsApp app (desktop)</option>
+                    </select>
+                    <p className="set-hint">"App" needs WhatsApp Desktop installed on the till PC.</p>
                 </div>
             </section>
 

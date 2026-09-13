@@ -40,8 +40,9 @@ import {
     normalizeBillDelivery,
     whatsappUrl,
     openWhatsApp,
-    getWhatsAppPrefs,
-    setWhatsAppPrefs
+    getWhatsAppOverride,
+    setWhatsAppOverride,
+    effectiveVia
 } from "../../utils/whatsappBill";
 import usePersistentCart from "../../hooks/usePersistentCart";
 
@@ -103,13 +104,15 @@ function SalonPos() {
     // waBill: the last paid bill, ready to send — { number, customer, phone, text,
     // opened, blocked }. Preferences belong to this PC (utils/whatsappBill.js).
     const [waBill, setWaBill] = useState(null);
-    const [waPrefs, setWaPrefsState] = useState(getWhatsAppPrefs);
+    // This till's override ("web" | "app" | null). null = follow the salon
+    // default (settings.whatsapp_via, in `desk` below).
+    const [waOverride, setWaOverride] = useState(getWhatsAppOverride);
     // The Web/App switch stays tucked behind a "Change" link so it isn't in the
     // way on every bill, but is one tap away when a till needs to switch.
     const [showWaSwitch, setShowWaSwitch] = useState(false);
     // The owner's choices (Settings → Bills & WhatsApp) and the shop number given
     // when the salon was created — polled with the discount rule.
-    const [desk, setDesk] = useState({ bill_delivery: "printer_optional", whatsapp_template: "", shop_mobile: "" });
+    const [desk, setDesk] = useState({ bill_delivery: "printer_optional", whatsapp_template: "", shop_mobile: "", whatsapp_via: "web" });
 
     // The unpaid order already created for the bill on screen. Closing the bill
     // modal without taking payment and pressing Bill again must not ring up a
@@ -204,7 +207,8 @@ function SalonPos() {
             setDesk({
                 bill_delivery: normalizeBillDelivery(s.bill_delivery),
                 whatsapp_template: s.whatsapp_template || "",
-                shop_mobile: s.shop_mobile || ""
+                shop_mobile: s.shop_mobile || "",
+                whatsapp_via: s.whatsapp_via === "app" ? "app" : "web"
             });
         } catch (e) {
             console.error("Failed to load the discount rule:", e);
@@ -623,14 +627,19 @@ function SalonPos() {
         mobile: desk.shop_mobile || salonInfo?.mobile
     });
 
-    const updateWaPrefs = (patch) => setWaPrefsState((prev) => {
-        const next = { ...prev, ...patch };
-        setWhatsAppPrefs(next);
-        return next;
-    });
+    // What this till actually opens WhatsApp in: its own override, else the
+    // salon-wide default (desk.whatsapp_via, set by the owner in Settings).
+    const waVia = effectiveVia(waOverride, desk.whatsapp_via);
+
+    // "" clears the override (follow the salon default); "web"/"app" set it.
+    const updateWaOverride = (value) => {
+        const v = value === "web" || value === "app" ? value : null;
+        setWaOverride(v);
+        setWhatsAppOverride(v);
+    };
 
     const sendOnWhatsApp = (entry) => {
-        const opened = openWhatsApp(whatsappUrl(entry.phone, entry.text, waPrefs.via), waPrefs.via);
+        const opened = openWhatsApp(whatsappUrl(entry.phone, entry.text, waVia), waVia);
         setWaBill({ ...entry, opened, blocked: !opened });
     };
 
@@ -655,7 +664,7 @@ function SalonPos() {
         try {
             const [head, rows] = await Promise.all([getBill(bill.id), getOrderDetails(bill.id)]);
             const text = buildBillMessage(billFromSaved(head.data.data, rows.data.data || []), shopForMessage(), desk.whatsapp_template);
-            if (!openWhatsApp(whatsappUrl(phone, text, waPrefs.via), waPrefs.via)) {
+            if (!openWhatsApp(whatsappUrl(phone, text, waVia), waVia)) {
                 alert("The browser blocked the WhatsApp window. Allow pop-ups for this page, then try again.");
             }
         } catch (e) {
@@ -1055,7 +1064,7 @@ function SalonPos() {
                                     <span className="sl-wa-hint">
                                         {waBill.blocked
                                             ? "Allow pop-ups for this page so it opens by itself next time."
-                                            : waPrefs.via === "app"
+                                            : waVia === "app"
                                                 ? "Press Send in WhatsApp. Nothing opened? Install WhatsApp Desktop or switch to WhatsApp Web."
                                                 : "The bill is typed in — press Send in WhatsApp."}
                                     </span>
@@ -1067,11 +1076,12 @@ function SalonPos() {
                                             <>
                                                 <span>Open bills in</span>
                                                 <select
-                                                    value={waPrefs.via}
-                                                    onChange={(e) => { updateWaPrefs({ via: e.target.value }); setShowWaSwitch(false); }}
+                                                    value={waOverride || ""}
+                                                    onChange={(e) => { updateWaOverride(e.target.value); setShowWaSwitch(false); }}
                                                     aria-label="Open bills in"
                                                     autoFocus
                                                 >
+                                                    <option value="">Salon default ({desk.whatsapp_via === "app" ? "app" : "Web"})</option>
                                                     <option value="web">WhatsApp Web</option>
                                                     <option value="app">WhatsApp app</option>
                                                 </select>
@@ -1082,7 +1092,7 @@ function SalonPos() {
                                                 className="sl-wa-switch"
                                                 onClick={() => setShowWaSwitch(true)}
                                             >
-                                                Opens in {waPrefs.via === "app" ? "WhatsApp app" : "WhatsApp Web"} · Change
+                                                Opens in {waVia === "app" ? "WhatsApp app" : "WhatsApp Web"}{waOverride ? "" : " (salon default)"} · Change
                                             </button>
                                         )}
                                     </div>

@@ -25,7 +25,10 @@ const DEFAULT_RESTAURANT = {
     // 018: salon bills — printer or not, and the owner's WhatsApp message
     // (NULL = the default message in src/utils/whatsappBill.js).
     bill_delivery: "printer_optional",
-    whatsapp_template: null
+    whatsapp_template: null,
+    // 019: salon-wide default for which WhatsApp bills open in ('web' | 'app').
+    // A till can override this on its own POS.
+    whatsapp_via: "web"
 };
 
 const DEFAULT_PAYMENT = {
@@ -139,13 +142,19 @@ const saveDiscountSettings = (restaurantId, data, callback) => {
 
 const saveWhatsAppSettings = (restaurantId, data, callback) => {
     const sql = `
-        INSERT INTO settings (restaurant_id, bill_delivery, whatsapp_template)
-        VALUES (?, ?, ?)
+        INSERT INTO settings (restaurant_id, bill_delivery, whatsapp_template, whatsapp_via)
+        VALUES (?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             bill_delivery     = VALUES(bill_delivery),
-            whatsapp_template = VALUES(whatsapp_template)
+            whatsapp_template = VALUES(whatsapp_template),
+            whatsapp_via      = VALUES(whatsapp_via)
     `;
-    db.query(sql, [restaurantId, data.bill_delivery, data.whatsapp_template], callback);
+    db.query(sql, [
+        restaurantId,
+        data.bill_delivery,
+        data.whatsapp_template,
+        data.whatsapp_via === "app" ? "app" : "web"
+    ], callback);
 };
 
 // The rule a new bill is checked against (utils/discountRules.js).

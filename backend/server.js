@@ -490,13 +490,15 @@ db.query(`
     FROM INFORMATION_SCHEMA.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE()
       AND TABLE_NAME = 'settings'
-      AND COLUMN_NAME IN ('bill_delivery', 'whatsapp_template')
+      AND COLUMN_NAME IN ('bill_delivery', 'whatsapp_template', 'whatsapp_via')
 `, (err, rows) => {
     if (err) { console.error("WhatsApp bill column check error:", err.message); return; }
     const has = new Set((rows || []).map((r) => r.COLUMN_NAME));
     const clauses = [];
     if (!has.has("bill_delivery"))     clauses.push("ADD COLUMN bill_delivery VARCHAR(20) NOT NULL DEFAULT 'printer_optional'");
     if (!has.has("whatsapp_template")) clauses.push("ADD COLUMN whatsapp_template TEXT NULL");
+    // 019: salon-wide default for which WhatsApp bills open in ('web' | 'app').
+    if (!has.has("whatsapp_via"))      clauses.push("ADD COLUMN whatsapp_via VARCHAR(10) NOT NULL DEFAULT 'web'");
     if (!clauses.length) { console.log("WhatsApp bill columns ready."); return; }
     db.query(`ALTER TABLE settings ${clauses.join(", ")}`, (e) => {
         if (e) console.error("WhatsApp bill columns migration error:", e.message);

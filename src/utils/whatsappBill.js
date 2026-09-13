@@ -248,24 +248,38 @@ export function openWhatsApp(url, via = "web") {
     return true;
 }
 
-// ── Per-till preference ──────────────────────────────────────────────────────
-// Which WhatsApp this PC has. A property of the machine, not the salon, so it
-// lives in this browser.
+// ── Per-till override ─────────────────────────────────────────────────────────
+// The salon's default (settings.whatsapp_via, synced from admin) decides Web vs
+// the desktop app. A single till can OVERRIDE that here — a property of the
+// machine (its WhatsApp setup), so it lives in this browser. null = follow the
+// salon default.
 
 const PREFS_KEY = "inwallz_whatsapp_prefs";
-export const DEFAULT_WHATSAPP_PREFS = { via: "web" };
 
-export function getWhatsAppPrefs() {
+/** The till's own choice: "web" | "app", or null to follow the salon default. */
+export function getWhatsAppOverride() {
     try {
         const saved = JSON.parse(window.localStorage.getItem(PREFS_KEY) || "null");
-        return { via: saved && saved.via === "app" ? "app" : "web" };
+        if (saved && (saved.via === "web" || saved.via === "app")) return saved.via;
+        return null;
     } catch (e) {
-        return { ...DEFAULT_WHATSAPP_PREFS };
+        return null;
     }
 }
 
-export function setWhatsAppPrefs(prefs) {
+/** Set the till override; pass null (or anything else) to clear it and follow the default. */
+export function setWhatsAppOverride(via) {
     try {
-        window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+        if (via === "web" || via === "app") {
+            window.localStorage.setItem(PREFS_KEY, JSON.stringify({ via }));
+        } else {
+            window.localStorage.removeItem(PREFS_KEY);
+        }
     } catch (e) { /* private window / storage blocked — keep for this session only */ }
+}
+
+/** What this till actually opens WhatsApp in: the override, else the salon default, else web. */
+export function effectiveVia(override, salonDefault) {
+    if (override === "web" || override === "app") return override;
+    return salonDefault === "app" ? "app" : "web";
 }

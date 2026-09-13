@@ -94,9 +94,14 @@ exports.saveWhatsApp = (req, res) => {
         return error(res, `The WhatsApp message can be at most ${WHATSAPP_TEMPLATE_MAX} characters.`, 400);
     }
 
+    // The salon-wide default for which WhatsApp bills open in (a till can still
+    // override it on its own POS). Anything but "app" is Web.
+    const whatsapp_via = req.body.whatsapp_via === "app" ? "app" : "web";
+
     settingsModel.saveWhatsAppSettings(rid, {
         bill_delivery: delivery,
-        whatsapp_template: template.trim() ? template : null
+        whatsapp_template: template.trim() ? template : null,
+        whatsapp_via
     }, (err) => {
         if (err) return error(res, err.message, 500);
         settingsModel.getRestaurantSettings(rid, (fetchErr, data) => {
