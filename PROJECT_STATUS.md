@@ -272,7 +272,7 @@ for the full salon API.
 | `013_business_type_inventory.sql`      | Adds `restaurants.business_type` + `inventory_items` / `inventory_movements` |
 | `014_order_stylist.sql`                | Adds `orders.stylist_id` (the stylist on a salon bill) |
 | `016_salon_discounts.sql`              | Adds the discount rule to `settings` + `orders.discount_percent` |
-| `017_salon_whatsapp_bills.sql`         | Adds `settings.bill_delivery` + `settings.whatsapp_template` (salon WhatsApp bills) |
+| `018_salon_whatsapp_bills.sql`         | Adds `settings.bill_delivery` + `settings.whatsapp_template` (salon WhatsApp bills) |
 
 Apply any not already in the DB dump. Two files share the `003_` prefix
 (`003_charges.sql`, `003_order_service_charge.sql`) — they touch different
@@ -374,7 +374,7 @@ restaurant, orphans deferred).
   usual (SALON_MODULE.md §5, §6.6b).
 - **Bill on WhatsApp** (salon, 2026-09-13): click-to-chat, no API. Owner picks
   *Printer optional* (payment: Send on WhatsApp / Print + WhatsApp) or *No printer*
-  and edits the message with {tags} in Settings → Bills & WhatsApp (017). WhatsApp
+  and edits the message with {tags} in Settings → Bills & WhatsApp (018). WhatsApp
   (Web or the desktop app, chosen per till) opens on the customer's chat with the
   bill typed in and signed with the shop number from creation; the receptionist
   presses Send. Bills → WhatsApp resends. Tills need pop-ups allowed for

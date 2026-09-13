@@ -22,7 +22,7 @@ const DEFAULT_RESTAURANT = {
     discount_enabled: 0,
     discount_max_percent: 0,
     discount_max_amount: 0,
-    // 017: salon bills — printer or not, and the owner's WhatsApp message
+    // 018: salon bills — printer or not, and the owner's WhatsApp message
     // (NULL = the default message in src/utils/whatsappBill.js).
     bill_delivery: "printer_optional",
     whatsapp_template: null

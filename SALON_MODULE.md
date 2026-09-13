@@ -199,7 +199,7 @@ Code: `src/utils/whatsappBill.js` (template, message, number, URL, prefs);
 `components/Cashier/BillModal.js` (`delivery` + `onWhatsApp` props; the restaurant
 counter passes neither and is unchanged); `pages/Salon/Pos.js`;
 `BillsHistory`'s `onWhatsApp`; `pages/Admin/Settings.js` (`TabBillsWhatsApp`).
-Columns `settings.bill_delivery`, `settings.whatsapp_template` (017, added on boot, synced cloud → till).
+Columns `settings.bill_delivery`, `settings.whatsapp_template` (018, added on boot, synced cloud → till).
 
 **Other views** (☰ menu)
 
@@ -509,7 +509,7 @@ that is what charges and totals key on — it is just never shown to a salon.
 - **Admin pages and widgets:** `pages/Admin/Orders.js`, `Reports.js`, `Settings.js`, `Billing.js`, `Categories.js`, `Dashboard.js`, `components/Admin/OrderDetailsModal.js`, `RecentOrders.js`, `TopSelling.js`, `DashboardCard.js`
 - **Till components and printing:** `components/Cashier/BillModal.js`, `BillsHistory.js`, `MenuAvailability.js`, `PrinterSetup.js`, `utils/billPrinter.js`, `utils/receiptText.js`
 - **Styles:** `styles/pages/Admin/Reports.css`, `styles/Admin/Header.css`, `styles/Layouts/AdminLayout.css`
-- **WhatsApp bill:** `utils/whatsappBill.js` (new), `tests/whatsappBill.test.mjs` (new), `pages/Salon/Pos.js`, `components/Cashier/BillModal.js`, `components/Cashier/BillsHistory.js`, `pages/Admin/Settings.js`, `services/settingsService.js`, `styles/pages/Salon/Salon.css`, `styles/pages/Admin/Settings.css`; backend `models/settingsModel.js`, `controllers/settingsController.js`, `routes/settingsRoutes.js`, `server.js`, `migrations/017_salon_whatsapp_bills.sql` (new)
+- **WhatsApp bill:** `utils/whatsappBill.js` (new), `tests/whatsappBill.test.mjs` (new), `pages/Salon/Pos.js`, `components/Cashier/BillModal.js`, `components/Cashier/BillsHistory.js`, `pages/Admin/Settings.js`, `services/settingsService.js`, `styles/pages/Salon/Salon.css`, `styles/pages/Admin/Settings.css`; backend `models/settingsModel.js`, `controllers/settingsController.js`, `routes/settingsRoutes.js`, `server.js`, `migrations/018_salon_whatsapp_bills.sql` (new)
 - **Discounts:** `utils/rates.js`, `services/settingsService.js`, `pages/Admin/Settings.js` (Discounts tab), `pages/Salon/Pos.js`, `components/Cashier/BillModal.js`, `BillEditModal.js`, `pages/Cashier/Dashboard.js`, `utils/billPrinter.js`, `utils/receiptText.js`, `utils/printBill.js`, `styles/pages/Salon/Salon.css`, `tests/discount.test.mjs` (new)
 
 ---
