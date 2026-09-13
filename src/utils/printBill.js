@@ -19,6 +19,8 @@ const row = (label, value, bold) =>
  * @param {string}  bill.place        "Table 3" / "Counter"
  * @param {Array}   bill.items        [{ item_name, quantity, price }]
  * @param {number}  bill.subtotal
+ * @param {number}  bill.discount     rupees off the goods (0 for none)
+ * @param {string}  bill.discountLabel e.g. "Discount (10%)"
  * @param {Array}   bill.taxLines     [{ charge_name, amount }] GST / service, already in rupees
  * @param {Array}   bill.charges      [{ charge_name, amount }] already resolved to rupees
  * @param {number}  bill.total
@@ -32,6 +34,8 @@ export function printBill({
     place = "",
     items = [],
     subtotal = 0,
+    discount = 0,
+    discountLabel = "Discount",
     taxLines = [],
     charges = [],
     total = 0,
@@ -79,6 +83,7 @@ export function printBill({
 
         `<hr>` +
         row("Subtotal", rupees(subtotal)) +
+        (Number(discount) > 0 ? row(discountLabel, `-${rupees(discount)}`) : "") +
         taxLines.map((t) => row(t.charge_name, rupees(t.amount))).join("") +
 
         // Optional per-bill charges (packing, delivery, …). When present the
@@ -87,7 +92,7 @@ export function printBill({
         (charges.length > 0
             ? `<hr>` +
               row("Bill Amount", rupees(
-                  Number(subtotal) + taxLines.reduce((s, t) => s + Number(t.amount || 0), 0)
+                  Number(subtotal) - Number(discount || 0) + taxLines.reduce((s, t) => s + Number(t.amount || 0), 0)
               )) +
               `<div style="margin-top:6px;font-weight:bold">Charges</div>` +
               charges.map((c) =>

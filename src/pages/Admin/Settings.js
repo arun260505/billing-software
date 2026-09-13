@@ -464,7 +464,8 @@ function TabSecurity() {
     if (loading) return <div className="set-loading">Loading security settings...</div>;
 
     const approvals = [
-        { key: "discount_approval", label: "Discounts", desc: "Require admin approval before applying discounts." },
+        // A salon controls discounts in its own Discounts tab instead.
+        ...(isSalon() ? [] : [{ key: "discount_approval", label: "Discounts", desc: "Require admin approval before applying discounts." }]),
         { key: "refund_approval", label: "Refunds", desc: "Require admin approval before processing refunds." },
         isSalon()
             ? { key: "cancel_order_approval", label: "Cancel Bills", desc: "Require the owner's approval before a receptionist cancels a bill." }
@@ -700,6 +701,152 @@ function TabPrintersKitchen() {
 // Main Settings Component
 // ═══════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════
+// Tab: Discounts (salon) — what the front desk may take off a bill
+// ═══════════════════════════════════════════════════════════════
+
+const toDiscountForm = (row = {}) => ({
+    discount_enabled: Boolean(Number(row.discount_enabled)),
+    discount_max_percent: String(Number(row.discount_max_percent) || 0),
+    discount_max_amount: String(Number(row.discount_max_amount) || 0)
+});
+
+function TabDiscounts() {
+    const [data, setData] = useState(null);
+    const [saved, setSaved] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+
+    useEffect(() => {
+        let live = true;
+        settingsService.getRestaurant()
+            .then((res) => {
+                if (!live) return;
+                const form = toDiscountForm(res.data?.data);
+                setData(form);
+                setSaved(form);
+            })
+            .catch((err) => {
+                if (live) setError(err.response?.data?.message || "Failed to load discount settings.");
+            })
+            .finally(() => { if (live) setLoading(false); });
+        return () => { live = false; };
+    }, []);
+
+    const update = (field, value) => {
+        setData((prev) => ({ ...prev, [field]: value }));
+        setNotice("");
+        setError("");
+    };
+
+    const handleSave = async () => {
+        const pct = Number(data.discount_max_percent || 0);
+        const amt = Number(data.discount_max_amount || 0);
+        if (!Number.isFinite(pct) || pct < 0 || pct > 100) { setError("Maximum percentage must be between 0 and 100."); return; }
+        if (!Number.isFinite(amt) || amt < 0) { setError("Maximum amount must be 0 or more."); return; }
+        if (data.discount_enabled && pct === 0 && amt === 0) { setError("Set a maximum percentage, a maximum amount, or both."); return; }
+
+        setSaving(true);
+        try {
+            const res = await settingsService.saveDiscounts({
+                discount_enabled: data.discount_enabled,
+                discount_max_percent: pct,
+                discount_max_amount: amt
+            });
+            const form = toDiscountForm(res.data?.data);
+            setData(form);
+            setSaved(form);
+            setNotice("Discount rules saved. The front desk picks them up within a few seconds.");
+        } catch (err) {
+            setError(err.response?.data?.message || "Could not save discount settings.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return <div className="set-loading">Loading discount settings...</div>;
+    if (!data) return <div className="set-alert set-alert-warn">{error || "Failed to load discount settings."}</div>;
+
+    const dirty = JSON.stringify(data) !== JSON.stringify(saved);
+    const hint = { display: "block", marginTop: 6, fontSize: 12, color: "#64748B" };
+
+    return (
+        <>
+            {error && <div className="set-alert set-alert-warn">{error}</div>}
+            {notice && <div className="set-alert set-alert-ok">{notice}</div>}
+
+            <div className="set-section-inner">
+                <h4>Receptionist Discounts</h4>
+                <div className="set-payment-methods">
+                    <div className="set-payment-row">
+                        <div className="set-payment-info">
+                            <strong>Allow discounts at the front desk</strong>
+                            <span>
+                                Off: every bill is charged in full. On: the receptionist can take
+                                a discount off a bill, up to the limits below. GST is worked out on
+                                the amount after the discount.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            className={`set-switch${data.discount_enabled ? " on" : ""}`}
+                            onClick={() => update("discount_enabled", !data.discount_enabled)}
+                            disabled={saving}
+                            aria-pressed={data.discount_enabled}
+                            aria-label="Allow discounts at the front desk"
+                        >
+                            <span className="set-switch-track"><span className="set-switch-thumb" /></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {data.discount_enabled && (
+                <div className="set-section-inner">
+                    <h4>Limits per bill</h4>
+                    <div className="set-grid">
+                        <div className="set-field">
+                            <label htmlFor="disc-max-pct">Maximum discount (%)</label>
+                            <input
+                                id="disc-max-pct"
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                                inputMode="decimal"
+                                value={data.discount_max_percent}
+                                onChange={(e) => update("discount_max_percent", e.target.value)}
+                            />
+                            <span style={hint}>e.g. 10 lets the desk give up to 10% off. 0 = no percentage discounts.</span>
+                        </div>
+                        <div className="set-field">
+                            <label htmlFor="disc-max-amt">Maximum discount (₹)</label>
+                            <input
+                                id="disc-max-amt"
+                                type="number"
+                                min="0"
+                                step="1"
+                                inputMode="decimal"
+                                value={data.discount_max_amount}
+                                onChange={(e) => update("discount_max_amount", e.target.value)}
+                            />
+                            <span style={hint}>e.g. 200 lets the desk take up to ₹200 off. 0 = no flat-amount discounts.</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="set-section-footer">
+                <button className="set-save-btn" onClick={handleSave} disabled={saving || !dirty}>
+                    {saving ? "Saving..." : dirty ? "Save Changes" : "Saved"}
+                </button>
+            </div>
+        </>
+    );
+}
+
 function Settings() {
     const [activeTab, setActiveTab] = useState("restaurant");
 
@@ -708,14 +855,18 @@ function Settings() {
     // on the till's Printer screen.
     const salon = isSalon();
     const tabs = salon
-        ? TABS
-            .filter((t) => t.key !== "staff" && t.key !== "printers")
-            .map((t) => (t.key === "restaurant" ? { ...t, label: "Salon" } : t))
+        ? [
+            { key: "restaurant", label: "Salon" },
+            { key: "payments", label: "Payments" },
+            { key: "discounts", label: "Discounts" },
+            { key: "security", label: "Security" }
+        ]
         : TABS;
 
     const TAB_CONTENT = {
         restaurant: <TabRestaurant />,
         payments: <TabPayments />,
+        discounts: <TabDiscounts />,
         staff: <TabStaffPermissions />,
         security: <TabSecurity />,
         printers: <TabPrintersKitchen />

@@ -1,5 +1,5 @@
 const db = require("../config/db");
-const { totalsFromSubtotal, resolveCharges, money, ROLES } = require("../utils/billing");
+const { totalsFromSubtotal, resolveCharges, resolveDiscount, money, ROLES } = require("../utils/billing");
 const { getAutoCharges } = require("../utils/billingCharges");
 
 /*
@@ -13,11 +13,19 @@ const { getAutoCharges } = require("../utils/billingCharges");
 const totalsForOrder = (orderId, restaurantId, subtotal, callback) => {
 
     db.query(
-        "SELECT order_type FROM orders WHERE id = ? AND restaurant_id = ? LIMIT 1",
+        "SELECT order_type, discount, discount_percent FROM orders WHERE id = ? AND restaurant_id = ? LIMIT 1",
         [orderId, restaurantId],
         (err, orderRows) => {
             if (err) return callback(err);
-            const orderType = (orderRows && orderRows[0] && orderRows[0].order_type) || "Dine-In";
+            const row = (orderRows && orderRows[0]) || {};
+            const orderType = row.order_type || "Dine-In";
+
+            // An edit keeps the bill's discount: a percentage is re-taken off the
+            // new subtotal; a flat amount stays, but never above the subtotal.
+            const discount = resolveDiscount(subtotal, {
+                percent: row.discount_percent,
+                amount: row.discount
+            });
 
             getAutoCharges(restaurantId, orderType, (err, autoCharges) => {
                 // getAutoCharges never errors — it bills the goods rather than
@@ -33,7 +41,8 @@ const totalsForOrder = (orderId, restaurantId, subtotal, callback) => {
                         // no role, so they total as ordinary charges.
                         callback(null, totalsFromSubtotal(
                             subtotal,
-                            [...autoCharges, ...(chargeRows || [])]
+                            [...autoCharges, ...(chargeRows || [])],
+                            discount
                         ));
                     }
                 );
@@ -143,13 +152,14 @@ const createOrder = (order, callback) => {
             order_status,
             subtotal,
             discount,
+            discount_percent,
             tax,
             service_charge,
             grand_total,
             payment_status,
             notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     db.query(sql, [
@@ -162,7 +172,8 @@ const createOrder = (order, callback) => {
         order.order_type,
         order.order_status,
         order.subtotal,
-        order.discount,
+        order.discount || 0,
+        order.discount_percent ?? null,
         order.tax,
         order.service_charge || 0,
         order.grand_total,
@@ -196,6 +207,7 @@ const getInvoiceByOrderId = (orderId, restaurantId, callback) => {
             o.subtotal,
             o.tax,
             o.discount,
+            o.discount_percent,
             o.grand_total,
             o.created_at,
             r.restaurant_name,
@@ -537,9 +549,11 @@ const applyBillCharges = (orders, restaurantId, charges, callback) => {
     // Ordinary charges only. Tax and service rows are applied automatically from
     // the restaurant's charge list and already sit in orders.tax /
     // orders.service_charge — storing one here too would bill it twice.
+    // Resolved against the goods after any discount — the same base the bill's
+    // tax and the screen's chips use.
     const resolved = resolveCharges(
         charges,
-        orders.reduce((s, o) => s + Number(o.subtotal || 0), 0)
+        orders.reduce((s, o) => s + Number(o.subtotal || 0) - Number(o.discount || 0), 0)
     ).filter((c) => c.charge_role === ROLES.CHARGE);
 
     const target = orders[0];
@@ -609,7 +623,7 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
             // Ordered so orders[0] is stable — it is the one charges attach to
             // and the one whose number identifies the bill.
             db.query(
-                `SELECT id, order_number, subtotal, charges_total, grand_total FROM orders
+                `SELECT id, order_number, subtotal, discount, charges_total, grand_total FROM orders
                  WHERE table_id=? AND restaurant_id=?
                    AND order_status IN ('Pending','Preparing','Ready','Served')
                  ORDER BY id`,
@@ -771,7 +785,7 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
 const setOrderCharges = (orderId, restaurantId, charges, callback) => {
 
     db.query(
-        `SELECT id, order_number, subtotal, charges_total, grand_total
+        `SELECT id, order_number, subtotal, discount, charges_total, grand_total
          FROM orders WHERE id=? AND restaurant_id=? AND deleted_at IS NULL LIMIT 1`,
         [orderId, restaurantId],
         (err, rows) => {
@@ -874,9 +888,9 @@ const removeOrderItem = (itemId, restaurantId, callback) => {
 
                                 db.query(
                                     `UPDATE orders
-                                     SET subtotal=?, tax=?, service_charge=?, charges_total=?, grand_total=?${cancelClause}
+                                     SET subtotal=?, discount=?, tax=?, service_charge=?, charges_total=?, grand_total=?${cancelClause}
                                      WHERE id=? AND restaurant_id=?`,
-                                    [t.subtotal, t.tax, t.service_charge, t.charges_total, t.grand_total, orderId, restaurantId],
+                                    [t.subtotal, t.discount, t.tax, t.service_charge, t.charges_total, t.grand_total, orderId, restaurantId],
                                     (err) => callback(err, { orderId, remaining: cnt })
                                 );
                             });
@@ -900,9 +914,9 @@ const recomputeOrderTotals = (orderId, restaurantId, callback) => {
             totalsForOrder(orderId, restaurantId, rows[0].subtotal, (err, t) => {
                 if (err) return callback(err);
                 db.query(
-                    `UPDATE orders SET subtotal=?, tax=?, service_charge=?, charges_total=?, grand_total=?
+                    `UPDATE orders SET subtotal=?, discount=?, tax=?, service_charge=?, charges_total=?, grand_total=?
                      WHERE id=? AND restaurant_id=?`,
-                    [t.subtotal, t.tax, t.service_charge, t.charges_total, t.grand_total, orderId, restaurantId],
+                    [t.subtotal, t.discount, t.tax, t.service_charge, t.charges_total, t.grand_total, orderId, restaurantId],
                     (err) => callback(err, { orderId, ...t })
                 );
             });
@@ -1010,9 +1024,9 @@ const setItemQuantity = (itemId, restaurantId, quantity, callback) => {
                                 if (err) return callback(err);
 
                                 db.query(
-                                    `UPDATE orders SET subtotal=?, tax=?, service_charge=?, charges_total=?, grand_total=?
+                                    `UPDATE orders SET subtotal=?, discount=?, tax=?, service_charge=?, charges_total=?, grand_total=?
                                      WHERE id=? AND restaurant_id=?`,
-                                    [t.subtotal, t.tax, t.service_charge, t.charges_total, t.grand_total, orderId, restaurantId],
+                                    [t.subtotal, t.discount, t.tax, t.service_charge, t.charges_total, t.grand_total, orderId, restaurantId],
                                     (err) => callback(err, { orderId, quantity: qty })
                                 );
                             });
@@ -1044,6 +1058,8 @@ const getTodaysBills = (restaurantId, callback) => {
             o.order_status,
             o.table_id,
             o.subtotal,
+            o.discount,
+            o.discount_percent,
             o.tax,
             o.service_charge,
             o.grand_total,
@@ -1096,6 +1112,8 @@ const getBillById = (orderId, restaurantId, callback) => {
             o.order_type,
             o.order_status,
             o.subtotal,
+            o.discount,
+            o.discount_percent,
             o.tax,
             o.service_charge,
             o.charges_total,

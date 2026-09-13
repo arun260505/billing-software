@@ -250,6 +250,7 @@ dialog — they are previews, not till prints.
 | `POST /api/inventory/:id/stock`        | Stock In / Out / Adjust (admin)          |
 | `GET  /api/employees/stylists`         | Salon stylists for the billing dropdown (admin, cashier) |
 | `GET  /api/dashboard/stylists`         | Live per-stylist board for today (admin) |
+| `PUT  /api/settings/discounts`         | Owner's front-desk discount rule: on/off, max %, max ₹ (admin) |
 
 All are tenant-scoped (`restaurant_id` from the JWT). Table, kitchen, KOT and
 running-order endpoints additionally refuse a **salon** login
@@ -269,6 +270,7 @@ for the full salon API.
 | `008_order_charges.sql`                | Adds `order_charges` + `orders.charges_total` |
 | `013_business_type_inventory.sql`      | Adds `restaurants.business_type` + `inventory_items` / `inventory_movements` |
 | `014_order_stylist.sql`                | Adds `orders.stylist_id` (the stylist on a salon bill) |
+| `016_salon_discounts.sql`              | Adds the discount rule to `settings` + `orders.discount_percent` |
 
 Apply any not already in the DB dump. Two files share the `003_` prefix
 (`003_charges.sql`, `003_order_service_charge.sql`) — they touch different
@@ -314,6 +316,13 @@ One calculation, two mirrored implementations that must not drift:
 - **Prices come from `menu_items`, never the request.** `orderModel.priceCartItems`
   re-prices every cart server-side; an item that isn't on that restaurant's menu
   is a 400.
+- **A discount comes off the goods before tax.** `orders.discount` (rupees) is
+  taken off the subtotal first; GST, service charge and percentage charges are
+  worked out on what is left. A percentage discount also stores
+  `orders.discount_percent`, so a corrected bill re-takes the same % off its new
+  subtotal. Front-desk discounts are limited by the owner's rule
+  (Settings → Discounts, `backend/utils/discountRules.js`); today only the salon
+  billing screen offers one.
 - **Tax and service are each rounded to paise before being summed**, because
   those are the lines printed on the receipt — the total is the sum of what the
   customer can read.
@@ -358,6 +367,16 @@ restaurant, orphans deferred).
 - **Salon module:** still needs a hands-on click-through and a run on the exe
   till before release. Deploy the **cloud before the exe**: a new till's order
   push carries `stylist_id`, which an old cloud rejects (see SALON_MODULE.md §6.8, §8).
+- **Salon discounts** (2026-09-13): owner-controlled %/₹ discounts at the front
+  desk, pushed to git, **not deployed yet**. Deploy the cloud before the exe as
+  usual (SALON_MODULE.md §5, §6.6b).
+- **Payment numbers collide across businesses (pre-existing bug).**
+  `PAY-<date>-NNNN` restarts at 0001 for each business every day
+  (`utils/paymentNumber.js`, `orderModel` settle), but `payments.payment_number`
+  has a UNIQUE key across all businesses. On a database with more than one
+  business, whichever business takes its first payment of the day second gets
+  a 500 (`Duplicate entry 'PAY-…-0001'`). Found while testing discounts; needs the
+  same per-restaurant treatment as order numbers (`015_…`).
 - **Reports page** (both types) was fixed on 2026-09-13: single-tab cards were
   collapsing, Overview had gaps, and every admin page overflowed on phones
   (SALON_MODULE.md §7).

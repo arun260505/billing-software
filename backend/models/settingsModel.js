@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
+const { readPolicy } = require("../utils/discountRules");
 
 const DEFAULT_RESTAURANT = {
     restaurant_name: "",
@@ -16,7 +17,11 @@ const DEFAULT_RESTAURANT = {
     time_zone: "Asia/Kolkata",
     opening_time: null,
     closing_time: null,
-    restaurant_status: "Open"
+    restaurant_status: "Open",
+    // 016: front-desk discounts, off until the owner allows them.
+    discount_enabled: 0,
+    discount_max_percent: 0,
+    discount_max_amount: 0
 };
 
 const DEFAULT_PAYMENT = {
@@ -89,6 +94,41 @@ const saveRestaurantSettings = (restaurantId, data, callback) => {
         (data.restaurant_status || "Open").slice(0, 10)
     ];
     db.query(sql, values, callback);
+};
+
+// ── 1b. Discount rule ──────────────────────────────────────────
+// Saved on its own so the main settings form (which rewrites every restaurant
+// column) and this one never overwrite each other.
+
+const saveDiscountSettings = (restaurantId, data, callback) => {
+    const sql = `
+        INSERT INTO settings
+            (restaurant_id, discount_enabled, discount_max_percent, discount_max_amount)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            discount_enabled     = VALUES(discount_enabled),
+            discount_max_percent = VALUES(discount_max_percent),
+            discount_max_amount  = VALUES(discount_max_amount)
+    `;
+    db.query(sql, [
+        restaurantId,
+        data.discount_enabled ? 1 : 0,
+        Number(data.discount_max_percent) || 0,
+        Number(data.discount_max_amount) || 0
+    ], callback);
+};
+
+// The rule a new bill is checked against (utils/discountRules.js).
+const getDiscountPolicy = (restaurantId, callback) => {
+    db.query(
+        `SELECT discount_enabled, discount_max_percent, discount_max_amount
+         FROM settings WHERE restaurant_id = ? LIMIT 1`,
+        [restaurantId],
+        (err, rows) => {
+            if (err) return callback(err);
+            callback(null, readPolicy(rows && rows[0]));
+        }
+    );
 };
 
 // ── 2. Payment Settings ────────────────────────────────────────
@@ -213,6 +253,8 @@ module.exports = {
     DEFAULT_SECURITY,
     getRestaurantSettings,
     saveRestaurantSettings,
+    saveDiscountSettings,
+    getDiscountPolicy,
     getPaymentSettings,
     savePaymentSettings,
     getSecuritySettings,

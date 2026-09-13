@@ -10,6 +10,9 @@ router.use(authMiddleware);
 router.get("/restaurant", settingsController.getRestaurant);
 router.put("/restaurant", roleMiddleware(["admin"]), settingsController.saveRestaurant);
 
+// The owner's front-desk discount rule (read via GET /restaurant).
+router.put("/discounts", roleMiddleware(["admin"]), settingsController.saveDiscounts);
+
 // ── 2. Payment Settings ────────────────────────────────────────
 router.get("/payments", settingsController.getPayments);
 router.put("/payments", roleMiddleware(["admin"]), settingsController.savePayments);

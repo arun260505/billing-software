@@ -869,6 +869,8 @@ function Dashboard() {
                 place: header.table_name ? `Table ${header.table_name}` : "Counter",
                 items: editingBillItems,
                 subtotal: totals.subtotal,
+                discount: totals.discount,
+                discountLabel: totals.discountLabel,
                 taxLines: totals.taxLines,
                 charges: totals.charges,
                 total: totals.total,

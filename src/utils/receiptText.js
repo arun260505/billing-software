@@ -142,15 +142,18 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
 
     const items = order.items || [];
     const subtotal = Number(order.subtotal || 0);
+    // A discount comes off the goods before tax — see billPrinter.js.
+    const discount = Math.min(Math.max(Number(order.discount || 0), 0), subtotal);
+    const taxBase = subtotal - discount;
     const tax = Number(order.tax || order.gst || 0);
     const serviceCharge = Number(order.service_charge || order.serviceCharge || 0);
     const charges = sanitizeCharges(order.charges || order.selectedCharges);
     const chargesTotal = charges.reduce((sum, c) => {
-        if (c.charge_type === "Percentage") return sum + Math.round(subtotal * Number(c.amount) / 100);
+        if (c.charge_type === "Percentage") return sum + Math.round(taxBase * Number(c.amount) / 100);
         return sum + Number(c.amount || 0);
     }, 0);
     const grandTotal = Number(
-        order.grand_total || order.total || (subtotal + tax + serviceCharge + chargesTotal)
+        order.grand_total || order.total || (taxBase + tax + serviceCharge + chargesTotal)
     );
 
     const dateStr = order.date || new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -246,14 +249,15 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     // ── Summary ──
     const summaryRows = [];
     if (cfg.show_subtotal) summaryRows.push(["Sub Total", subtotal.toFixed(2)]);
-    if (cfg.show_tax && tax > 0) summaryRows.push([`GST${percentOf(tax, subtotal)}`, tax.toFixed(2)]);
+    if (discount > 0) summaryRows.push([order.discount_label || "Discount", `-${discount.toFixed(2)}`]);
+    if (cfg.show_tax && tax > 0) summaryRows.push([`GST${percentOf(tax, taxBase)}`, tax.toFixed(2)]);
     if (cfg.show_service_charge && serviceCharge > 0) {
-        summaryRows.push([`Service Charge${percentOf(serviceCharge, subtotal)}`, serviceCharge.toFixed(2)]);
+        summaryRows.push([`Service Charge${percentOf(serviceCharge, taxBase)}`, serviceCharge.toFixed(2)]);
     }
     if (cfg.show_charges && charges.length > 0) {
         charges.forEach((c) => {
             const val = c.charge_type === "Percentage"
-                ? Math.round(subtotal * Number(c.amount) / 100)
+                ? Math.round(taxBase * Number(c.amount) / 100)
                 : Number(c.amount);
             const label = c.charge_type === "Percentage" ? `${c.charge_name} ${Number(c.amount)}%` : c.charge_name;
             summaryRows.push([label, val.toFixed(2)]);

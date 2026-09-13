@@ -238,6 +238,23 @@ button.sl-badge { cursor: pointer; }
 .cashier-app .sl-suggest-name { font-weight: 700; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cashier-app .sl-suggest-mobile { color: #0f766e; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
 
+/* Discount (only shown when the owner allows it) */
+.cashier-app .sl-discount { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.cashier-app .sl-discount-label { font-size: 14px; color: #475569; flex: 1 1 auto; }
+.cashier-app .sl-discount-seg { display: inline-flex; background: #eef2f7; border-radius: 8px; padding: 2px; gap: 2px; }
+.cashier-app .sl-discount-seg button {
+    border: none; background: transparent; width: 32px; height: 30px; border-radius: 6px;
+    font-weight: 800; font-size: 14px; color: #475569; cursor: pointer; font-family: inherit;
+}
+.cashier-app .sl-discount-seg button.active { background: #fff; color: #0d9488; box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.cashier-app .sl-discount input {
+    width: 110px; height: 34px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0 10px;
+    font-size: 14px; text-align: right; outline: none; font-family: inherit;
+}
+.cashier-app .sl-discount input:focus { border-color: #0d9488; }
+.cashier-app .sl-discount-error { font-size: 12px; font-weight: 700; color: #b91c1c; padding: 0 0 4px; text-align: right; }
+.cashier-app .sl-discount-row { color: #15803d; font-weight: 700; }
+
 .cashier-app .sl-notice {
     margin-top: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d;
     border-radius: 9px; padding: 8px 10px; font-size: 13px; font-weight: 700;

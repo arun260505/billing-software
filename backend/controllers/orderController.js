@@ -6,6 +6,8 @@ const { totalsFromItems } = require("../utils/billing");
 const { getAutoCharges } = require("../utils/billingCharges");
 const { success, error } = require("../utils/response");
 const { isSalon } = require("../utils/businessType");
+const { checkDiscount } = require("../utils/discountRules");
+const settingsModel = require("../models/settingsModel");
 const db = require("../config/db");
 
 // Totals come from utils/billing so a bill adds up the same way whether it is
@@ -118,7 +120,18 @@ function placeOrder(req, res, restaurantId, items) {
 
         if (err) return error(res, err.message, 500);
 
-        const { subtotal, tax, service_charge, grand_total } = computeTotals(pricedItems, autoCharges);
+        settingsModel.getDiscountPolicy(restaurantId, (err, policy) => {
+
+        if (err) return error(res, err.message, 500);
+
+        // A discount is checked against the owner's rule and the real (server-
+        // priced) bill, then taken off the goods before tax. The screen checks the
+        // same rule, but it is not the authority.
+        const goods = pricedItems.reduce((s, it) => s + Number(it.price) * Number(it.quantity), 0);
+        const asked = checkDiscount({ policy, role: req.user.role, input: req.body, subtotal: goods });
+        if (asked.problem) return error(res, asked.problem, 400);
+
+        const { subtotal, tax, service_charge, grand_total } = computeTotals(pricedItems, autoCharges, asked.discount);
 
         generateOrderNumber(restaurantId, (err, orderNumber) => {
 
@@ -134,7 +147,8 @@ function placeOrder(req, res, restaurantId, items) {
                 order_status: req.body.order_status || "Preparing",
                 payment_status: req.body.payment_status || "Pending",
                 subtotal,
-                discount: req.body.discount || 0,
+                discount: asked.discount,
+                discount_percent: asked.discount_percent,
                 tax,
                 service_charge,
                 grand_total
@@ -174,6 +188,8 @@ function placeOrder(req, res, restaurantId, items) {
                 });
 
             });
+
+        });
 
         });
 

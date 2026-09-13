@@ -5,6 +5,9 @@ const settingsService = {
     getRestaurant: () => api.get("/settings/restaurant"),
     saveRestaurant: (data) => api.put("/settings/restaurant", data),
 
+    // Front-desk discount rule (owner). Read back through getRestaurant.
+    saveDiscounts: (data) => api.put("/settings/discounts", data),
+
     // Payments
     getPayments: () => api.get("/settings/payments"),
     savePayments: (data) => api.put("/settings/payments", data),

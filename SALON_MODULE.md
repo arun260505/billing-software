@@ -131,7 +131,31 @@ lands here instead of `/cashier`.
    Split). The modal shows the customer and stylist. Removable and opt-in
    charges work as on the restaurant counter.
 5. Confirm. The bill is paid and printed, and the screen resets (services,
-   customer and stylist) with a *"✓ Bill … paid and printed"* notice.
+   customer, stylist and discount) with a *"✓ Bill … paid and printed"* notice.
+
+**Discounts (only if the owner allows them)**
+
+The owner decides in **Settings → Discounts** whether the front desk may give a
+discount, and how much:
+
+| Setting | Meaning |
+|---|---|
+| Allow discounts at the front desk | Off (default): no discount box on the billing screen, and the backend refuses one |
+| Maximum discount (%) | The most a receptionist can take off as a percentage. `0` = no percentage discounts |
+| Maximum discount (₹) | The most a receptionist can take off as a flat amount. `0` = no flat discounts |
+
+- With the rule on, the bill panel shows **Discount [%] [₹] [ amount ]** under
+  Subtotal (only the kinds the owner allowed). Going over a limit shows *"The
+  owner allows up to 10% off."* and the Bill button stays disabled.
+- **The discount comes off the services before GST.** 2 × ₹300 with 10% off and
+  18% GST: Subtotal 600 → Discount (10%) −60 → GST 18% on 540 = 97.20 → Total 637.20.
+- The discount is printed on the bill (browser print and direct thermal) as
+  *Discount (10%)* or *Discount*, and shown in the payment modal and the bill
+  correction popup.
+- **Correcting a bill keeps its discount:** a percentage is re-taken off the new
+  subtotal, and a flat amount stays (never more than the subtotal).
+- The till polls the rule every 10 seconds, so an owner's change reaches the desk
+  without a restart (on the exe, once it has synced down).
 
 **Other views** (☰ menu)
 
@@ -296,6 +320,34 @@ All inventory endpoints are **admin only**.
 - **Stock never goes below zero**, and a change of 0 is refused.
 - The movement log always adds up to the quantity on the item.
 
+### 6.6b Discounts
+
+**The rule** is three columns on the synced `settings` table:
+`discount_enabled`, `discount_max_percent`, `discount_max_amount`.
+
+| Method & path | Roles | Purpose |
+|---|---|---|
+| `PUT /api/settings/discounts` `{ discount_enabled, discount_max_percent, discount_max_amount }` | admin | Save the rule. Refuses % over 100, negatives, and "on" with both limits 0. Saved separately from the main settings form, so neither overwrites the other. |
+| `GET /api/settings/restaurant` | any signed-in role | Returns the rule with the other settings (the billing screen reads it here) |
+| `POST /api/orders` `{ …, discount_type: "percent" \| "amount", discount_value }` | desk | Discount on a new bill |
+
+**Enforced on the backend** (`backend/utils/discountRules.js → checkDiscount`), against the server-priced subtotal:
+- A receptionist's discount must be switched on, of an allowed kind, and within its limit; otherwise `400` with a message for the desk.
+- An old client sending a bare `discount` number is checked as a flat amount.
+- `orders.discount` stores the rupees; `orders.discount_percent` stores the rate for a % discount (NULL for flat or none).
+
+**Maths** (`backend/utils/billing.js` and its mirror `src/utils/rates.js`):
+`totalsFromSubtotal(subtotal, charges, discount)` / `billTotals(…)` clamps the
+discount to 0…subtotal, works tax, service charge and percentage charges out on
+`taxable = subtotal − discount`, and totals `taxable + tax + service + charges`.
+`resolveDiscount(subtotal, { percent, amount })` turns a stored discount back into
+rupees. `orderModel` uses it wherever a bill is recomputed (quantity change, item
+removed, item added), and settle-time charges are resolved on the discounted goods.
+
+`orders.discount` / `discount_percent` are returned by `/orders/bills/today` and
+`/orders/bills/:id`. The **Discounts** approval row in Settings → Security is
+hidden for salons (the Discounts tab replaces it).
+
 ### 6.7 Dashboard figures
 
 `GET /api/dashboard/summary` gained `customers_today` and `low_stock_items`.
@@ -326,6 +378,11 @@ return `customer_name`, `customer_mobile` and `stylist_name`.
 | `restaurants.business_type` | `migrations/syncColumns.js` | `013_business_type_inventory.sql` |
 | `inventory_items`, `inventory_movements` | `server.js` | `013_business_type_inventory.sql` |
 | `orders.stylist_id` | `migrations/syncColumns.js` | `014_order_stylist.sql` |
+| `settings.discount_enabled`, `discount_max_percent`, `discount_max_amount`; `orders.discount_percent` | `server.js` | `016_salon_discounts.sql` |
+
+The discount rule rides on `settings` (cloud → till). `orders.discount` was
+already synced up; `orders.discount_percent` is a plain column and goes up with
+the order once both sides have it.
 
 Nothing needs running by hand: start the new build and the schema catches up.
 
@@ -384,8 +441,10 @@ that is what charges and totals key on — it is just never shown to a salon.
 - `middleware/businessTypeMiddleware.js`
 - `models/inventoryModel.js`, `controllers/inventoryController.js`, `routes/inventoryRoutes.js`
 - `migrations/013_business_type_inventory.sql`, `migrations/014_order_stylist.sql`
+- **Discounts:** `utils/discountRules.js`, `migrations/016_salon_discounts.sql`, `tests/discountRules.test.js`
 
 **Backend: changed**
+- **Discounts:** `utils/billing.js`, `models/orderModel.js`, `controllers/orderController.js`, `models/settingsModel.js`, `controllers/settingsController.js`, `routes/settingsRoutes.js`, `server.js`, `tests/billing.test.js`
 - **Login, super admin, staff:** `models/authModel.js`, `controllers/superAdminController.js`, `controllers/employeeController.js`, `models/employeeModel.js`, `routes/employeeRoutes.js`
 - **Customers and orders:** `models/customerModel.js`, `controllers/customerController.js`, `routes/customerRoutes.js`, `controllers/orderController.js`, `models/orderModel.js`
 - **Dashboard and reports:** `models/dashboardModel.js`, `controllers/dashboardController.js`, `routes/dashboardRoutes.js`, `models/reportModel.js`, `controllers/reportController.js`
@@ -406,6 +465,7 @@ that is what charges and totals key on — it is just never shown to a salon.
 - **Admin pages and widgets:** `pages/Admin/Orders.js`, `Reports.js`, `Settings.js`, `Billing.js`, `Categories.js`, `Dashboard.js`, `components/Admin/OrderDetailsModal.js`, `RecentOrders.js`, `TopSelling.js`, `DashboardCard.js`
 - **Till components and printing:** `components/Cashier/BillModal.js`, `BillsHistory.js`, `MenuAvailability.js`, `PrinterSetup.js`, `utils/billPrinter.js`, `utils/receiptText.js`
 - **Styles:** `styles/pages/Admin/Reports.css`, `styles/Admin/Header.css`, `styles/Layouts/AdminLayout.css`
+- **Discounts:** `utils/rates.js`, `services/settingsService.js`, `pages/Admin/Settings.js` (Discounts tab), `pages/Salon/Pos.js`, `components/Cashier/BillModal.js`, `BillEditModal.js`, `pages/Cashier/Dashboard.js`, `utils/billPrinter.js`, `utils/receiptText.js`, `utils/printBill.js`, `styles/pages/Salon/Salon.css`, `tests/discount.test.mjs` (new)
 
 ---
 
@@ -418,8 +478,10 @@ that is what charges and totals key on — it is just never shown to a salon.
 | Customer search (`q=98` → none, `987` → 3, full number → 1, `an` → Anita, `a_%` → none) | Pass |
 | UI smoke tests with a mocked API (billing a new customer, reusing an unpaid bill, customer history, stock-out preview, services form) | **4 / 4 pass** (before the stylist change) |
 | Screenshots in headless Edge: salon Reports (Overview, Staff) and dashboard at 1440px; salon Reports, dashboard and Customers at 420px (no horizontal overflow, no console errors); billing screen; restaurant Reports | Pass |
-| Existing logic tests (`npm run test:logic`) | **28 / 28 pass** |
-| Production build (`npm run build`) | Compiles, no warnings |
+| Discount rule unit tests (`backend/tests/discountRules.test.js`) and discount maths in `billing.test.js` (backend `npm test`) | **52 / 52 pass** (whole backend suite) |
+| Discount maths mirror (`tests/discount.test.mjs`, in `npm run test:logic`) | **35 / 35 pass** (whole logic suite) |
+| Discount API end-to-end: off by default, receptionist refused while off (incl. legacy `discount`), receptionist can't change the rule, invalid rules refused, owner saves 10% / ₹100, saving main settings keeps it, 10% and ₹100 bills totalled with GST after the discount, 15% / ₹150 / junk refused, bill header + today's bills return it, quantity correction re-takes the %, off again refuses | **25 / 25 pass** |
+| Production build (`npm run build`, `CI=true`) | Compiles, no warnings |
 
 **Not yet done:** a hands-on click-through by a person and a run on the exe till.
 

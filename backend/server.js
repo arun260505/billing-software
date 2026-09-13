@@ -439,6 +439,41 @@ db.query(`
     }
 });
 
+// ── 016: the owner's discount rule (settings) + a bill's discount rate (orders) ──
+// `settings` syncs cloud → till, so the rule reaches the front desk. See
+// migrations/016_salon_discounts.sql.
+db.query(`
+    SELECT TABLE_NAME, COLUMN_NAME
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND ((TABLE_NAME = 'settings'
+            AND COLUMN_NAME IN ('discount_enabled', 'discount_max_percent', 'discount_max_amount'))
+        OR (TABLE_NAME = 'orders' AND COLUMN_NAME = 'discount_percent'))
+`, (err, rows) => {
+    if (err) { console.error("Discount column check error:", err.message); return; }
+    const has = new Set((rows || []).map((r) => `${r.TABLE_NAME}.${r.COLUMN_NAME}`));
+
+    const settingsClauses = [];
+    if (!has.has("settings.discount_enabled"))     settingsClauses.push("ADD COLUMN discount_enabled TINYINT(1) NOT NULL DEFAULT 0");
+    if (!has.has("settings.discount_max_percent")) settingsClauses.push("ADD COLUMN discount_max_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00");
+    if (!has.has("settings.discount_max_amount"))  settingsClauses.push("ADD COLUMN discount_max_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+    if (settingsClauses.length) {
+        db.query(`ALTER TABLE settings ${settingsClauses.join(", ")}`, (e) => {
+            if (e) console.error("Settings discount columns migration error:", e.message);
+            else console.log("Settings discount columns added.");
+        });
+    }
+
+    if (!has.has("orders.discount_percent")) {
+        db.query("ALTER TABLE orders ADD COLUMN discount_percent DECIMAL(5,2) NULL DEFAULT NULL AFTER discount", (e) => {
+            if (e) console.error("orders.discount_percent migration error:", e.message);
+            else console.log("Orders discount_percent column added.");
+        });
+    }
+
+    if (!settingsClauses.length && has.has("orders.discount_percent")) console.log("Discount columns ready.");
+});
+
 // ── Settings table: add missing columns if they don't exist ─────
 db.query(`
     SELECT COLUMN_NAME

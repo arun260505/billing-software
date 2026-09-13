@@ -175,27 +175,47 @@ export function splitCharges(resolved) {
 }
 
 /**
+ * The rupee discount on a bill: `percent` of the goods subtotal when a percent
+ * is given, otherwise the flat `amount`. Never negative, never more than the
+ * subtotal. Mirrors backend/utils/billing.js resolveDiscount.
+ */
+export function resolveDiscount(subtotal, { percent = null, amount = 0 } = {}) {
+    const sub = money(subtotal);
+    const hasPercent = percent !== null && percent !== undefined && percent !== "";
+    const raw = hasPercent ? (sub * Number(percent)) / 100 : Number(amount);
+    return money(Math.min(Math.max(Number.isFinite(raw) ? raw : 0, 0), sub));
+}
+
+/**
  * Total a bill from its subtotal and the charge rows that apply to it.
  *
  * Each bucket is rounded to paise before being summed, because those are the
  * lines the customer reads on the receipt — the total has to be the sum of what
  * is printed.
  *
+ * A discount (rupees) comes off the goods first; tax and percentage charges are
+ * worked out on what is left (`taxable`). `subtotal` stays the undiscounted goods.
+ *
  * @param {number} subtotal
  * @param {Array}  charges  charge rows (unresolved) that apply to this bill
- * @returns {{subtotal, tax, service_charge, charges_total, grand_total,
- *            tax_lines, service_lines, charge_lines}}
+ * @param {number} discount rupees off the goods (clamped to 0…subtotal)
+ * @returns {{subtotal, discount, taxable, tax, service_charge, charges_total,
+ *            grand_total, tax_lines, service_lines, charge_lines}}
  */
-export function billTotals(subtotal, charges = []) {
+export function billTotals(subtotal, charges = [], discount = 0) {
     const sub = money(subtotal);
-    const split = splitCharges(resolveCharges(charges, sub));
+    const disc = money(Math.min(Math.max(Number(discount) || 0, 0), sub));
+    const taxable = money(sub - disc);
+    const split = splitCharges(resolveCharges(charges, taxable));
 
     return {
         subtotal: sub,
+        discount: disc,
+        taxable,
         tax: split.tax,
         service_charge: split.service_charge,
         charges_total: split.charges_total,
-        grand_total: money(sub + split.tax + split.service_charge + split.charges_total),
+        grand_total: money(taxable + split.tax + split.service_charge + split.charges_total),
         tax_lines: split.tax_lines,
         service_lines: split.service_lines,
         charge_lines: split.charge_lines
@@ -203,10 +223,11 @@ export function billTotals(subtotal, charges = []) {
 }
 
 /** Total from line items, for screens that hold a cart rather than a subtotal. */
-export function billTotalsFromItems(items, charges = []) {
+export function billTotalsFromItems(items, charges = [], discount = 0) {
     return billTotals(
         (Array.isArray(items) ? items : [])
             .reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0),
-        charges
+        charges,
+        discount
     );
 }

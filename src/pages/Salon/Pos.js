@@ -15,6 +15,7 @@ import {
 } from "../../services/orderService";
 import { searchCustomers, resolveCustomer } from "../../services/customerService";
 import { getStylists } from "../../services/stylistService";
+import settingsService from "../../services/settingsService";
 import billingFormatService from "../../services/billingFormatService";
 import chargeService from "../../services/chargeService";
 
@@ -29,7 +30,7 @@ import PrinterSetup from "../../components/Cashier/PrinterSetup";
 
 import { DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
 import { printBill as printCorrectedBill } from "../../utils/printBill";
-import { billTotals, autoChargesFor } from "../../utils/rates";
+import { billTotals, autoChargesFor, resolveDiscount } from "../../utils/rates";
 import { salonBillFormat } from "../../utils/businessType";
 import usePersistentCart from "../../hooks/usePersistentCart";
 
@@ -107,6 +108,11 @@ function SalonPos() {
     const [stylists, setStylists] = useState([]);
     const [stylistId, setStylistId] = useState("");
 
+    // ── Discount (only if the owner allows it, within their limits) ─
+    const [discountPolicy, setDiscountPolicy] = useState({ enabled: false, max_percent: 0, max_amount: 0 });
+    const [discountType, setDiscountType] = useState("percent");   // "percent" | "amount"
+    const [discountValue, setDiscountValue] = useState("");
+
     // ── Screen ──────────────────────────────────────────────────────
     const [todayBills, setTodayBills] = useState(0);
     const [now, setNow] = useState(new Date());
@@ -162,6 +168,21 @@ function SalonPos() {
         }
     };
 
+    // The owner's discount rule (Settings → Discounts), synced to this till.
+    const loadDiscountPolicy = async () => {
+        try {
+            const res = await settingsService.getRestaurant();
+            const s = res.data?.data || {};
+            setDiscountPolicy({
+                enabled: Boolean(Number(s.discount_enabled)),
+                max_percent: Number(s.discount_max_percent) || 0,
+                max_amount: Number(s.discount_max_amount) || 0
+            });
+        } catch (e) {
+            console.error("Failed to load the discount rule:", e);
+        }
+    };
+
     const loadStylists = async () => {
         try {
             const res = await getStylists();
@@ -192,6 +213,7 @@ function SalonPos() {
         loadTodayCount();
         loadCharges();
         loadStylists();
+        loadDiscountPolicy();
         loadBillingFormat();
 
         // Pick up services, prices and charges the owner changes (and the cloud
@@ -202,6 +224,7 @@ function SalonPos() {
             loadTodayCount();
             loadCharges();
             loadStylists();
+            loadDiscountPolicy();
         }, 10000);
         const clock = setInterval(() => setNow(new Date()), 30000);
 
@@ -312,7 +335,39 @@ function SalonPos() {
 
     // Same calculation the backend runs (utils/rates mirrors backend/utils/billing.js).
     const subtotal = cart.reduce((s, it) => s + Number(it.price) * Number(it.quantity), 0);
-    const cartTotals = billTotals(subtotal, autoChargesFor(charges, ORDER_TYPE));
+
+    // The discount typed in, checked against the owner's rule — the backend
+    // checks it again when the bill is created. It comes off the services before
+    // GST, the same order backend/utils/billing.js uses.
+    const percentAllowed = discountPolicy.enabled && discountPolicy.max_percent > 0;
+    const amountAllowed = discountPolicy.enabled && discountPolicy.max_amount > 0;
+    const activeDiscountType = discountType === "percent"
+        ? (percentAllowed ? "percent" : "amount")
+        : (amountAllowed ? "amount" : "percent");
+    const discountNumber = Number(discountValue);
+    const discountEntered = discountPolicy.enabled && discountValue !== "" && discountNumber !== 0;
+
+    let discountProblem = "";
+    if (discountEntered) {
+        if (!Number.isFinite(discountNumber) || discountNumber < 0) {
+            discountProblem = "Enter a valid discount.";
+        } else if (activeDiscountType === "percent" && discountNumber > discountPolicy.max_percent) {
+            discountProblem = `The owner allows up to ${discountPolicy.max_percent}% off.`;
+        } else if (activeDiscountType === "amount" && discountNumber > discountPolicy.max_amount) {
+            discountProblem = `The owner allows up to ₹${discountPolicy.max_amount} off.`;
+        } else if (activeDiscountType === "amount" && discountNumber > subtotal) {
+            discountProblem = "The discount can't be more than the bill.";
+        }
+    }
+
+    const discount = discountEntered && !discountProblem
+        ? resolveDiscount(subtotal, activeDiscountType === "percent"
+            ? { percent: discountNumber }
+            : { amount: discountNumber })
+        : 0;
+    const discountLabel = activeDiscountType === "percent" ? `Discount (${discountNumber}%)` : "Discount";
+
+    const cartTotals = billTotals(subtotal, autoChargesFor(charges, ORDER_TYPE), discount);
     const lineCharges = [...cartTotals.tax_lines, ...cartTotals.service_lines, ...cartTotals.charge_lines];
 
     // ── Customer ────────────────────────────────────────────────────
@@ -420,12 +475,15 @@ function SalonPos() {
         setCart([]);
         clearCustomer();
         setStylistId("");
+        setDiscountValue("");
         await discardPending();
     };
 
     const handleBill = async () => {
         if (busy) return;
         if (cart.length === 0) { alert("Add at least one service."); return; }
+
+        if (discountProblem) { alert(discountProblem); return; }
 
         // Checked before the customer is saved, so a missing stylist never
         // leaves a half-made bill behind.
@@ -448,6 +506,7 @@ function SalonPos() {
             const key = JSON.stringify({
                 c: cust ? cust.id : null,
                 s: stylist.id,
+                d: discount > 0 ? [activeDiscountType, discountNumber] : null,
                 i: items.map((i) => [i.menu_item_id, i.quantity])
             });
             if (pendingRef.current && pendingRef.current.key !== key) {
@@ -459,6 +518,8 @@ function SalonPos() {
                     order_type: ORDER_TYPE,
                     customer_id: cust ? cust.id : null,
                     stylist_id: stylist.id,
+                    discount_type: discount > 0 ? activeDiscountType : null,
+                    discount_value: discount > 0 ? discountNumber : null,
                     items
                 });
                 pendingRef.current = {
@@ -484,6 +545,9 @@ function SalonPos() {
                 time,
                 items,
                 subtotal: Number(subtotal.toFixed(2)),
+                discount,
+                discount_label: discountLabel,
+                taxable: cartTotals.taxable,
                 gst: cartTotals.tax,
                 serviceCharge: cartTotals.service_charge,
                 charges: cartTotals.charge_lines,
@@ -504,6 +568,7 @@ function SalonPos() {
         setCart([]);
         clearCustomer();
         setStylistId("");
+        setDiscountValue("");
         setNotice(number ? `✓ Bill ${number} paid and printed` : "✓ Bill paid and printed");
         loadTodayCount();
     };
@@ -581,6 +646,8 @@ function SalonPos() {
                 ].filter(Boolean).join(" · ") || "Walk-in",
                 items: editingBillItems,
                 subtotal: totals.subtotal,
+                discount: totals.discount,
+                discountLabel: totals.discountLabel,
                 taxLines: totals.taxLines,
                 charges: totals.charges,
                 total: totals.total,
@@ -829,6 +896,48 @@ function SalonPos() {
 
                         <div className="pos-bill-foot">
                             <div className="pos-tot-row"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                            {/* Only when the owner allows discounts (Settings → Discounts). */}
+                            {discountPolicy.enabled && cart.length > 0 && (percentAllowed || amountAllowed) && (
+                                <div className="sl-discount">
+                                    <span className="sl-discount-label">Discount</span>
+                                    <div className="sl-discount-seg" role="group" aria-label="Discount type">
+                                        {percentAllowed && (
+                                            <button
+                                                type="button"
+                                                className={activeDiscountType === "percent" ? "active" : ""}
+                                                aria-pressed={activeDiscountType === "percent"}
+                                                onClick={() => setDiscountType("percent")}
+                                            >%</button>
+                                        )}
+                                        {amountAllowed && (
+                                            <button
+                                                type="button"
+                                                className={activeDiscountType === "amount" ? "active" : ""}
+                                                aria-pressed={activeDiscountType === "amount"}
+                                                onClick={() => setDiscountType("amount")}
+                                            >₹</button>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        inputMode="decimal"
+                                        value={discountValue}
+                                        onChange={(e) => setDiscountValue(e.target.value)}
+                                        placeholder={activeDiscountType === "percent"
+                                            ? `up to ${discountPolicy.max_percent}%`
+                                            : `up to ₹${discountPolicy.max_amount}`}
+                                        aria-label="Discount"
+                                    />
+                                </div>
+                            )}
+                            {discountProblem && <div className="sl-discount-error" role="alert">{discountProblem}</div>}
+                            {discount > 0 && (
+                                <div className="pos-tot-row sl-discount-row">
+                                    <span>{discountLabel}</span><span>−₹{discount.toFixed(2)}</span>
+                                </div>
+                            )}
                             {lineCharges.map((c, i) => (
                                 <div className="pos-tot-row" key={`${c.charge_name}-${i}`}>
                                     <span>{c.charge_name}</span><span>₹{c.amount.toFixed(2)}</span>
@@ -836,7 +945,7 @@ function SalonPos() {
                             ))}
                             <div className="pos-tot-row grand"><span>Total</span><span>₹{cartTotals.grand_total.toFixed(2)}</span></div>
                             <div className="pos-bill-actions">
-                                <button className="pos-pay" onClick={handleBill} disabled={cart.length === 0 || busy}>
+                                <button className="pos-pay" onClick={handleBill} disabled={cart.length === 0 || busy || Boolean(discountProblem)}>
                                     {busy ? "Processing..." : "Bill & Take Payment →"}
                                 </button>
                             </div>

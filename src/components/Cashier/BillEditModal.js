@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { allAutoChargesFor, billTotals } from "../../utils/rates";
+import { allAutoChargesFor, billTotals, resolveDiscount } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 import { isSalon } from "../../utils/businessType";
 
@@ -39,6 +39,17 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
     const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
     const subtotal = money(groups.reduce((s, g) => s + g.price * g.qty, 0));
+
+    // The bill's discount carries through a correction exactly as the backend
+    // recomputes it: a percentage is re-taken off the new subtotal, a flat amount
+    // stays (capped at the subtotal).
+    const hasPercent = bill.discount_percent !== null && bill.discount_percent !== undefined;
+    const discount = resolveDiscount(subtotal, {
+        percent: hasPercent ? bill.discount_percent : null,
+        amount: bill.discount
+    });
+    const discountLabel = hasPercent ? `Discount (${Number(bill.discount_percent)}%)` : "Discount";
+
     const {
         tax: gst,
         service_charge: service,
@@ -46,7 +57,7 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
         tax_lines: taxLines,
         service_lines: serviceLines,
         charge_lines: chargeLines
-    } = billTotals(subtotal, allAutoChargesFor(charges, bill.order_type || (bill.table_name ? "Dine-In" : "Takeaway")));
+    } = billTotals(subtotal, allAutoChargesFor(charges, bill.order_type || (bill.table_name ? "Dine-In" : "Takeaway")), discount);
 
     // What the customer was actually charged when this bill was settled.
     const charged = Number(chargedTotal || 0);
@@ -150,6 +161,9 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
 
                 <div className="tbill-foot">
                     <div className="tbill-tot"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                    {discount > 0 && (
+                        <div className="tbill-tot"><span>{discountLabel}</span><span>−₹{discount.toFixed(2)}</span></div>
+                    )}
                     {[...taxLines, ...serviceLines, ...chargeLines].map((c, i) => (
                         <div className="tbill-tot" key={`${c.charge_name}-${i}`}>
                             <span>{c.charge_name}</span><span>₹{c.amount.toFixed(2)}</span>
@@ -183,7 +197,7 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                         className="tbill-generate"
                         disabled={busy || groups.length === 0}
                         onClick={() => onReprint(method, {
-                            subtotal, gst, service, total,
+                            subtotal, gst, service, total, discount, discountLabel,
                             taxLines: [...taxLines, ...serviceLines],
                             charges: chargeLines
                         })}

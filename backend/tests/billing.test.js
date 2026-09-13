@@ -8,6 +8,7 @@ const {
     applicableCharges,
     resolveCharges,
     splitCharges,
+    resolveDiscount,
     totalsFromSubtotal,
     totalsFromItems
 } = require("../utils/billing");
@@ -277,4 +278,66 @@ test("no charges means charges_total is 0, not undefined", () => {
     // orders.charges_total is NOT NULL, so undefined here would fail the insert.
     assert.strictEqual(totalsFromSubtotal(100).charges_total, 0);
     assert.strictEqual(totalsFromItems([]).charges_total, 0);
+});
+
+// ── Discounts (016) ─────────────────────────────────────────────────────────
+
+test("no discount leaves every existing total unchanged", () => {
+    const t = totalsFromSubtotal(1000, [gst(18)]);
+    assert.strictEqual(t.discount, 0);
+    assert.strictEqual(t.taxable, 1000);
+    assert.strictEqual(t.tax, 180);
+    assert.strictEqual(t.grand_total, 1180);
+});
+
+test("a discount comes off the goods before GST", () => {
+    // ₹1000 of services, ₹100 off, 18% GST on the ₹900 actually charged.
+    const t = totalsFromSubtotal(1000, [gst(18)], 100);
+    assert.strictEqual(t.subtotal, 1000);
+    assert.strictEqual(t.discount, 100);
+    assert.strictEqual(t.taxable, 900);
+    assert.strictEqual(t.tax, 162);
+    assert.strictEqual(t.grand_total, 1062);
+});
+
+test("percentage charges are worked on the discounted goods too", () => {
+    const t = totalsFromSubtotal(1000, [{ charge_name: "Home visit", charge_type: "Percentage", amount: 10 }], 200);
+    assert.strictEqual(t.charges_total, 80);
+    assert.strictEqual(t.grand_total, 880);
+});
+
+test("a discount is never negative and never more than the bill", () => {
+    assert.strictEqual(totalsFromSubtotal(500, [gst(18)], -50).discount, 0);
+    const all = totalsFromSubtotal(500, [gst(18)], 9999);
+    assert.strictEqual(all.discount, 500);
+    assert.strictEqual(all.tax, 0);
+    assert.strictEqual(all.grand_total, 0);
+});
+
+test("grand_total stays the sum of the printed lines with a discount", () => {
+    const charges = [gst(18), service(5)];
+    for (const [sub, disc] of [[787.35, 78.74], [1337, 133.7], [99.99, 10], [250.5, 0.01]]) {
+        const t = totalsFromSubtotal(sub, charges, disc);
+        assert.strictEqual(
+            t.grand_total,
+            money(t.subtotal - t.discount + t.tax + t.service_charge + t.charges_total),
+            `grand_total disagreed with its parts at ${sub} - ${disc}`
+        );
+    }
+});
+
+test("resolveDiscount: percent of the subtotal, or a flat amount, clamped", () => {
+    assert.strictEqual(resolveDiscount(1350, { percent: 10 }), 135);
+    assert.strictEqual(resolveDiscount(1350, { percent: "12.5" }), 168.75);
+    assert.strictEqual(resolveDiscount(1350, { amount: 200 }), 200);
+    assert.strictEqual(resolveDiscount(1350, { percent: null, amount: "50" }), 50);
+    assert.strictEqual(resolveDiscount(100, { amount: 500 }), 100);
+    assert.strictEqual(resolveDiscount(100, { percent: 150 }), 100);
+    assert.strictEqual(resolveDiscount(100, {}), 0);
+    assert.strictEqual(resolveDiscount(100, { amount: "abc" }), 0);
+});
+
+test("totalsFromItems passes the discount through", () => {
+    const items = [{ price: 450, quantity: 1 }, { price: 900, quantity: 1 }];
+    assert.deepStrictEqual(totalsFromItems(items, [gst(18)], 135), totalsFromSubtotal(1350, [gst(18)], 135));
 });

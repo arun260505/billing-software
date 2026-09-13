@@ -33,6 +33,41 @@ exports.saveRestaurant = (req, res) => {
     });
 };
 
+// ── 1b. Discount rule (owner only) ─────────────────────────────
+// PUT /api/settings/discounts { discount_enabled, discount_max_percent, discount_max_amount }
+// Read back through GET /api/settings/restaurant, which the front desk also uses.
+
+exports.saveDiscounts = (req, res) => {
+    const rid = req.user.restaurant_id;
+    if (!rid) return error(res, "Restaurant context required.", 400);
+
+    const enabled = req.body.discount_enabled === true || Number(req.body.discount_enabled) === 1;
+    const pct = Number(req.body.discount_max_percent || 0);
+    const amt = Number(req.body.discount_max_amount || 0);
+
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+        return error(res, "Maximum percentage must be between 0 and 100.", 400);
+    }
+    if (!Number.isFinite(amt) || amt < 0 || amt > 10000000) {
+        return error(res, "Maximum amount must be 0 or more.", 400);
+    }
+    if (enabled && pct === 0 && amt === 0) {
+        return error(res, "Set a maximum percentage, a maximum amount, or both.", 400);
+    }
+
+    settingsModel.saveDiscountSettings(rid, {
+        discount_enabled: enabled,
+        discount_max_percent: Math.round(pct * 100) / 100,
+        discount_max_amount: Math.round(amt * 100) / 100
+    }, (err) => {
+        if (err) return error(res, err.message, 500);
+        settingsModel.getRestaurantSettings(rid, (fetchErr, data) => {
+            if (fetchErr) return error(res, fetchErr.message, 500);
+            return success(res, "Discount settings saved.", data);
+        });
+    });
+};
+
 // ── 2. Payment Settings ────────────────────────────────────────
 
 exports.getPayments = (req, res) => {

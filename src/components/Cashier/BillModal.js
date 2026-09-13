@@ -53,7 +53,8 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
     // Resolved the same way as everywhere else — this rounded percentage charges
     // to whole rupees, so the charge lines printed did not add up to the charges
     // total they were part of.
-    const pickedLines = resolveCharges(selectedCharges, order.subtotal);
+    // On the goods after any discount — the same base the backend uses.
+    const pickedLines = resolveCharges(selectedCharges, order.taxable ?? order.subtotal);
     const chargesTotal = money(pickedLines.reduce((s, c) => s + c.amount, 0));
 
     const grandTotal = money(order.total + chargesTotal);
@@ -180,6 +181,9 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
 
                 <div className="bill-totals">
                     <div className="bill-row"><span>Subtotal</span><span>₹{order.subtotal.toFixed(2)}</span></div>
+                    {Number(order.discount) > 0 && (
+                        <div className="bill-row"><span>{order.discount_label || "Discount"}</span><span>−₹{Number(order.discount).toFixed(2)}</span></div>
+                    )}
                     {[...billedLines, ...autoChargeLines].map((c, i) => (
                         <div className="bill-row" key={`${c.charge_name}-${i}`}>
                             <span>{c.charge_name}</span><span>₹{Number(c.amount).toFixed(2)}</span>
