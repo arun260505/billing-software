@@ -81,7 +81,7 @@
     text-align:center;
 }
 
-.ad-pay-cash{ background:#ECFDF5; color:#047857; }
+.ad-pay-cash{ background:#f5f3ff; color:#6d28d9; }
 .ad-pay-upi{ background:#EFF6FF; color:#1D4ED8; }
 .ad-pay-card{ background:#F3E8FF; color:#7C3AED; }
 .ad-pay-wallet{ background:#FEF3C7; color:#B45309; }
@@ -103,9 +103,9 @@
 .ad-st-pending{ background:#DBEAFE; color:#1D4ED8; }
 .ad-st-confirmed{ background:#F3E8FF; color:#7C3AED; }
 .ad-st-preparing{ background:#FFEDD5; color:#C2410C; }
-.ad-st-ready{ background:#D1FAE5; color:#047857; }
-.ad-st-served{ background:#CCFBF1; color:#0F766E; }
-.ad-st-completed{ background:#BBF7D0; color:#15803D; }
+.ad-st-ready{ background:#ede9fe; color:#6d28d9; }
+.ad-st-served{ background:#CCFBF1; color:#6d28d9; }
+.ad-st-completed{ background:#ddd6fe; color:#6d28d9; }
 .ad-st-cancelled{ background:#FEE2E2; color:#B91C1C; }
 
 /* ── View All button ───────────────────────────────────────── */

@@ -14,8 +14,17 @@
     justify-content:center;
     align-items:center;
 
-    background:linear-gradient(135deg,#0f172a,#1e293b,#334155);
+    background:linear-gradient(135deg,#0f172a,#312e81,#4c1d95);
 
+}
+
+.login-logo{
+    display:block;
+    width:88px;
+    height:88px;
+    object-fit:contain;
+    margin:0 auto 14px;
+    filter:drop-shadow(0 6px 16px rgba(124,58,237,.35));
 }
 
 .login-card{
@@ -41,7 +50,11 @@
 
 .login-header h1{
 
-    color:#1e3a8a;
+    background:linear-gradient(135deg,#2563eb,#7c3aed);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    color:#4c1d95;
 
     font-size:32px;
 
@@ -99,7 +112,7 @@
     height: 55px;
     border: none;
     border-radius: 10px;
-    background: #2563eb;
+    background: linear-gradient(135deg,#2563eb,#7c3aed);
     color: #fff;
     font-size: 17px;
     font-weight: 600;
@@ -108,7 +121,7 @@
 }
 
 .login-page .login-btn:hover {
-    background: #1d4ed8;
+    background: linear-gradient(135deg,#1d4ed8,#6d28d9);
 }
 /* Shown when the api layer bounced us here on a 401, so an expired shift token
    reads as "sign in again", not as an unexplained logout. */

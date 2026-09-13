@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { isSalon } from "../../utils/businessType";
+import logo from "../../assets/inwallz-logo.png";
 import "../../styles/Admin/Sidebar.css";
 
 const RESTAURANT_MENUS = [
@@ -43,6 +44,7 @@ function Sidebar({ isOpen }) {
   return (
     <div className={`sidebar ${isOpen ? "" : "collapsed"}`}>
       <div className="logo">
+        <img src={logo} alt="InWallz" className="sidebar-logo" />
         <h2>InWallz POS</h2>
       </div>
 

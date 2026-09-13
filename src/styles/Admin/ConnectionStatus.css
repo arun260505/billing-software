@@ -45,7 +45,7 @@
     text-align:right;
 }
 
-.ad-conn-state.ok{ color:#16A34A; }
+.ad-conn-state.ok{ color:#7c3aed; }
 .ad-conn-state.down{ color:#EF4444; }
 
 .ad-conn-retry{

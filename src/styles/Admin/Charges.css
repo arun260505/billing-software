@@ -266,11 +266,11 @@
 }
 
 .status-dot.active .dot {
-    background: #16A34A;
+    background: #7c3aed;
 }
 
 .status-dot.active {
-    color: #16A34A;
+    color: #7c3aed;
 }
 
 .status-dot.inactive .dot {
@@ -308,8 +308,8 @@
 }
 
 .applies-tag.delivery {
-    background: #F0FDF4;
-    color: #16A34A;
+    background: #f5f3ff;
+    color: #7c3aed;
 }
 
 /* --- Role badge: which line of the bill this charge lands on --- */
@@ -337,7 +337,7 @@
 
 /* --- Tax Indicator --- */
 .tax-yes {
-    color: #16A34A;
+    color: #7c3aed;
     font-weight: 500;
     font-size: 13px;
 }
@@ -705,7 +705,7 @@
 }
 
 .toggle-switch.on {
-    background: #16A34A;
+    background: #7c3aed;
 }
 
 .toggle-switch .toggle-knob {

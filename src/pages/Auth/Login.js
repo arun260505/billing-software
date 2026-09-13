@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "../../styles/pages/Auth/Login.css";
 import { FaUserAlt, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import logo from "../../assets/inwallz-logo.png";
 import authService from "../../services/authService";
 import { isNativeApp } from "../../services/serverConfig";
 import { homeFor } from "../../utils/businessType";
@@ -115,6 +116,8 @@ function Login() {
             <div className="login-card">
 
                 <div className="login-header">
+
+                    <img src={logo} alt="InWallz" className="login-logo" />
 
                     <h1>InWallz Billing</h1>
 

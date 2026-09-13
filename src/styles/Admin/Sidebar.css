@@ -11,16 +11,29 @@
 }
 
 .logo {
-    text-align: center;
-    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 18px 20px;
     border-bottom: 1px solid #1E293B;
+}
+
+.sidebar-logo {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    flex: 0 0 auto;
 }
 
 .logo h2 {
     color: white;
-    font-size: 22px;
+    font-size: 20px;
     margin: 0;
+    white-space: nowrap;
 }
+
+.sidebar.collapsed .sidebar-logo { width: 30px; height: 30px; }
 
 .menu-list {
     list-style: none;

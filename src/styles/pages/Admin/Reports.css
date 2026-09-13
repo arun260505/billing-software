@@ -3,7 +3,7 @@
    Scoped under .reports-page only — no global styles touched.
    Palette matches the Admin Dashboard:
    bg #F5F7FB | cards #fff | navy #1F2937 | gray #6B7280
-   primary #2563EB / indigo #4F46E5 | positive #10B981
+   primary #2563EB / indigo #4F46E5 | positive #8b5cf6
    warning #F59E0B | negative #EF4444
    ========================================================= */
 
@@ -287,8 +287,8 @@
 }
 
 .rp-trend.up {
-    color: #059669;
-    background: #ECFDF5;
+    color: #7c3aed;
+    background: #f5f3ff;
 }
 
 .rp-trend.down {
@@ -808,7 +808,7 @@
     font-weight: 600;
 }
 
-.rp-status-pill.good     { background: #ECFDF5; color: #059669; }
+.rp-status-pill.good     { background: #f5f3ff; color: #7c3aed; }
 .rp-status-pill.warning  { background: #FFFBEB; color: #B45309; }
 .rp-status-pill.critical { background: #FEF2F2; color: #DC2626; }
 .rp-status-pill.neutral  { background: #F3F4F6; color: #6B7280; }
@@ -834,7 +834,7 @@
     transition: width .5s ease;
 }
 
-.rp-prep-fill.good     { background: linear-gradient(90deg, #34D399, #059669); }
+.rp-prep-fill.good     { background: linear-gradient(90deg, #34D399, #7c3aed); }
 .rp-prep-fill.warning  { background: linear-gradient(90deg, #FCD34D, #D97706); }
 .rp-prep-fill.critical { background: linear-gradient(90deg, #F87171, #DC2626); }
 .rp-prep-fill.neutral  { background: #94A3B8; }
@@ -928,12 +928,12 @@
 }
 
 .rp-health-item.good {
-    background: #F0FDF4;
-    border-color: #DCFCE7;
-    color: #065F46;
+    background: #f5f3ff;
+    border-color: #ede9fe;
+    color: #5b21b6;
 }
 
-.rp-health-item.good .rp-health-icon { background: #DCFCE7; color: #059669; }
+.rp-health-item.good .rp-health-icon { background: #ede9fe; color: #7c3aed; }
 
 .rp-health-item.warning {
     background: #FFFBEB;

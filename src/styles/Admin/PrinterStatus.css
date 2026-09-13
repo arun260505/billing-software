@@ -55,7 +55,7 @@
     white-space:nowrap;
 }
 
-.ad-printer-state.ok{ color:#16A34A; }
+.ad-printer-state.ok{ color:#7c3aed; }
 .ad-printer-state.down{ color:#EF4444; }
 
 /* Shared status light */
@@ -68,7 +68,7 @@
 }
 
 .ad-status-light.ok{
-    background:#16A34A;
+    background:#7c3aed;
     box-shadow:0 0 0 3px rgba(22,163,74,.15);
 }
 

@@ -97,7 +97,7 @@
     width:70px;
     height:70px;
     border-radius:50%;
-    border:3px solid #22c55e;
+    border:3px solid #8b5cf6;
     position:absolute;
     left:50%;
     top:50%;
@@ -111,7 +111,7 @@
 .chair{
     width:18px;
     height:18px;
-    border:2px solid #22c55e;
+    border:2px solid #8b5cf6;
     border-radius:5px;
     background:#fff;
     position:absolute;
@@ -169,17 +169,17 @@
 /* ---------- STATUS ---------- */
 
 .available{
-    border-color:#22c55e;
+    border-color:#8b5cf6;
 }
 
 .available .table-circle,
 .available .chair{
-    border-color:#22c55e;
+    border-color:#8b5cf6;
 }
 
 .available .status-badge{
-    background:#dcfce7;
-    color:#15803d;
+    background:#ede9fe;
+    color:#6d28d9;
 }
 
 .occupied{

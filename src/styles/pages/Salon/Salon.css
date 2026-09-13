@@ -76,7 +76,7 @@
 .sl-table tr.sl-clickable:hover td { background: #F9FAFB; }
 .sl-name { font-weight: 600; color: #111827; }
 .sl-sub { display: block; color: #6B7280; font-size: 12px; margin-top: 2px; }
-.sl-pos-change { color: #15803D; font-weight: 700; }
+.sl-pos-change { color: #6d28d9; font-weight: 700; }
 .sl-neg-change { color: #B91C1C; font-weight: 700; }
 .sl-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
 
@@ -96,7 +96,7 @@
     font-size: 12px; font-weight: 700; white-space: nowrap; border: none; font-family: inherit;
 }
 button.sl-badge { cursor: pointer; }
-.sl-badge-ok { background: #DCFCE7; color: #15803D; }
+.sl-badge-ok { background: #ede9fe; color: #6d28d9; }
 .sl-badge-warn { background: #FEF3C7; color: #B45309; }
 .sl-badge-bad { background: #FEE2E2; color: #B91C1C; }
 .sl-badge-muted { background: #F3F4F6; color: #6B7280; }
@@ -161,18 +161,18 @@ button.sl-badge { cursor: pointer; }
 .sl-col-12 { grid-column: 1 / -1; min-width: 0; }
 .sl-live {
     display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
-    color: #15803D; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 999px;
+    color: #6d28d9; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 999px;
     padding: 4px 10px; white-space: nowrap;
 }
 .sl-live i {
-    width: 8px; height: 8px; border-radius: 50%; background: #16A34A;
+    width: 8px; height: 8px; border-radius: 50%; background: #7c3aed;
     animation: sl-pulse 1.6s ease-in-out infinite;
 }
 .sl-live.sl-stale { color: #B45309; background: #FFFBEB; border-color: #FDE68A; }
 .sl-live.sl-stale i { background: #D97706; animation: none; }
 @keyframes sl-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .sl-live i { animation: none; } }
-.sl-table tr.sl-top td { background: #F0FDF4; }
+.sl-table tr.sl-top td { background: #f5f3ff; }
 
 /* Dashboard low-stock list */
 .sl-lowstock { list-style: none; margin: 0; padding: 0; }
@@ -200,13 +200,13 @@ button.sl-badge { cursor: pointer; }
     flex: 1; min-width: 0; height: 38px; border: 1px solid #e2e8f0; border-radius: 9px;
     padding: 0 11px; font-size: 14px; outline: none; font-family: inherit;
 }
-.cashier-app .sl-cust input:focus { border-color: #0d9488; }
+.cashier-app .sl-cust input:focus { border-color: #7c3aed; }
 .cashier-app .sl-cust-found {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 10px; padding: 8px 11px;
 }
 .cashier-app .sl-cust-name { font-weight: 800; color: #0f172a; font-size: 14px; }
-.cashier-app .sl-cust-meta { font-size: 12px; color: #0f766e; }
+.cashier-app .sl-cust-meta { font-size: 12px; color: #6d28d9; }
 .cashier-app .sl-cust-new { font-size: 12px; color: #b45309; font-weight: 700; }
 .cashier-app .sl-cust-hint { font-size: 12px; color: #94a3b8; }
 .cashier-app .sl-cust-clear {
@@ -218,7 +218,7 @@ button.sl-badge { cursor: pointer; }
     height: 38px; border: 1px solid #e2e8f0; border-radius: 9px; padding: 0 10px;
     font-size: 14px; font-family: inherit; background: #fff; color: #0f172a; outline: none;
 }
-.cashier-app .sl-cust select:focus { border-color: #0d9488; }
+.cashier-app .sl-cust select:focus { border-color: #7c3aed; }
 .cashier-app .sl-cust select.sl-unset { color: #94a3b8; }
 
 /* Existing-customer suggestions under the mobile / name boxes */
@@ -236,7 +236,7 @@ button.sl-badge { cursor: pointer; }
 }
 .cashier-app .sl-suggest li.active { background: #f0fdfa; }
 .cashier-app .sl-suggest-name { font-weight: 700; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cashier-app .sl-suggest-mobile { color: #0f766e; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.cashier-app .sl-suggest-mobile { color: #6d28d9; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
 
 /* Discount (only shown when the owner allows it) */
 .cashier-app .sl-discount { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
@@ -246,14 +246,14 @@ button.sl-badge { cursor: pointer; }
     border: none; background: transparent; width: 32px; height: 30px; border-radius: 6px;
     font-weight: 800; font-size: 14px; color: #475569; cursor: pointer; font-family: inherit;
 }
-.cashier-app .sl-discount-seg button.active { background: #fff; color: #0d9488; box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.cashier-app .sl-discount-seg button.active { background: #fff; color: #7c3aed; box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
 .cashier-app .sl-discount input {
     width: 110px; height: 34px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0 10px;
     font-size: 14px; text-align: right; outline: none; font-family: inherit;
 }
-.cashier-app .sl-discount input:focus { border-color: #0d9488; }
+.cashier-app .sl-discount input:focus { border-color: #7c3aed; }
 .cashier-app .sl-discount-error { font-size: 12px; font-weight: 700; color: #b91c1c; padding: 0 0 4px; text-align: right; }
-.cashier-app .sl-discount-row { color: #15803d; font-weight: 700; }
+.cashier-app .sl-discount-row { color: #6d28d9; font-weight: 700; }
 
 /* Payment modal (salon): "Send on WhatsApp" and "Print + WhatsApp" */
 .cashier-app .bill-confirm-row {
@@ -261,28 +261,28 @@ button.sl-badge { cursor: pointer; }
     position: sticky; bottom: 0; background: #fff; box-shadow: 0 -8px 18px #fff;
 }
 .cashier-app .bill-confirm-row .bill-confirm-btn { position: static; box-shadow: none; }
-.cashier-app .bill-confirm-row .bill-confirm-btn.bill-confirm-wa { background: #15803d; }
-.cashier-app .bill-confirm-row .bill-confirm-btn.bill-confirm-wa:hover { background: #166534; }
+.cashier-app .bill-confirm-row .bill-confirm-btn.bill-confirm-wa { background: #6d28d9; }
+.cashier-app .bill-confirm-row .bill-confirm-btn.bill-confirm-wa:hover { background: #5b21b6; }
 .cashier-app .bill-confirm-row .bill-confirm-btn:disabled { background: #94a3b8; }
 
 /* WhatsApp bill: the panel after payment, and the button in Bills */
 .cashier-app .sl-wa {
-    margin-top: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+    margin-top: 10px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px;
     padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
 }
 .cashier-app .sl-wa-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cashier-app .sl-wa-title { font-size: 13px; font-weight: 800; color: #14532d; }
+.cashier-app .sl-wa-title { font-size: 13px; font-weight: 800; color: #4c1d95; }
 .cashier-app .sl-wa-close {
     border: none; background: transparent; color: #64748b; font-size: 14px; cursor: pointer;
     width: 26px; height: 26px; border-radius: 6px; flex: 0 0 auto;
 }
-.cashier-app .sl-wa-close:hover { background: #dcfce7; }
-.cashier-app .sl-wa-hint { font-size: 12px; color: #166534; line-height: 1.35; }
+.cashier-app .sl-wa-close:hover { background: #ede9fe; }
+.cashier-app .sl-wa-hint { font-size: 12px; color: #5b21b6; line-height: 1.35; }
 .cashier-app .sl-wa-send {
-    border: none; border-radius: 9px; background: #15803d; color: #fff; font-weight: 800;
+    border: none; border-radius: 9px; background: #6d28d9; color: #fff; font-weight: 800;
     font-size: 14px; padding: 10px 12px; cursor: pointer; font-family: inherit;
 }
-.cashier-app .sl-wa-send:hover { background: #166534; }
+.cashier-app .sl-wa-send:hover { background: #5b21b6; }
 .cashier-app .sl-wa-prefs {
     display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
     font-size: 12px; color: #475569;
@@ -298,14 +298,14 @@ button.sl-badge { cursor: pointer; }
     font-size: 12px; color: #64748b; font-family: inherit; text-decoration: underline;
     text-underline-offset: 2px;
 }
-.cashier-app .sl-wa-switch:hover { color: #15803d; }
+.cashier-app .sl-wa-switch:hover { color: #6d28d9; }
 .cashier-app .bills-wa {
-    padding: 7px 12px; margin-right: 6px; border-radius: 9px; border: 1.5px solid #15803d;
-    background: #fff; color: #15803d; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+    padding: 7px 12px; margin-right: 6px; border-radius: 9px; border: 1.5px solid #6d28d9;
+    background: #fff; color: #6d28d9; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
 }
-.cashier-app .bills-wa:hover { background: #f0fdf4; }
+.cashier-app .bills-wa:hover { background: #f5f3ff; }
 
 .cashier-app .sl-notice {
-    margin-top: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d;
+    margin-top: 10px; background: #f5f3ff; border: 1px solid #ddd6fe; color: #6d28d9;
     border-radius: 9px; padding: 8px 10px; font-size: 13px; font-weight: 700;
 }
