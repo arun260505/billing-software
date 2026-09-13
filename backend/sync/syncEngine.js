@@ -142,6 +142,11 @@ async function applyRows(dbp, def, rows, scope = {}) {
 
         for (const c of SKIP_COLS) delete data[c];
 
+        // Columns the receiving machine owns (def.keepLocal, e.g. the till's
+        // printers): left out of the insert, so a new row gets its defaults and
+        // an existing row keeps what this machine saved.
+        for (const c of def.keepLocal || []) delete data[c];
+
         const cols = Object.keys(data);
         const placeholders = cols.map(() => "?").join(", ");
         const updates = cols

@@ -27,7 +27,12 @@ const SYNC_ORDER = [
     { table: "charges",         direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "bill_formats",    direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "kitchen_formats", direction: "down", fks: { restaurant_id: "restaurants" } },
-    { table: "printer_settings", direction: "down", fks: { restaurant_id: "restaurants" } },
+    // keepLocal: the printers are chosen on the till they're plugged into and
+    // never exist on the cloud, so a pull must not overwrite them with the cloud
+    // row's empty values (it did — changing the printer setup online, or
+    // re-activating a till, wiped the till's saved printers). The mode and the
+    // waiter toggle still come from the cloud.
+    { table: "printer_settings", direction: "down", fks: { restaurant_id: "restaurants" }, keepLocal: ["cashier_printer", "kitchen_printer"] },
     { table: "menu_items",      direction: "down", fks: { restaurant_id: "restaurants", category_id: "categories" } },
     { table: "users",           direction: "down", fks: { restaurant_id: "restaurants", created_by: "users" } },
     // stylist_id (014) points at users, which a till already has from the pull.

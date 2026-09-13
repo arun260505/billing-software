@@ -164,6 +164,14 @@ kitchen), **one** for the other two modes. `src/utils/printerMode.js`
 `printer_settings.cashier_printer` / `.kitchen_printer` per restaurant, so a
 browser reset or reinstall doesn't lose them.
 
+They are also never overwritten by the cloud. `printer_settings` syncs cloud →
+till (for the mode and the waiter toggle), and until 2026-09-13 a pull replaced
+the whole row, so changing the printer setup online, or re-activating a till,
+wiped the till's saved printers. The two printer columns are now `keepLocal` in
+`sync/syncTables.js` and the sync engine leaves them alone when applying a pull.
+(Deleting `C:\InWallz\data` for a clean reinstall still means choosing the
+printer again once.)
+
 **Status is real, not decorative.** `GET /api/system/printers` shells out to
 `Get-Printer` and returns what Windows actually has installed on the machine
 running the backend — in exe mode that *is* the till, so a printer shows

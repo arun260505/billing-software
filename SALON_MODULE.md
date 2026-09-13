@@ -308,6 +308,7 @@ return `customer_name`, `customer_mobile` and `stylist_name`.
 |---|---|---|
 | `restaurants` (incl. `business_type`) | cloud → till | A till learns its type from the cloud row |
 | `users` (incl. stylists) | cloud → till | The till's stylist dropdown comes from here |
+| `printer_settings` | cloud → till | Mode comes from the cloud; the **bill printer chosen on the till is kept** (`keepLocal`), so restarts, re-activation or an online settings change never make the desk set it up again |
 | `customers` | till → cloud | Unchanged |
 | `orders.stylist_id` | till → cloud | New foreign key, translated through `users.uuid` like `customer_id` |
 | `inventory_items`, `inventory_movements` | cloud → till | New. **Last** in `sync/syncTables.js` |
