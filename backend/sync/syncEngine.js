@@ -208,10 +208,20 @@ async function getChangedSince(dbp, def, since, scope = {}) {
     return rows;
 }
 
+// The set of real columns per table is cached for the process. Boot adds
+// columns (migrations/syncColumns) on a delay AFTER the sync worker starts, so
+// an early pull can cache a table's columns before a new one (e.g. restaurants
+// .business_type) exists — and then silently drop that column on every later
+// pull. Call this once migrations finish so the next pull recomputes fresh.
+function invalidateColumnCache() {
+    columnCache.clear();
+}
+
 module.exports = {
     serializeRows,
     applyRows,
     getUnsyncedUp,
     markSynced,
-    getChangedSince
+    getChangedSince,
+    invalidateColumnCache
 };

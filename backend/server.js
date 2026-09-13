@@ -38,9 +38,17 @@ const { runSyncSchema } = require("./migrations/syncColumns");
 // inline table migrations below have had a moment to create their tables.
 // Idempotent and self-skipping, so the exact delay is not critical.
 setTimeout(() => {
-    runSyncSchema().catch((err) =>
-        console.error("Sync schema migration error:", err.message)
-    );
+    runSyncSchema()
+        .then(() => {
+            // Migrations may have just added columns (e.g. restaurants
+            // .business_type) AFTER the sync worker cached each table's column
+            // set. Drop that cache so the next pull applies the new columns
+            // instead of silently dropping them.
+            try { require("./sync/syncEngine").invalidateColumnCache(); } catch (e) { /* sync not loaded */ }
+        })
+        .catch((err) =>
+            console.error("Sync schema migration error:", err.message)
+        );
 }, 4000);
 
 db.query(`
