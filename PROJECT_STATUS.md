@@ -251,6 +251,7 @@ dialog — they are previews, not till prints.
 | `GET  /api/employees/stylists`         | Salon stylists for the billing dropdown (admin, cashier) |
 | `GET  /api/dashboard/stylists`         | Live per-stylist board for today (admin) |
 | `PUT  /api/settings/discounts`         | Owner's front-desk discount rule: on/off, max %, max ₹ (admin) |
+| `PUT  /api/settings/whatsapp`          | Salon: printer optional / no printer + the WhatsApp bill message (admin) |
 
 All are tenant-scoped (`restaurant_id` from the JWT). Table, kitchen, KOT and
 running-order endpoints additionally refuse a **salon** login
@@ -271,6 +272,7 @@ for the full salon API.
 | `013_business_type_inventory.sql`      | Adds `restaurants.business_type` + `inventory_items` / `inventory_movements` |
 | `014_order_stylist.sql`                | Adds `orders.stylist_id` (the stylist on a salon bill) |
 | `016_salon_discounts.sql`              | Adds the discount rule to `settings` + `orders.discount_percent` |
+| `017_salon_whatsapp_bills.sql`         | Adds `settings.bill_delivery` + `settings.whatsapp_template` (salon WhatsApp bills) |
 
 Apply any not already in the DB dump. Two files share the `003_` prefix
 (`003_charges.sql`, `003_order_service_charge.sql`) — they touch different
@@ -370,13 +372,16 @@ restaurant, orphans deferred).
 - **Salon discounts** (2026-09-13): owner-controlled %/₹ discounts at the front
   desk, pushed to git, **not deployed yet**. Deploy the cloud before the exe as
   usual (SALON_MODULE.md §5, §6.6b).
-- **Payment numbers collide across businesses (pre-existing bug).**
-  `PAY-<date>-NNNN` restarts at 0001 for each business every day
-  (`utils/paymentNumber.js`, `orderModel` settle), but `payments.payment_number`
-  has a UNIQUE key across all businesses. On a database with more than one
-  business, whichever business takes its first payment of the day second gets
-  a 500 (`Duplicate entry 'PAY-…-0001'`). Found while testing discounts; needs the
-  same per-restaurant treatment as order numbers (`015_…`).
+- **Bill on WhatsApp** (salon, 2026-09-13): click-to-chat, no API. Owner picks
+  *Printer optional* (payment: Send on WhatsApp / Print + WhatsApp) or *No printer*
+  and edits the message with {tags} in Settings → Bills & WhatsApp (017). WhatsApp
+  (Web or the desktop app, chosen per till) opens on the customer's chat with the
+  bill typed in and signed with the shop number from creation; the receptionist
+  presses Send. Bills → WhatsApp resends. Tills need pop-ups allowed for
+  `http://localhost:5050` and WhatsApp logged in once (SALON_MODULE.md §5).
+- **Payment numbers colliding across businesses** (found while testing
+  discounts: `PAY-<date>-0001` per business vs a UNIQUE key across all) — fixed in
+  `8de8d3d` (per-restaurant payment numbers).
 - **Reports page** (both types) was fixed on 2026-09-13: single-tab cards were
   collapsing, Overview had gaps, and every admin page overflowed on phones
   (SALON_MODULE.md §7).

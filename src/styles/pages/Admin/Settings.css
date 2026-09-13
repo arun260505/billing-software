@@ -597,6 +597,46 @@
     background:#2563EB;
 }
 
+/* Bills & WhatsApp (salon): message editor + WhatsApp-style preview */
+.set-wa-layout{
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+@media (max-width: 900px){
+    .set-wa-layout{ grid-template-columns: minmax(0, 1fr); }
+}
+.set-wa-tags{ display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.set-wa-tag{
+    border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a; border-radius: 999px;
+    padding: 4px 10px; font-size: 12px; font-family: Consolas, "Courier New", monospace; cursor: pointer;
+}
+.set-wa-tag:hover{ background: #ecfdf5; border-color: #15803d; color: #14532d; }
+.set-wa-textarea{
+    width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px;
+    font-family: Consolas, "Courier New", monospace; font-size: 13px; line-height: 1.5; resize: vertical;
+    min-height: 260px; color: #0f172a; background: #fff;
+}
+.set-wa-textarea:focus{ outline: none; border-color: #15803d; box-shadow: 0 0 0 3px rgba(21, 128, 61, .12); }
+.set-wa-meta{
+    display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 6px; font-size: 12px; color: #64748b;
+}
+.set-wa-reset{
+    border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 8px;
+    padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.set-wa-reset:disabled{ opacity: .5; cursor: default; }
+.set-wa-preview-wrap{ display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.set-wa-preview-label{ font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+.set-wa-preview{
+    background: #dcf8c6; color: #111b21; border-radius: 10px 10px 10px 2px; padding: 10px 12px;
+    font-size: 13.5px; line-height: 1.45; box-shadow: 0 1px 1px rgba(0, 0, 0, .12);
+    word-break: break-word; max-width: 100%;
+}
+.set-wa-preview-line{ min-height: 1em; white-space: pre-wrap; }
+
 .set-footnote{
     margin:20px 0 0;
     padding-top:16px;

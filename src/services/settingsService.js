@@ -8,6 +8,9 @@ const settingsService = {
     // Front-desk discount rule (owner). Read back through getRestaurant.
     saveDiscounts: (data) => api.put("/settings/discounts", data),
 
+    // Salon: printer or no printer, and the WhatsApp bill message (owner).
+    saveWhatsApp: (data) => api.put("/settings/whatsapp", data),
+
     // Payments
     getPayments: () => api.get("/settings/payments"),
     savePayments: (data) => api.put("/settings/payments", data),

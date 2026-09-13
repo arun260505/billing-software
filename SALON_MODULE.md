@@ -157,6 +157,50 @@ discount, and how much:
 - The till polls the rule every 10 seconds, so an owner's change reaches the desk
   without a restart (on the exe, once it has synced down).
 
+**Bill on WhatsApp (click-to-chat, no API)**
+
+The owner sets it up in **Admin → Settings → Bills & WhatsApp**:
+
+| Setting | Options |
+|---|---|
+| Bill printer | **Printer optional** (default): payment shows **Paid · Send on WhatsApp** and **Paid · Print + WhatsApp**. **No printer**: payment shows only **Paid · Send on WhatsApp**, and the till's 🖨 Printer screen is hidden. |
+| WhatsApp message | The owner's own text, with tags filled from each bill: `{salon_name}` `{customer_name}` `{bill_no}` `{date}` `{stylist}` `{services}` `{amounts}` (subtotal, discount, GST, total) `{total}` `{payment_method}` `{salon_phone}` `{salon_address}`. Click a tag to insert it at the cursor. Live WhatsApp-style preview with a sample bill, **Reset to default**, up to 2000 characters, `*stars*` for bold. A line whose tags are all empty is left out. |
+
+- `{salon_phone}` is the **shop number given when the super admin created the
+  salon** (`restaurants.mobile`), shown on the tab.
+- **At payment, both buttons open WhatsApp** on the customer's chat with the bill
+  typed in; Print also prints. The receptionist only presses **Send**. WhatsApp
+  doesn't let a normal number send without that press; fully automatic sending
+  needs the Business API.
+- WhatsApp is opened **straight after the payment is saved, before printing**, so
+  the browser still treats it as the receptionist's click and doesn't block the
+  window. The printer is spooled by the local backend, so it doesn't need that.
+- A green panel under the bill says *"WhatsApp opened for Anita"* with
+  **Open WhatsApp again**. If the browser blocked the window, it says so and
+  offers **Send bill on WhatsApp** (one click).
+- **Per till** (this browser, `inwallz_whatsapp_prefs`): open bills in
+  **WhatsApp Web** (default; a reused window named `inwallz-whatsapp`, log in
+  once with the QR code) or **WhatsApp app** (WhatsApp Desktop via `whatsapp://`;
+  Edge asks "Open WhatsApp?" the first time, so tick *Always allow*).
+- **Bills → WhatsApp** sends or resends any of today's bills that has a customer
+  mobile, from the saved bill (so a corrected bill goes out corrected), with the
+  owner's message. Tax and charges show as GST / Service charge / Other charges.
+- Numbers get the 91 country code (10 digits, a leading 0 or an existing 91 are handled).
+- **Till setup:** in Edge, allow pop-ups for `http://localhost:5050`
+  (Settings → Cookies and site permissions → Pop-ups and redirects → Allow), and
+  log in to WhatsApp Web once (or install WhatsApp Desktop).
+
+| Method & path | Roles | Purpose |
+|---|---|---|
+| `PUT /api/settings/whatsapp` `{ bill_delivery, whatsapp_template }` | admin | `bill_delivery`: `printer_optional` \| `no_printer`. Blank template = default (stored NULL). Refuses other values, non-text and over 2000 characters. |
+| `GET /api/settings/restaurant` | any signed-in role | Also returns `bill_delivery`, `whatsapp_template` and `shop_mobile` (the till polls it every 10 s) |
+
+Code: `src/utils/whatsappBill.js` (template, message, number, URL, prefs);
+`components/Cashier/BillModal.js` (`delivery` + `onWhatsApp` props; the restaurant
+counter passes neither and is unchanged); `pages/Salon/Pos.js`;
+`BillsHistory`'s `onWhatsApp`; `pages/Admin/Settings.js` (`TabBillsWhatsApp`).
+Columns `settings.bill_delivery`, `settings.whatsapp_template` (017, added on boot, synced cloud → till).
+
 **Other views** (☰ menu)
 
 | View | What it does |
@@ -465,6 +509,7 @@ that is what charges and totals key on — it is just never shown to a salon.
 - **Admin pages and widgets:** `pages/Admin/Orders.js`, `Reports.js`, `Settings.js`, `Billing.js`, `Categories.js`, `Dashboard.js`, `components/Admin/OrderDetailsModal.js`, `RecentOrders.js`, `TopSelling.js`, `DashboardCard.js`
 - **Till components and printing:** `components/Cashier/BillModal.js`, `BillsHistory.js`, `MenuAvailability.js`, `PrinterSetup.js`, `utils/billPrinter.js`, `utils/receiptText.js`
 - **Styles:** `styles/pages/Admin/Reports.css`, `styles/Admin/Header.css`, `styles/Layouts/AdminLayout.css`
+- **WhatsApp bill:** `utils/whatsappBill.js` (new), `tests/whatsappBill.test.mjs` (new), `pages/Salon/Pos.js`, `components/Cashier/BillModal.js`, `components/Cashier/BillsHistory.js`, `pages/Admin/Settings.js`, `services/settingsService.js`, `styles/pages/Salon/Salon.css`, `styles/pages/Admin/Settings.css`; backend `models/settingsModel.js`, `controllers/settingsController.js`, `routes/settingsRoutes.js`, `server.js`, `migrations/017_salon_whatsapp_bills.sql` (new)
 - **Discounts:** `utils/rates.js`, `services/settingsService.js`, `pages/Admin/Settings.js` (Discounts tab), `pages/Salon/Pos.js`, `components/Cashier/BillModal.js`, `BillEditModal.js`, `pages/Cashier/Dashboard.js`, `utils/billPrinter.js`, `utils/receiptText.js`, `utils/printBill.js`, `styles/pages/Salon/Salon.css`, `tests/discount.test.mjs` (new)
 
 ---
@@ -481,6 +526,8 @@ that is what charges and totals key on — it is just never shown to a salon.
 | Discount rule unit tests (`backend/tests/discountRules.test.js`) and discount maths in `billing.test.js` (backend `npm test`) | **52 / 52 pass** (whole backend suite) |
 | Discount maths mirror (`tests/discount.test.mjs`, in `npm run test:logic`) | **35 / 35 pass** (whole logic suite) |
 | Discount API end-to-end: off by default, receptionist refused while off (incl. legacy `discount`), receptionist can't change the rule, invalid rules refused, owner saves 10% / ₹100, saving main settings keeps it, 10% and ₹100 bills totalled with GST after the discount, 15% / ₹150 / junk refused, bill header + today's bills return it, quantity correction re-takes the %, off again refuses | **25 / 25 pass** |
+| WhatsApp bill message (`tests/whatsappBill.test.mjs`: number formatting, service grouping, default message with shop number, missing lines left out, owner's template, blank template → default, template rules, every Settings tag filled, saved bill by bucket, delivery values, URL encoding) | **47 / 47 pass** (whole logic suite) |
+| Bills & WhatsApp API: columns added on boot, defaults, `shop_mobile` = mobile given at creation, receptionist refused, bad delivery / >2000 chars / non-text refused, owner saves no printer + own message (CRLF normalised), desk reads it back, salon and discount saves keep it, blank → default with the discount rule untouched | **12 / 12 pass** |
 | Production build (`npm run build`, `CI=true`) | Compiles, no warnings |
 
 **Not yet done:** a hands-on click-through by a person and a run on the exe till.

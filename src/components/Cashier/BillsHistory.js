@@ -6,7 +6,9 @@ import { getTodaysBills } from "../../services/orderService";
 //
 // `salon` swaps the "where" column (table / counter) for the customer, which is
 // how a salon's front desk finds a bill.
-function BillsHistory({ onOpenBill, salon = false }) {
+//
+// `onWhatsApp` (optional) adds a WhatsApp button to bills with a customer mobile.
+function BillsHistory({ onOpenBill, onWhatsApp, salon = false }) {
 
     const [bills, setBills] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -118,12 +120,23 @@ function BillsHistory({ onOpenBill, salon = false }) {
                                             {cancelled ? (
                                                 <span className="bills-void">No bill</span>
                                             ) : (
-                                                <button
-                                                    className="bills-open"
-                                                    onClick={() => onOpenBill(b)}
-                                                >
-                                                    View / Edit
-                                                </button>
+                                                <>
+                                                    {onWhatsApp && b.customer_mobile && (
+                                                        <button
+                                                            className="bills-wa"
+                                                            onClick={() => onWhatsApp(b)}
+                                                            title={`Send this bill to ${b.customer_mobile} on WhatsApp`}
+                                                        >
+                                                            WhatsApp
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        className="bills-open"
+                                                        onClick={() => onOpenBill(b)}
+                                                    >
+                                                        View / Edit
+                                                    </button>
+                                                </>
                                             )}
                                         </td>
                                     </tr>

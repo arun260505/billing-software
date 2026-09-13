@@ -68,6 +68,44 @@ exports.saveDiscounts = (req, res) => {
     });
 };
 
+// ── 1c. Salon bills: printer or not + WhatsApp message (owner only) ──
+// PUT /api/settings/whatsapp { bill_delivery, whatsapp_template }
+// bill_delivery: "printer_optional" | "no_printer". An empty template means the
+// default message (stored as NULL). Read back through GET /api/settings/restaurant.
+
+const BILL_DELIVERY_VALUES = ["printer_optional", "no_printer"];
+const WHATSAPP_TEMPLATE_MAX = 2000;
+
+exports.saveWhatsApp = (req, res) => {
+    const rid = req.user.restaurant_id;
+    if (!rid) return error(res, "Restaurant context required.", 400);
+
+    const delivery = req.body.bill_delivery;
+    if (!BILL_DELIVERY_VALUES.includes(delivery)) {
+        return error(res, "Choose Printer optional or No printer.", 400);
+    }
+
+    const raw = req.body.whatsapp_template;
+    if (raw !== undefined && raw !== null && typeof raw !== "string") {
+        return error(res, "The WhatsApp message must be text.", 400);
+    }
+    const template = String(raw || "").replace(/\r\n?/g, "\n");
+    if (template.length > WHATSAPP_TEMPLATE_MAX) {
+        return error(res, `The WhatsApp message can be at most ${WHATSAPP_TEMPLATE_MAX} characters.`, 400);
+    }
+
+    settingsModel.saveWhatsAppSettings(rid, {
+        bill_delivery: delivery,
+        whatsapp_template: template.trim() ? template : null
+    }, (err) => {
+        if (err) return error(res, err.message, 500);
+        settingsModel.getRestaurantSettings(rid, (fetchErr, data) => {
+            if (fetchErr) return error(res, fetchErr.message, 500);
+            return success(res, "Bill & WhatsApp settings saved.", data);
+        });
+    });
+};
+
 // ── 2. Payment Settings ────────────────────────────────────────
 
 exports.getPayments = (req, res) => {

@@ -32,6 +32,17 @@ import { DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
 import { printBill as printCorrectedBill } from "../../utils/printBill";
 import { billTotals, autoChargesFor, resolveDiscount } from "../../utils/rates";
 import { salonBillFormat } from "../../utils/businessType";
+import {
+    whatsappNumber,
+    billFromPrintedOrder,
+    billFromSaved,
+    buildBillMessage,
+    normalizeBillDelivery,
+    whatsappUrl,
+    openWhatsApp,
+    getWhatsAppPrefs,
+    setWhatsAppPrefs
+} from "../../utils/whatsappBill";
 import usePersistentCart from "../../hooks/usePersistentCart";
 
 import "../../styles/pages/Cashier/Dashboard.css";
@@ -87,6 +98,15 @@ function SalonPos() {
     const [busy, setBusy] = useState(false);
     const [billData, setBillData] = useState(null);
     const [notice, setNotice] = useState("");
+
+    // ── WhatsApp bill (click-to-chat) ───────────────────────────────
+    // waBill: the last paid bill, ready to send — { number, customer, phone, text,
+    // opened, blocked }. Preferences belong to this PC (utils/whatsappBill.js).
+    const [waBill, setWaBill] = useState(null);
+    const [waPrefs, setWaPrefsState] = useState(getWhatsAppPrefs);
+    // The owner's choices (Settings → Bills & WhatsApp) and the shop number given
+    // when the salon was created — polled with the discount rule.
+    const [desk, setDesk] = useState({ bill_delivery: "printer_optional", whatsapp_template: "", shop_mobile: "" });
 
     // The unpaid order already created for the bill on screen. Closing the bill
     // modal without taking payment and pressing Bill again must not ring up a
@@ -178,6 +198,11 @@ function SalonPos() {
                 max_percent: Number(s.discount_max_percent) || 0,
                 max_amount: Number(s.discount_max_amount) || 0
             });
+            setDesk({
+                bill_delivery: normalizeBillDelivery(s.bill_delivery),
+                whatsapp_template: s.whatsapp_template || "",
+                shop_mobile: s.shop_mobile || ""
+            });
         } catch (e) {
             console.error("Failed to load the discount rule:", e);
         }
@@ -241,6 +266,13 @@ function SalonPos() {
         const t = setInterval(() => loadMenuItems(selectedCategory), 10000);
         return () => clearInterval(t);
     }, [selectedCategory]);
+
+    // The WhatsApp panel belongs to the bill just paid; starting the next
+    // customer's bill puts it away.
+    const hasCart = cart.length > 0;
+    useEffect(() => {
+        if (hasCart) setWaBill(null);
+    }, [hasCart]);
 
     // A notice clears itself.
     useEffect(() => {
@@ -538,6 +570,7 @@ function SalonPos() {
                 tableName: cust ? `${cust.customer_name} · ${cust.mobile}` : "Walk-in",
                 isCounter: true,
                 customer_name: cust ? cust.customer_name : "",
+                customer_mobile: cust ? cust.mobile : "",
                 stylist_name: stylist.full_name,
                 cashier_name: receptionistName,
                 cashier_label: "Receptionist",
@@ -561,16 +594,71 @@ function SalonPos() {
         }
     };
 
-    const handlePaymentSuccess = () => {
+    const handlePaymentSuccess = (result) => {
         const number = billData?.order_number;
+        const how = result?.printed === false ? "paid and sent to WhatsApp" : "paid and printed";
         pendingRef.current = null;
         setBillData(null);
         setCart([]);
         clearCustomer();
         setStylistId("");
         setDiscountValue("");
-        setNotice(number ? `✓ Bill ${number} paid and printed` : "✓ Bill paid and printed");
+        setNotice(number ? `✓ Bill ${number} ${how}` : `✓ Bill ${how}`);
         loadTodayCount();
+    };
+
+    // No printer at this salon (Settings → Bills & WhatsApp): no Printer screen.
+    const noPrinter = desk.bill_delivery === "no_printer";
+    const views = noPrinter ? VIEWS.filter((v) => v.key !== "printer") : VIEWS;
+
+    // ── WhatsApp ────────────────────────────────────────────────────
+    // The number on the message is the shop number given when the salon was
+    // created (restaurants.mobile).
+    const shopForMessage = () => ({
+        restaurant_name: salonInfo?.restaurant_name || currentUser?.restaurant_name,
+        address: salonInfo?.address,
+        mobile: desk.shop_mobile || salonInfo?.mobile
+    });
+
+    const updateWaPrefs = (patch) => setWaPrefsState((prev) => {
+        const next = { ...prev, ...patch };
+        setWhatsAppPrefs(next);
+        return next;
+    });
+
+    const sendOnWhatsApp = (entry) => {
+        const opened = openWhatsApp(whatsappUrl(entry.phone, entry.text, waPrefs.via), waPrefs.via);
+        setWaBill({ ...entry, opened, blocked: !opened });
+    };
+
+    // BillModal hands over the bill as paid (picked charges, payment method)
+    // on both "Send on WhatsApp" and "Print", and WhatsApp opens on the
+    // customer's chat straight away.
+    const handleSendWhatsApp = (paidOrder) => {
+        const phone = whatsappNumber(paidOrder.customer_mobile);
+        if (!phone) return;
+        sendOnWhatsApp({
+            number: paidOrder.order_number,
+            customer: paidOrder.customer_name || paidOrder.customer_mobile,
+            phone,
+            text: buildBillMessage(billFromPrintedOrder(paidOrder), shopForMessage(), desk.whatsapp_template)
+        });
+    };
+
+    // Bills → WhatsApp: send (or resend) a bill from earlier today.
+    const sendSavedBillOnWhatsApp = async (bill) => {
+        const phone = whatsappNumber(bill.customer_mobile);
+        if (!phone) { alert("This bill has no customer mobile number."); return; }
+        try {
+            const [head, rows] = await Promise.all([getBill(bill.id), getOrderDetails(bill.id)]);
+            const text = buildBillMessage(billFromSaved(head.data.data, rows.data.data || []), shopForMessage(), desk.whatsapp_template);
+            if (!openWhatsApp(whatsappUrl(phone, text, waPrefs.via), waPrefs.via)) {
+                alert("The browser blocked the WhatsApp window. Allow pop-ups for this page, then try again.");
+            }
+        } catch (e) {
+            console.error("WhatsApp bill error:", e);
+            alert("Could not load this bill.");
+        }
     };
 
     // ── Bills screen ────────────────────────────────────────────────
@@ -694,7 +782,7 @@ function SalonPos() {
                     <button className="pos-drawer-x" onClick={() => setSidebarOpen(false)} aria-label="Close menu">✕</button>
                 </div>
                 <nav className="pos-nav">
-                    {VIEWS.map((v) => (
+                    {views.map((v) => (
                         <button
                             key={v.key}
                             className={`pos-nav-item${activeView === v.key ? " active" : ""}`}
@@ -736,8 +824,8 @@ function SalonPos() {
             {activeView === "services" ? (
                 <MenuAvailability title="✂ Service Availability" searchPlaceholder="Search service…" />
             ) : activeView === "bills" ? (
-                <BillsHistory salon onOpenBill={openBillForEdit} />
-            ) : activeView === "printer" ? (
+                <BillsHistory salon onOpenBill={openBillForEdit} onWhatsApp={sendSavedBillOnWhatsApp} />
+            ) : activeView === "printer" && !noPrinter ? (
                 <PrinterSetup salon />
             ) : (
                 <div className="pos-body">
@@ -950,6 +1038,40 @@ function SalonPos() {
                                 </button>
                             </div>
                             {notice && <div className="sl-notice" role="status">{notice}</div>}
+
+                            {waBill && (
+                                <div className="sl-wa" role="status">
+                                    <div className="sl-wa-head">
+                                        <span className="sl-wa-title">
+                                            {waBill.blocked
+                                                ? "WhatsApp didn't open by itself"
+                                                : `WhatsApp opened for ${waBill.customer}`}
+                                        </span>
+                                        <button type="button" className="sl-wa-close" onClick={() => setWaBill(null)} aria-label="Dismiss">✕</button>
+                                    </div>
+                                    <span className="sl-wa-hint">
+                                        {waBill.blocked
+                                            ? "Allow pop-ups for this page so it opens by itself next time."
+                                            : waPrefs.via === "app"
+                                                ? "Press Send in WhatsApp. Nothing opened? Install WhatsApp Desktop or switch to WhatsApp Web."
+                                                : "The bill is typed in — press Send in WhatsApp."}
+                                    </span>
+                                    <button type="button" className="sl-wa-send" onClick={() => sendOnWhatsApp(waBill)}>
+                                        {waBill.blocked ? "Send bill on WhatsApp" : "Open WhatsApp again"}
+                                    </button>
+                                    <div className="sl-wa-prefs">
+                                        <span>Open bills in</span>
+                                        <select
+                                            value={waPrefs.via}
+                                            onChange={(e) => updateWaPrefs({ via: e.target.value })}
+                                            aria-label="Open bills in"
+                                        >
+                                            <option value="web">WhatsApp Web</option>
+                                            <option value="app">WhatsApp app</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </aside>
 
@@ -964,6 +1086,8 @@ function SalonPos() {
                     charges={charges}
                     onClose={() => setBillData(null)}
                     onSuccess={handlePaymentSuccess}
+                    delivery={desk.bill_delivery}
+                    onWhatsApp={handleSendWhatsApp}
                 />
             )}
 

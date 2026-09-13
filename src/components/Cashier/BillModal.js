@@ -12,7 +12,12 @@ import useEscapeClose from "../../hooks/useEscapeClose";
 // `charges` is the restaurant's charge list (Admin → Charges). Anything set to
 // apply automatically — GST, service charge, a standing packing fee — is already
 // inside order.total; the chips below are the opt-in ones.
-function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess, onPrinted }) {
+//
+// Salon only — `delivery` ("printer_optional" | "no_printer", Settings → Bills &
+// WhatsApp) swaps the single confirm button for "Send on WhatsApp" and, unless
+// there is no printer, "Print" (which sends on WhatsApp too). `onWhatsApp` gets
+// the bill as paid. Without `delivery` (the restaurant counter) nothing changes.
+function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess, onPrinted, delivery, onWhatsApp }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
@@ -89,7 +94,9 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
         return list;
     })();
 
-    const handleConfirm = async () => {
+    // print: false = WhatsApp only (salon). A click event counts as "print".
+    const handleConfirm = async (print = true) => {
+        const shouldPrint = print !== false;
         setLoading(true);
         try {
             // Persist the picked charges onto the order and recompute its total
@@ -131,17 +138,25 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
                 grand_total: money(grandTotal)
             };
 
-            // Waits for the printer to take it, so anything that follows (the
-            // kitchen copy on a single-printer setup) comes out after the bill.
-            const billResult = await printBillNow({
-                order: printedOrder,
-                restaurant: restaurant || {},
-                format: format || {}
-            });
+            // WhatsApp first (salon): opened straight after payment, while the
+            // Confirm click still counts as the receptionist's action, so the
+            // browser doesn't block the window. The bill printer is spooled by the
+            // local backend and doesn't need that.
+            if (onWhatsApp) onWhatsApp(printedOrder);
 
-            if (onPrinted) onPrinted(printedOrder, billResult);
+            if (shouldPrint) {
+                // Waits for the printer to take it, so anything that follows (the
+                // kitchen copy on a single-printer setup) comes out after the bill.
+                const billResult = await printBillNow({
+                    order: printedOrder,
+                    restaurant: restaurant || {},
+                    format: format || {}
+                });
 
-            onSuccess();
+                if (onPrinted) onPrinted(printedOrder, billResult);
+            }
+
+            onSuccess({ printed: shouldPrint });
         } catch (error) {
             console.error("Payment Error:", error);
             alert(error.response?.data?.message || "Payment failed. Please try again.");
@@ -285,9 +300,30 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
                     )}
                 </div>
 
-                <button className="bill-confirm-btn" onClick={handleConfirm} disabled={loading || (splitMode && !splitValid)}>
-                    {loading ? "Processing..." : `Confirm Payment & Generate Bill · ₹${money(grandTotal).toFixed(2)}`}
-                </button>
+                {delivery ? (
+                    <div className="bill-confirm-row">
+                        <button
+                            className="bill-confirm-btn bill-confirm-wa"
+                            onClick={() => handleConfirm(false)}
+                            disabled={loading || (splitMode && !splitValid)}
+                        >
+                            {loading ? "Processing..." : `Paid · Send on WhatsApp · ₹${money(grandTotal).toFixed(2)}`}
+                        </button>
+                        {delivery !== "no_printer" && (
+                            <button
+                                className="bill-confirm-btn"
+                                onClick={() => handleConfirm(true)}
+                                disabled={loading || (splitMode && !splitValid)}
+                            >
+                                {loading ? "Processing..." : `Paid · Print + WhatsApp · ₹${money(grandTotal).toFixed(2)}`}
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <button className="bill-confirm-btn" onClick={handleConfirm} disabled={loading || (splitMode && !splitValid)}>
+                        {loading ? "Processing..." : `Confirm Payment & Generate Bill · ₹${money(grandTotal).toFixed(2)}`}
+                    </button>
+                )}
             </div>
         </div>
     );

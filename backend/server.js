@@ -474,6 +474,28 @@ db.query(`
     if (!settingsClauses.length && has.has("orders.discount_percent")) console.log("Discount columns ready.");
 });
 
+// ── 018: salon bills — printer or not, and the owner's WhatsApp message ──
+// On the synced `settings` table, so the till gets them. See
+// migrations/018_salon_whatsapp_bills.sql.
+db.query(`
+    SELECT COLUMN_NAME
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'settings'
+      AND COLUMN_NAME IN ('bill_delivery', 'whatsapp_template')
+`, (err, rows) => {
+    if (err) { console.error("WhatsApp bill column check error:", err.message); return; }
+    const has = new Set((rows || []).map((r) => r.COLUMN_NAME));
+    const clauses = [];
+    if (!has.has("bill_delivery"))     clauses.push("ADD COLUMN bill_delivery VARCHAR(20) NOT NULL DEFAULT 'printer_optional'");
+    if (!has.has("whatsapp_template")) clauses.push("ADD COLUMN whatsapp_template TEXT NULL");
+    if (!clauses.length) { console.log("WhatsApp bill columns ready."); return; }
+    db.query(`ALTER TABLE settings ${clauses.join(", ")}`, (e) => {
+        if (e) console.error("WhatsApp bill columns migration error:", e.message);
+        else console.log("WhatsApp bill columns added.");
+    });
+});
+
 // ── Settings table: add missing columns if they don't exist ─────
 db.query(`
     SELECT COLUMN_NAME

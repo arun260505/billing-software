@@ -21,7 +21,11 @@ const DEFAULT_RESTAURANT = {
     // 016: front-desk discounts, off until the owner allows them.
     discount_enabled: 0,
     discount_max_percent: 0,
-    discount_max_amount: 0
+    discount_max_amount: 0,
+    // 017: salon bills — printer or not, and the owner's WhatsApp message
+    // (NULL = the default message in src/utils/whatsappBill.js).
+    bill_delivery: "printer_optional",
+    whatsapp_template: null
 };
 
 const DEFAULT_PAYMENT = {
@@ -47,7 +51,19 @@ const getRestaurantSettings = (restaurantId, callback) => {
     db.query(sql, [restaurantId], (err, rows) => {
         if (err) return callback(err);
         const row = rows && rows.length > 0 ? rows[0] : null;
-        callback(null, row ? { ...DEFAULT_RESTAURANT, ...row } : { ...DEFAULT_RESTAURANT, restaurant_id: restaurantId });
+        const settings = row ? { ...DEFAULT_RESTAURANT, ...row } : { ...DEFAULT_RESTAURANT, restaurant_id: restaurantId };
+
+        // shop_mobile / shop_name: the mobile and business name given when the
+        // super admin created this business (restaurants). Read-only here; the
+        // salon's WhatsApp bill signs off with the number, and the name stands in
+        // when the Settings name is blank.
+        db.query("SELECT mobile, restaurant_name FROM restaurants WHERE id = ? LIMIT 1", [restaurantId], (mErr, mRows) => {
+            if (mErr) return callback(mErr);
+            const biz = (mRows && mRows[0]) || {};
+            settings.shop_mobile = biz.mobile || "";
+            settings.shop_name = biz.restaurant_name || "";
+            callback(null, settings);
+        });
     });
 };
 
@@ -116,6 +132,20 @@ const saveDiscountSettings = (restaurantId, data, callback) => {
         Number(data.discount_max_percent) || 0,
         Number(data.discount_max_amount) || 0
     ], callback);
+};
+
+// ── 1c. Salon bills: printer or not, and the WhatsApp message ──
+// Own statement for the same reason as the discount rule.
+
+const saveWhatsAppSettings = (restaurantId, data, callback) => {
+    const sql = `
+        INSERT INTO settings (restaurant_id, bill_delivery, whatsapp_template)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            bill_delivery     = VALUES(bill_delivery),
+            whatsapp_template = VALUES(whatsapp_template)
+    `;
+    db.query(sql, [restaurantId, data.bill_delivery, data.whatsapp_template], callback);
 };
 
 // The rule a new bill is checked against (utils/discountRules.js).
@@ -255,6 +285,7 @@ module.exports = {
     saveRestaurantSettings,
     saveDiscountSettings,
     getDiscountPolicy,
+    saveWhatsAppSettings,
     getPaymentSettings,
     savePaymentSettings,
     getSecuritySettings,

@@ -255,6 +255,49 @@ button.sl-badge { cursor: pointer; }
 .cashier-app .sl-discount-error { font-size: 12px; font-weight: 700; color: #b91c1c; padding: 0 0 4px; text-align: right; }
 .cashier-app .sl-discount-row { color: #15803d; font-weight: 700; }
 
+/* Payment modal (salon): "Send on WhatsApp" and "Print + WhatsApp" */
+.cashier-app .bill-confirm-row {
+    display: flex; flex-direction: column; gap: 8px;
+    position: sticky; bottom: 0; background: #fff; box-shadow: 0 -8px 18px #fff;
+}
+.cashier-app .bill-confirm-row .bill-confirm-btn { position: static; box-shadow: none; }
+.cashier-app .bill-confirm-row .bill-confirm-btn.bill-confirm-wa { background: #15803d; }
+.cashier-app .bill-confirm-row .bill-confirm-btn.bill-confirm-wa:hover { background: #166534; }
+.cashier-app .bill-confirm-row .bill-confirm-btn:disabled { background: #94a3b8; }
+
+/* WhatsApp bill: the panel after payment, and the button in Bills */
+.cashier-app .sl-wa {
+    margin-top: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+}
+.cashier-app .sl-wa-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cashier-app .sl-wa-title { font-size: 13px; font-weight: 800; color: #14532d; }
+.cashier-app .sl-wa-close {
+    border: none; background: transparent; color: #64748b; font-size: 14px; cursor: pointer;
+    width: 26px; height: 26px; border-radius: 6px; flex: 0 0 auto;
+}
+.cashier-app .sl-wa-close:hover { background: #dcfce7; }
+.cashier-app .sl-wa-hint { font-size: 12px; color: #166534; line-height: 1.35; }
+.cashier-app .sl-wa-send {
+    border: none; border-radius: 9px; background: #15803d; color: #fff; font-weight: 800;
+    font-size: 14px; padding: 10px 12px; cursor: pointer; font-family: inherit;
+}
+.cashier-app .sl-wa-send:hover { background: #166534; }
+.cashier-app .sl-wa-prefs {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    font-size: 12px; color: #475569;
+}
+.cashier-app .sl-wa-prefs label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.cashier-app .sl-wa-prefs select {
+    height: 28px; border: 1px solid #cbd5e1; border-radius: 7px; padding: 0 6px;
+    font-size: 12px; background: #fff; font-family: inherit;
+}
+.cashier-app .bills-wa {
+    padding: 7px 12px; margin-right: 6px; border-radius: 9px; border: 1.5px solid #15803d;
+    background: #fff; color: #15803d; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.cashier-app .bills-wa:hover { background: #f0fdf4; }
+
 .cashier-app .sl-notice {
     margin-top: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d;
     border-radius: 9px; padding: 8px 10px; font-size: 13px; font-weight: 700;

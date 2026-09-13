@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
 import printerSettingService from "../../services/printerSettingService";
 import settingsService from "../../services/settingsService";
@@ -8,6 +8,15 @@ import {
     normalizePrinterMode
 } from "../../utils/printerMode";
 import { isSalon } from "../../utils/businessType";
+import {
+    BILL_DELIVERY,
+    DEFAULT_WHATSAPP_TEMPLATE,
+    WHATSAPP_TAGS,
+    WHATSAPP_TEMPLATE_MAX,
+    SAMPLE_BILL,
+    buildBillMessage,
+    normalizeBillDelivery
+} from "../../utils/whatsappBill";
 
 import "../../styles/pages/Admin/Settings.css";
 
@@ -847,6 +856,249 @@ function TabDiscounts() {
     );
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Tab: Bills & WhatsApp (salon) — printer or not, and the message text
+// ═══════════════════════════════════════════════════════════════
+
+const BILL_DELIVERY_OPTIONS = [
+    {
+        value: BILL_DELIVERY.PRINTER_OPTIONAL,
+        title: "Printer optional",
+        subtitle: "Print or WhatsApp at payment",
+        description: "The salon has a bill printer, but not every customer wants paper.",
+        flow: [
+            "Payment shows two buttons: Send on WhatsApp and Print",
+            "Send on WhatsApp: no paper, WhatsApp opens with the bill",
+            "Print: prints the bill and opens WhatsApp with it too"
+        ]
+    },
+    {
+        value: BILL_DELIVERY.NO_PRINTER,
+        title: "No printer",
+        subtitle: "Bills go on WhatsApp only",
+        description: "There is no bill printer at the front desk.",
+        flow: [
+            "Payment shows one button: Send on WhatsApp",
+            "The till's Printer screen is hidden"
+        ]
+    }
+];
+
+// WhatsApp's *bold*, drawn as bold in the preview.
+const renderWhatsAppLine = (line) =>
+    line.split(/(\*[^*\n]+\*)/).map((part, i) =>
+        /^\*[^*\n]+\*$/.test(part)
+            ? <strong key={i}>{part.slice(1, -1)}</strong>
+            : <React.Fragment key={i}>{part}</React.Fragment>
+    );
+
+const toWhatsAppForm = (row = {}) => ({
+    bill_delivery: normalizeBillDelivery(row.bill_delivery),
+    whatsapp_template: row.whatsapp_template || DEFAULT_WHATSAPP_TEMPLATE
+});
+
+function TabBillsWhatsApp() {
+    const [data, setData] = useState(null);
+    const [saved, setSaved] = useState(null);
+    const [shop, setShop] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const textRef = useRef(null);
+
+    useEffect(() => {
+        let live = true;
+        settingsService.getRestaurant()
+            .then((res) => {
+                if (!live) return;
+                const row = res.data?.data || {};
+                const form = toWhatsAppForm(row);
+                setData(form);
+                setSaved(form);
+                setShop(row);
+            })
+            .catch((err) => {
+                if (live) setError(err.response?.data?.message || "Failed to load bill settings.");
+            })
+            .finally(() => { if (live) setLoading(false); });
+        return () => { live = false; };
+    }, []);
+
+    const update = (field, value) => {
+        setData((prev) => ({ ...prev, [field]: value }));
+        setNotice("");
+        setError("");
+    };
+
+    // Put a {tag} where the cursor is, and leave the cursor after it.
+    const insertTag = (tag) => {
+        const el = textRef.current;
+        const text = data.whatsapp_template;
+        const start = el ? el.selectionStart : text.length;
+        const end = el ? el.selectionEnd : text.length;
+        update("whatsapp_template", text.slice(0, start) + tag + text.slice(end));
+        requestAnimationFrame(() => {
+            if (!el) return;
+            el.focus();
+            el.setSelectionRange(start + tag.length, start + tag.length);
+        });
+    };
+
+    const handleSave = async () => {
+        if (!data.whatsapp_template.trim()) { setError("The WhatsApp message can't be empty. Use Reset to default to start again."); return; }
+        if (data.whatsapp_template.length > WHATSAPP_TEMPLATE_MAX) { setError(`The WhatsApp message can be at most ${WHATSAPP_TEMPLATE_MAX} characters.`); return; }
+
+        setSaving(true);
+        try {
+            const res = await settingsService.saveWhatsApp({
+                bill_delivery: data.bill_delivery,
+                // The default is stored as "not customised", so a later
+                // improvement to the default reaches salons that never edited it.
+                whatsapp_template: data.whatsapp_template === DEFAULT_WHATSAPP_TEMPLATE ? "" : data.whatsapp_template
+            });
+            const row = res.data?.data || {};
+            const form = toWhatsAppForm(row);
+            setData(form);
+            setSaved(form);
+            setShop(row);
+            setNotice("Saved. The front desk picks it up within a few seconds.");
+        } catch (err) {
+            setError(err.response?.data?.message || "Could not save bill settings.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return <div className="set-loading">Loading bill settings...</div>;
+    if (!data) return <div className="set-alert set-alert-warn">{error || "Failed to load bill settings."}</div>;
+
+    const dirty = JSON.stringify(data) !== JSON.stringify(saved);
+    const shopNumber = shop.shop_mobile || "";
+    const preview = buildBillMessage(
+        SAMPLE_BILL,
+        { restaurant_name: shop.restaurant_name || shop.shop_name || "Your Salon", address: shop.address, mobile: shopNumber },
+        data.whatsapp_template
+    );
+
+    return (
+        <>
+            {error && <div className="set-alert set-alert-warn">{error}</div>}
+            {notice && <div className="set-alert set-alert-ok">{notice}</div>}
+
+            <section className="set-section">
+                <div className="set-section-head">
+                    <h3>Bill printer</h3>
+                    <p>How the front desk hands a bill to the customer after payment.</p>
+                </div>
+                <div className="set-options">
+                    {BILL_DELIVERY_OPTIONS.map((opt, idx) => {
+                        const selected = data.bill_delivery === opt.value;
+                        return (
+                            <button
+                                type="button"
+                                key={opt.value}
+                                className={`set-option${selected ? " selected" : ""}`}
+                                onClick={() => update("bill_delivery", opt.value)}
+                                disabled={saving}
+                                aria-pressed={selected}
+                            >
+                                <div className="set-option-top">
+                                    <span className={`set-radio${selected ? " on" : ""}`} />
+                                    <div className="set-option-title">
+                                        <span className="set-option-index">Option {idx + 1}</span>
+                                        <strong>{opt.title}</strong>
+                                        <span className="set-option-sub">{opt.subtitle}</span>
+                                    </div>
+                                    {opt.value === saved.bill_delivery && (
+                                        <span className="set-active-chip">Active</span>
+                                    )}
+                                </div>
+                                <p className="set-option-desc">{opt.description}</p>
+                                <ul className="set-option-flow">
+                                    {opt.flow.map((line) => <li key={line}>{line}</li>)}
+                                </ul>
+                            </button>
+                        );
+                    })}
+                </div>
+            </section>
+
+            <section className="set-section">
+                <div className="set-section-head">
+                    <h3>WhatsApp message</h3>
+                    <p>
+                        The text the customer gets. Click a tag to add it where the cursor is — it is
+                        filled in from each bill. A line whose tags are empty is left out.
+                    </p>
+                </div>
+
+                <div className="set-wa-layout">
+                    <div className="set-wa-editor">
+                        <div className="set-wa-tags">
+                            {WHATSAPP_TAGS.map((t) => (
+                                <button
+                                    type="button"
+                                    key={t.tag}
+                                    className="set-wa-tag"
+                                    onClick={() => insertTag(t.tag)}
+                                    title={t.label}
+                                    disabled={saving}
+                                >
+                                    {t.tag}
+                                </button>
+                            ))}
+                        </div>
+                        <textarea
+                            ref={textRef}
+                            className="set-wa-textarea"
+                            value={data.whatsapp_template}
+                            onChange={(e) => update("whatsapp_template", e.target.value)}
+                            rows={16}
+                            maxLength={WHATSAPP_TEMPLATE_MAX}
+                            aria-label="WhatsApp message"
+                            spellCheck={false}
+                        />
+                        <div className="set-wa-meta">
+                            <span>
+                                Use *stars* for <strong>bold</strong>. {data.whatsapp_template.length} / {WHATSAPP_TEMPLATE_MAX}
+                            </span>
+                            <button
+                                type="button"
+                                className="set-wa-reset"
+                                onClick={() => update("whatsapp_template", DEFAULT_WHATSAPP_TEMPLATE)}
+                                disabled={saving || data.whatsapp_template === DEFAULT_WHATSAPP_TEMPLATE}
+                            >
+                                Reset to default
+                            </button>
+                        </div>
+                        <p className="set-footnote">
+                            {shopNumber
+                                ? <>{"{salon_phone}"} is the shop number <strong>{shopNumber}</strong> — the mobile given when this salon was created.</>
+                                : <>{"{salon_phone}"} is the mobile given when this salon was created. None is on record, so that line is left out.</>}
+                        </p>
+                    </div>
+
+                    <div className="set-wa-preview-wrap">
+                        <span className="set-wa-preview-label">Preview (sample bill)</span>
+                        <div className="set-wa-preview">
+                            {preview.split("\n").map((line, i) => (
+                                <div key={i} className="set-wa-preview-line">{line ? renderWhatsAppLine(line) : " "}</div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div className="set-section-footer">
+                <button className="set-save-btn" onClick={handleSave} disabled={saving || !dirty}>
+                    {saving ? "Saving..." : dirty ? "Save Changes" : "Saved"}
+                </button>
+            </div>
+        </>
+    );
+}
+
 function Settings() {
     const [activeTab, setActiveTab] = useState("restaurant");
 
@@ -859,6 +1111,7 @@ function Settings() {
             { key: "restaurant", label: "Salon" },
             { key: "payments", label: "Payments" },
             { key: "discounts", label: "Discounts" },
+            { key: "whatsapp", label: "Bills & WhatsApp" },
             { key: "security", label: "Security" }
         ]
         : TABS;
@@ -867,6 +1120,7 @@ function Settings() {
         restaurant: <TabRestaurant />,
         payments: <TabPayments />,
         discounts: <TabDiscounts />,
+        whatsapp: <TabBillsWhatsApp />,
         staff: <TabStaffPermissions />,
         security: <TabSecurity />,
         printers: <TabPrintersKitchen />
@@ -880,7 +1134,7 @@ function Settings() {
                         <h2>Settings</h2>
                         <p>
                             {salon
-                                ? "Manage your salon details, payments and security."
+                                ? "Manage your salon details, payments, discounts, bills on WhatsApp and security."
                                 : "Manage your restaurant configuration, payments, staff permissions, and printer setup."}
                         </p>
                     </div>
