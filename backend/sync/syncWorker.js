@@ -87,7 +87,15 @@ async function pushUp() {
             restaurant_uuid: ruuid
         });
         if (resp && resp.success) {
-            await markSynced(db, table, rows.map((r) => r.uuid));
+            // Mark synced ONLY the rows the server actually wrote. A row it
+            // deferred (its parent hasn't synced yet) or rejected must stay
+            // unsynced so the next cycle retries it once the dependency arrives —
+            // marking it synced here would drop it from the cloud with no error.
+            // Fall back to all uuids for an older server that doesn't ack per row.
+            const acked = Array.isArray(resp.appliedUuids)
+                ? resp.appliedUuids
+                : rows.map((r) => r.uuid);
+            await markSynced(db, table, acked);
         } else {
             throw new Error(`push ${table}: ${resp && resp.message}`);
         }

@@ -120,6 +120,29 @@ async function runSyncSchema() {
         await ensureColumn("orders", "service_charge", "DECIMAL(10,2) NOT NULL DEFAULT 0.00");
         // 014: the stylist on a salon bill (a users row, role 'stylist').
         await ensureColumn("orders", "stylist_id", "INT NULL DEFAULT NULL");
+
+        // 015: order numbers are per-restaurant sequential (ORD-YYYYMMDD-NNNN)
+        // with no restaurant prefix, so two restaurants generate the SAME number
+        // on the same day. The cloud holds every restaurant's orders in one
+        // table; a GLOBAL unique index on order_number made the second
+        // restaurant's synced order collide with the first and overwrite it via
+        // ON DUPLICATE KEY UPDATE. Make uniqueness per-restaurant instead.
+        // (order_number was globally unique, so no (restaurant_id, order_number)
+        // duplicates can exist yet — the composite index is safe to add first.)
+        try {
+            if (!(await indexExists("orders", "uq_orders_restaurant_order"))) {
+                await db.query(
+                    "ALTER TABLE orders ADD UNIQUE INDEX uq_orders_restaurant_order (restaurant_id, order_number)"
+                );
+            }
+            if (await indexExists("orders", "order_number")) {
+                await db.query("ALTER TABLE orders DROP INDEX order_number");
+            }
+        } catch (e) {
+            // Never take the server down over an index reshape — leave the old
+            // index in place and log, so it can be fixed rather than blocking boot.
+            console.error("orders order_number index reshape skipped:", e.message);
+        }
     }
     if (await tableExists("order_items")) {
         await ensureColumn("order_items", "served", "TINYINT(1) NOT NULL DEFAULT 0");

@@ -93,6 +93,11 @@ async function applyRows(dbp, def, rows, scope = {}) {
     let applied = 0;
     let deferred = 0;
     let rejected = 0;
+    // The uuids actually written, so the sender marks ONLY these synced. A row
+    // that was deferred (its parent isn't here yet) or rejected must stay
+    // unsynced on the sender and be retried — otherwise it is marked synced and
+    // silently lost from the cloud.
+    const appliedUuids = [];
 
     const cols_ok = await allowedColumns(dbp, def.table);
 
@@ -161,9 +166,10 @@ async function applyRows(dbp, def, rows, scope = {}) {
 
         await dbp.query(sql, cols.map((c) => data[c]));
         applied++;
+        if (data.uuid) appliedUuids.push(data.uuid);
     }
 
-    return { applied, deferred, rejected };
+    return { applied, deferred, rejected, appliedUuids };
 }
 
 // UP: rows changed locally but not yet pushed (or changed since last push).
