@@ -104,6 +104,9 @@ function SalonPos() {
     // opened, blocked }. Preferences belong to this PC (utils/whatsappBill.js).
     const [waBill, setWaBill] = useState(null);
     const [waPrefs, setWaPrefsState] = useState(getWhatsAppPrefs);
+    // The Web/App switch stays tucked behind a "Change" link so it isn't in the
+    // way on every bill, but is one tap away when a till needs to switch.
+    const [showWaSwitch, setShowWaSwitch] = useState(false);
     // The owner's choices (Settings → Bills & WhatsApp) and the shop number given
     // when the salon was created — polled with the discount rule.
     const [desk, setDesk] = useState({ bill_delivery: "printer_optional", whatsapp_template: "", shop_mobile: "" });
@@ -1060,15 +1063,28 @@ function SalonPos() {
                                         {waBill.blocked ? "Send bill on WhatsApp" : "Open WhatsApp again"}
                                     </button>
                                     <div className="sl-wa-prefs">
-                                        <span>Open bills in</span>
-                                        <select
-                                            value={waPrefs.via}
-                                            onChange={(e) => updateWaPrefs({ via: e.target.value })}
-                                            aria-label="Open bills in"
-                                        >
-                                            <option value="web">WhatsApp Web</option>
-                                            <option value="app">WhatsApp app</option>
-                                        </select>
+                                        {showWaSwitch ? (
+                                            <>
+                                                <span>Open bills in</span>
+                                                <select
+                                                    value={waPrefs.via}
+                                                    onChange={(e) => { updateWaPrefs({ via: e.target.value }); setShowWaSwitch(false); }}
+                                                    aria-label="Open bills in"
+                                                    autoFocus
+                                                >
+                                                    <option value="web">WhatsApp Web</option>
+                                                    <option value="app">WhatsApp app</option>
+                                                </select>
+                                            </>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="sl-wa-switch"
+                                                onClick={() => setShowWaSwitch(true)}
+                                            >
+                                                Opens in {waPrefs.via === "app" ? "WhatsApp app" : "WhatsApp Web"} · Change
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )}
