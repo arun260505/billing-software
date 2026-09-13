@@ -346,6 +346,12 @@
 .rp-span-6 { grid-column: span 6; }
 .rp-span-5 { grid-column: span 5; }
 .rp-span-4 { grid-column: span 4; }
+/* Used by every single-section tab (Sales, Payments, Staff, …). It was missing,
+   so those cards collapsed into one narrow column. */
+.rp-span-12 { grid-column: span 12; }
+
+/* A card never grows wider than its column because of its contents. */
+.rp-grid > .rp-card { min-width: 0; }
 
 /* ── Cards (generic) ────────────────────────────────────── */
 

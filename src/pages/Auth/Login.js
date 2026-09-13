@@ -3,6 +3,7 @@ import "../../styles/pages/Auth/Login.css";
 import { FaUserAlt, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import authService from "../../services/authService";
 import { isNativeApp } from "../../services/serverConfig";
+import { homeFor } from "../../utils/businessType";
 
 // The roles the Android waiter APK is allowed to sign in. Kitchen is included
 // because a kitchen display on a spare tablet is a reasonable use of the same
@@ -70,6 +71,16 @@ function Login() {
                     return;
                 }
 
+                // Restaurant or salon decides the landing page as much as the
+                // role does: a salon's receptionist (cashier) gets the salon
+                // counter, not the table-and-kitchen till.
+                const home = homeFor(user);
+
+                if (!home) {
+                    alert("Unknown user role.");
+                    return;
+                }
+
                 localStorage.setItem("token", token);
 
                 localStorage.setItem(
@@ -77,32 +88,7 @@ function Login() {
                     JSON.stringify(user)
                 );
 
-                switch (user.role) {
-
-                    case "super_admin":
-                        window.location.href = "/super_admin";
-                        break;
-
-                    case "admin":
-                        window.location.href = "/admin";
-                        break;
-
-                    case "cashier":
-                        window.location.href = "/cashier";
-                        break;
-
-                    case "waiter":
-                        window.location.href = "/waiter";
-                        break;
-
-                    case "kitchen":
-                        window.location.href = "/kitchen";
-                        break;
-
-                    default:
-                        alert("Unknown user role.");
-
-                }
+                window.location.href = home;
 
             }
 
@@ -132,7 +118,7 @@ function Login() {
 
                     <h1>InWallz Billing</h1>
 
-                    <p>Restaurant Billing & POS System</p>
+                    <p>Restaurant & Salon Billing and POS</p>
 
                 </div>
 

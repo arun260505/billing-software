@@ -11,7 +11,8 @@ function ChargeFilters({
     statusFilter,
     onStatusChange,
     onReset,
-    onAdd
+    onAdd,
+    showApplies = true
 }) {
     return (
         <div className="charges-toolbar">
@@ -35,20 +36,22 @@ function ChargeFilters({
                 <option value="Percentage">Percentage</option>
                 <option value="Per Item">Per Item</option>
                 <option value="Per Person">Per Person</option>
-                <option value="Per Table">Per Table</option>
+                {showApplies && <option value="Per Table">Per Table</option>}
                 <option value="Per Hour">Per Hour</option>
             </select>
 
-            <select
-                className="filter-select"
-                value={appliesFilter}
-                onChange={(e) => onAppliesChange(e.target.value)}
-            >
-                <option value="All">Applies To: All</option>
-                <option value="Dine-in">Dine-in</option>
-                <option value="Takeaway">Takeaway</option>
-                <option value="Delivery">Delivery</option>
-            </select>
+            {showApplies && (
+                <select
+                    className="filter-select"
+                    value={appliesFilter}
+                    onChange={(e) => onAppliesChange(e.target.value)}
+                >
+                    <option value="All">Applies To: All</option>
+                    <option value="Dine-in">Dine-in</option>
+                    <option value="Takeaway">Takeaway</option>
+                    <option value="Delivery">Delivery</option>
+                </select>
+            )}
 
             <select
                 className="filter-select"

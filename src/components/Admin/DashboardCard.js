@@ -6,7 +6,9 @@ import {
   FaUtensils,
   FaStore,
   FaChartLine,
-  FaBoxOpen
+  FaBoxOpen,
+  FaUsers,
+  FaExclamationTriangle
 } from "react-icons/fa";
 import "../../styles/Admin/DashboardCard.css";
 
@@ -17,7 +19,9 @@ const ICONS = {
   FaUtensils,
   FaStore,
   FaChartLine,
-  FaBoxOpen
+  FaBoxOpen,
+  FaUsers,
+  FaExclamationTriangle
 };
 
 function DashboardCard({ title, value, sub, icon = "FaChartLine", accent = "#2563EB" }) {

@@ -5,6 +5,9 @@ const orderController = require("../controllers/orderController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 const { requireApproval } = require("../middleware/approvalMiddleware");
+// Table, serve and running-order endpoints belong to the dine-in floor. A salon
+// bills at the counter only, so those are refused for it.
+const { restaurantOnly } = require("../middleware/businessTypeMiddleware");
 
 router.use(authMiddleware);
 
@@ -16,16 +19,16 @@ const billing = roleMiddleware(["admin", "cashier"]);
 
 // Reads. NOTE: static/more-specific paths must be registered before "/:id".
 router.get("/", staff, orderController.getAllOrders);
-router.get("/running", staff, orderController.getRunningOrders);
-router.get("/table/:tableId/items", staff, orderController.getTableActiveItems);
-router.put("/table/:tableId/serve", staff, orderController.markTableServed);
-router.put("/item/:itemId/serve", staff, orderController.markItemServed);
+router.get("/running", staff, restaurantOnly, orderController.getRunningOrders);
+router.get("/table/:tableId/items", staff, restaurantOnly, orderController.getTableActiveItems);
+router.put("/table/:tableId/serve", staff, restaurantOnly, orderController.markTableServed);
+router.put("/item/:itemId/serve", staff, restaurantOnly, orderController.markItemServed);
 router.put("/item/:itemId/qty", staff, orderController.setItemQuantity);   // edit bill quantity
 router.delete("/item/:itemId", staff, requireApproval("cancel_order"), orderController.removeItem);   // cancel one bill item
 // Waiter is allowed here only when Admin has turned on "waiter can print bill";
 // settleTable enforces that per-restaurant setting before recording anything.
-router.post("/table/:tableId/settle", roleMiddleware(["admin", "cashier", "waiter"]), orderController.settleTable);
-router.post("/table/:tableId/item", staff, orderController.addBillItem);   // add an item to the bill
+router.post("/table/:tableId/settle", roleMiddleware(["admin", "cashier", "waiter"]), restaurantOnly, orderController.settleTable);
+router.post("/table/:tableId/item", staff, restaurantOnly, orderController.addBillItem);   // add an item to the bill
 router.get("/today-count", staff, orderController.getTodaysOrderCount);
 
 // Bills screen — settled bills that can be corrected and reprinted.
@@ -43,7 +46,7 @@ router.get("/:id/items", staff, orderController.getOrderDetails);
 router.get("/:id", staff, orderController.getOrderById);
 
 // Waiter marks a served order (before the generic /:id routes).
-router.put("/:id/serve", roleMiddleware(["admin", "waiter", "cashier"]), orderController.markServed);
+router.put("/:id/serve", roleMiddleware(["admin", "waiter", "cashier"]), restaurantOnly, orderController.markServed);
 
 // Writes.
 router.post("/", takers, requireApproval("discount", (req) => Number(req.body.discount) > 0), orderController.createOrder);

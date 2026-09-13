@@ -1,5 +1,6 @@
 import React from "react";
 import { FaEye, FaEdit, FaTrash } from "react-icons/fa";
+import { roleLabel } from "../../utils/businessType";
 
 // These three buttons rendered with no onClick at all — they looked like
 // working controls and did nothing when clicked.
@@ -56,7 +57,7 @@ function EmployeeTable({ employees, onView, onEdit, onDelete }) {
 
                                     </td>
 
-                                    <td>{employee.role}</td>
+                                    <td>{roleLabel(employee.role)}</td>
 
                                     <td>{employee.mobile}</td>
 

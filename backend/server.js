@@ -128,6 +128,63 @@ db.query(`
     if (err) console.error("restaurant_activations table migration error:", err.message);
 });
 
+// Salon stock and its movement log. See migrations/013_business_type_inventory.sql.
+// Created with the sync columns already in place; syncColumns.js keeps them so.
+db.query(`
+    CREATE TABLE IF NOT EXISTS inventory_items (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        uuid          CHAR(36) NOT NULL DEFAULT (UUID()),
+        restaurant_id INT NOT NULL,
+        item_name     VARCHAR(150) NOT NULL,
+        sku           VARCHAR(60) DEFAULT NULL,
+        category      VARCHAR(100) DEFAULT NULL,
+        unit          VARCHAR(20) NOT NULL DEFAULT 'pcs',
+        quantity      DECIMAL(12,2) NOT NULL DEFAULT 0,
+        min_quantity  DECIMAL(12,2) NOT NULL DEFAULT 0,
+        cost_price    DECIMAL(10,2) NOT NULL DEFAULT 0,
+        status        VARCHAR(10) NOT NULL DEFAULT 'Active',
+        created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        deleted_at    TIMESTAMP NULL DEFAULT NULL,
+        UNIQUE KEY uq_inventory_items_uuid (uuid),
+        KEY idx_inventory_items_restaurant (restaurant_id),
+        CONSTRAINT fk_inventory_items_restaurant
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+    )
+`, (err) => {
+    if (err) {
+        console.error("inventory_items table migration error:", err.message);
+        return;
+    }
+    // The movement log points at an item, so it can only be created after it.
+    db.query(`
+        CREATE TABLE IF NOT EXISTS inventory_movements (
+            id                INT AUTO_INCREMENT PRIMARY KEY,
+            uuid              CHAR(36) NOT NULL DEFAULT (UUID()),
+            restaurant_id     INT NOT NULL,
+            inventory_item_id INT NOT NULL,
+            movement_type     VARCHAR(10) NOT NULL,
+            quantity          DECIMAL(12,2) NOT NULL,
+            balance_after     DECIMAL(12,2) NOT NULL,
+            note              VARCHAR(255) DEFAULT NULL,
+            created_by        INT DEFAULT NULL,
+            created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            deleted_at        TIMESTAMP NULL DEFAULT NULL,
+            UNIQUE KEY uq_inventory_movements_uuid (uuid),
+            KEY idx_inventory_movements_item (inventory_item_id),
+            KEY idx_inventory_movements_restaurant (restaurant_id),
+            CONSTRAINT fk_inventory_movements_restaurant
+                FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
+            CONSTRAINT fk_inventory_movements_item
+                FOREIGN KEY (inventory_item_id) REFERENCES inventory_items(id) ON DELETE CASCADE
+        )
+    `, (moveErr) => {
+        if (moveErr) console.error("inventory_movements table migration error:", moveErr.message);
+        else console.log("Inventory tables ready.");
+    });
+});
+
 db.query(`
     CREATE TABLE IF NOT EXISTS bill_formats (
         id                   INT AUTO_INCREMENT PRIMARY KEY,
@@ -543,6 +600,7 @@ const kitchenFormatRoutes = require("./routes/kitchenFormatRoutes");
 const printerSettingRoutes = require("./routes/printerSettingRoutes");
 const printRoutes = require("./routes/printRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
 
 /*
 |--------------------------------------------------------------------------
@@ -585,6 +643,7 @@ app.use("/api/kitchen-format", kitchenFormatRoutes);
 app.use("/api/printer-settings", printerSettingRoutes);
 app.use("/api/print", printRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/inventory", inventoryRoutes);
 /*
 |--------------------------------------------------------------------------
 | Test Route

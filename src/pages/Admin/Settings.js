@@ -7,6 +7,7 @@ import {
     DEFAULT_PRINTER_MODE,
     normalizePrinterMode
 } from "../../utils/printerMode";
+import { isSalon } from "../../utils/businessType";
 
 import "../../styles/pages/Admin/Settings.css";
 
@@ -60,7 +61,7 @@ function TabRestaurant() {
             setData(d);
             setSaved(d);
         }).catch((err) => {
-            setError(err.response?.data?.message || "Failed to load restaurant settings.");
+            setError(err.response?.data?.message || `Failed to load ${isSalon() ? "salon" : "restaurant"} settings.`);
         }).finally(() => setLoading(false));
     }, []);
 
@@ -80,7 +81,7 @@ function TabRestaurant() {
             setData(res.data?.data);
             setNotice("Restaurant settings saved.");
         } catch (err) {
-            setError(err.response?.data?.message || "Could not save restaurant settings.");
+            setError(err.response?.data?.message || `Could not save ${isSalon() ? "salon" : "restaurant"} settings.`);
         } finally {
             setSaving(false);
         }
@@ -95,7 +96,7 @@ function TabRestaurant() {
         reader.readAsDataURL(file);
     };
 
-    if (loading) return <div className="set-loading">Loading restaurant settings...</div>;
+    if (loading) return <div className="set-loading">Loading {isSalon() ? "salon" : "restaurant"} settings...</div>;
 
     return (
         <>
@@ -104,8 +105,8 @@ function TabRestaurant() {
 
             <div className="set-grid">
                 <div className="set-field">
-                    <label>Restaurant Name</label>
-                    <input type="text" value={data?.restaurant_name || ""} onChange={(e) => update("restaurant_name", e.target.value)} placeholder="Restaurant name" />
+                    <label>{isSalon() ? "Salon Name" : "Restaurant Name"}</label>
+                    <input type="text" value={data?.restaurant_name || ""} onChange={(e) => update("restaurant_name", e.target.value)} placeholder={isSalon() ? "Salon name" : "Restaurant name"} />
                 </div>
                 <div className="set-field">
                     <label>Phone</label>
@@ -121,7 +122,7 @@ function TabRestaurant() {
                 </div>
                 <div className="set-field set-field-full">
                     <label>Address</label>
-                    <textarea value={data?.address || ""} onChange={(e) => update("address", e.target.value)} placeholder="Restaurant address" rows={2} />
+                    <textarea value={data?.address || ""} onChange={(e) => update("address", e.target.value)} placeholder={isSalon() ? "Salon address" : "Restaurant address"} rows={2} />
                 </div>
                 <div className="set-field">
                     <label>Currency</label>
@@ -154,7 +155,7 @@ function TabRestaurant() {
                     </select>
                 </div>
                 <div className="set-field">
-                    <label>Restaurant Status</label>
+                    <label>{isSalon() ? "Salon Status" : "Restaurant Status"}</label>
                     <div className="set-toggle-group">
                         <button type="button" className={`set-toggle-btn${data?.restaurant_status === "Open" ? " active" : ""}`} onClick={() => update("restaurant_status", "Open")}>Open</button>
                         <button type="button" className={`set-toggle-btn${data?.restaurant_status === "Closed" ? " active" : ""}`} onClick={() => update("restaurant_status", "Closed")}>Closed</button>
@@ -465,7 +466,9 @@ function TabSecurity() {
     const approvals = [
         { key: "discount_approval", label: "Discounts", desc: "Require admin approval before applying discounts." },
         { key: "refund_approval", label: "Refunds", desc: "Require admin approval before processing refunds." },
-        { key: "cancel_order_approval", label: "Cancel Completed Orders", desc: "Require admin approval before cancelling orders." },
+        isSalon()
+            ? { key: "cancel_order_approval", label: "Cancel Bills", desc: "Require the owner's approval before a receptionist cancels a bill." }
+            : { key: "cancel_order_approval", label: "Cancel Completed Orders", desc: "Require admin approval before cancelling orders." },
         { key: "menu_price_change_approval", label: "Menu Price Changes", desc: "Require admin approval before changing menu prices." }
     ];
 
@@ -700,6 +703,16 @@ function TabPrintersKitchen() {
 function Settings() {
     const [activeTab, setActiveTab] = useState("restaurant");
 
+    // A salon has no waiter / kitchen roles to set permissions for and no
+    // kitchen printer setup — it prints one bill at the counter, configured
+    // on the till's Printer screen.
+    const salon = isSalon();
+    const tabs = salon
+        ? TABS
+            .filter((t) => t.key !== "staff" && t.key !== "printers")
+            .map((t) => (t.key === "restaurant" ? { ...t, label: "Salon" } : t))
+        : TABS;
+
     const TAB_CONTENT = {
         restaurant: <TabRestaurant />,
         payments: <TabPayments />,
@@ -714,12 +727,16 @@ function Settings() {
                 <div className="set-page-header">
                     <div>
                         <h2>Settings</h2>
-                        <p>Manage your restaurant configuration, payments, staff permissions, and printer setup.</p>
+                        <p>
+                            {salon
+                                ? "Manage your salon details, payments and security."
+                                : "Manage your restaurant configuration, payments, staff permissions, and printer setup."}
+                        </p>
                     </div>
                 </div>
 
                 <div className="set-tabs">
-                    {TABS.map((tab) => (
+                    {tabs.map((tab) => (
                         <button
                             key={tab.key}
                             type="button"

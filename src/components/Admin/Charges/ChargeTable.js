@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FaEdit, FaEllipsisV, FaCopy, FaPowerOff, FaTrash } from "react-icons/fa";
 
-function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, sortField, sortDir, onSort }) {
+// `showApplies` hides the service-type column for a salon, whose charges apply to
+// every bill.
+function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, sortField, sortDir, onSort, showApplies = true }) {
 
     const [openMenu, setOpenMenu] = useState(null);
 
@@ -73,7 +75,7 @@ function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, s
                         <th onClick={() => onSort("amount")}>
                             Amount {renderSortArrow("amount")}
                         </th>
-                        <th>Applies To</th>
+                        {showApplies && <th>Applies To</th>}
                         <th>Added</th>
                         <th>Status</th>
                         <th onClick={() => onSort("updated_at")}>
@@ -85,7 +87,7 @@ function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, s
                 <tbody>
                     {charges.length === 0 ? (
                         <tr>
-                            <td colSpan="8">
+                            <td colSpan={showApplies ? 8 : 7}>
                                 <div className="charges-empty">
                                     <div className="empty-icon">📋</div>
                                     <h3>No Charges Found</h3>
@@ -106,11 +108,13 @@ function ChargeTable({ charges, onEdit, onDuplicate, onToggleStatus, onDelete, s
                                 </td>
                                 <td>{charge.charge_type}</td>
                                 <td style={{ fontWeight: 600 }}>{formatAmount(charge)}</td>
-                                <td>
-                                    <div className="applies-tags">
-                                        {getAppliesTags(charge)}
-                                    </div>
-                                </td>
+                                {showApplies && (
+                                    <td>
+                                        <div className="applies-tags">
+                                            {getAppliesTags(charge)}
+                                        </div>
+                                    </td>
+                                )}
                                 <td>
                                     <span className={charge.auto_apply ? "tax-yes" : "tax-no"}>
                                         {charge.auto_apply ? "Every bill" : "Cashier picks"}

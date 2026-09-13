@@ -196,8 +196,11 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_table_name) metaBits.push(isParcel ? "Take Away" : `Dine In: ${seatValue}`);
     if (cfg.show_time) metaBits.push(`Time: ${timeStr}`);
     if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) metaBits.push(`Waiter: ${order.waiter_name || order.waiter}`);
-    if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaBits.push(`Cashier: ${order.cashier_name || order.cashier}`);
+    // cashier_label: a salon's front desk prints as "Receptionist".
+    if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaBits.push(`${order.cashier_label || "Cashier"}: ${order.cashier_name || order.cashier}`);
     if (cfg.show_order_number && orderNumber) metaBits.push(`Bill No.: ${orderNumber}`);
+    // A salon bill always names the stylist who did the work.
+    if (order.stylist_name) metaBits.push(`Stylist: ${order.stylist_name}`);
 
     const leftW = Math.ceil(W * 0.52);
     for (let i = 0; i < metaBits.length; i += 2) {

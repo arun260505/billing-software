@@ -5,9 +5,35 @@ import { useEffect } from "react";
 
 import superAdminService from "../../services/superAdminService";
 
+// Business name with a Restaurant / Salon tag.
+function BusinessCell({ admin }) {
+    const salon = admin.business_type === "salon";
+    return (
+        <span style={{ display: "inline-flex", flexDirection: "column", gap: "4px" }}>
+            <span>{admin.restaurant_name || "—"}</span>
+            <span
+                style={{
+                    alignSelf: "flex-start",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: "999px",
+                    background: salon ? "#FCE7F3" : "#E0F2FE",
+                    color: salon ? "#9D174D" : "#075985"
+                }}
+            >
+                {salon ? "Salon" : "Restaurant"}
+            </span>
+        </span>
+    );
+}
+
 function Dashboard() {
 
+    // businessType is chosen once, here. There is no way to change it later —
+    // a restaurant's tables and KOTs don't become a salon's customers and stock.
     const [adminData, setAdminData] = useState({
+        businessType: "restaurant",
         restaurantName: "",
         fullName: "",
         mobile: "",
@@ -53,7 +79,11 @@ const NAME_RE = /^[A-Za-z][A-Za-z .'-]*$/;
 // Returns the first problem with the form, or "" when it is good to send.
 function validateAdmin(data, { requirePassword = true } = {}) {
 
-    if (!String(data.restaurantName || "").trim()) return "Restaurant name is required.";
+    if (!["restaurant", "salon"].includes(data.businessType)) return "Choose Restaurant or Salon.";
+
+    if (!String(data.restaurantName || "").trim()) {
+        return `${data.businessType === "salon" ? "Salon" : "Restaurant"} name is required.`;
+    }
 
     const name = String(data.fullName || "").trim();
     if (!name) return "Owner / admin name is required.";
@@ -90,6 +120,7 @@ function validateAdmin(data, { requirePassword = true } = {}) {
         alert(response.message);
 
         setAdminData({
+            businessType: "restaurant",
             restaurantName: "",
             fullName: "",
             mobile: "",
@@ -287,10 +318,23 @@ const handleDelete = async (id) => {
 
                         <form onSubmit={handleCreateAdmin}>
 
+                            {/* Decides which admin panel the owner gets. Locked
+                                once the business is created. */}
+                            <select
+                                name="businessType"
+                                value={adminData.businessType}
+                                onChange={handleChange}
+                                required
+                                title="Business type — cannot be changed later"
+                            >
+                                <option value="restaurant">Restaurant</option>
+                                <option value="salon">Salon</option>
+                            </select>
+
                             <input
                                 type="text"
                                 name="restaurantName"
-                                placeholder="Restaurant Name"
+                                placeholder={adminData.businessType === "salon" ? "Salon Name" : "Restaurant Name"}
                                 value={adminData.restaurantName}
                                 onChange={handleChange}
                                 required
@@ -354,6 +398,7 @@ const handleDelete = async (id) => {
 
                                     <th>ID</th>
                                     <th>Full Name</th>
+                                    <th>Business</th>
                                     <th>Username</th>
                                     <th>Activation Key</th>
                                     <th>Status</th>
@@ -388,6 +433,11 @@ const handleDelete = async (id) => {
                                                     placeholder="10-digit mobile"
                                                     inputMode="numeric"
                                                 />
+                                            </td>
+
+                                            {/* Business type is not editable — shown, not an input. */}
+                                            <td data-label="Business" title="Business type cannot be changed">
+                                                <BusinessCell admin={admin} />
                                             </td>
 
                                             <td data-label="Username">{admin.username}</td>
@@ -433,6 +483,10 @@ const handleDelete = async (id) => {
                                         <td data-label="ID">{admin.id}</td>
 
                                         <td data-label="Full Name">{admin.full_name}</td>
+
+                                        <td data-label="Business">
+                                            <BusinessCell admin={admin} />
+                                        </td>
 
                                         <td data-label="Username">{admin.username}</td>
 

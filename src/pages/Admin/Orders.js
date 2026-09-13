@@ -17,6 +17,7 @@ import OrderDetailsModal from "../../components/Admin/OrderDetailsModal";
 
 import { getOrders, markOrderServed, cancelOrder } from "../../services/orderService";
 import { getPayments } from "../../services/paymentService";
+import { isSalon } from "../../utils/businessType";
 
 import "../../styles/Admin/Dashboard.css";
 import "../../styles/pages/Admin/Orders.css";
@@ -65,6 +66,17 @@ const timeOf = (value) =>
 function Orders() {
 
     const navigate = useNavigate();
+
+    // A salon's orders are its bills: no tables, no kitchen stages, no service
+    // types. Unpaid / Completed / Cancelled is the whole lifecycle, and the
+    // customer is what identifies a bill.
+    const salon = isSalon();
+    const statusTabs = salon
+        ? STATUS_TABS
+            .filter((t) => ["all", "Pending", "Completed", "Cancelled"].includes(t.key))
+            .map((t) => (t.key === "Pending" ? { ...t, label: "Unpaid" } : t))
+        : STATUS_TABS;
+    const columnCount = salon ? 8 : 9;
 
     // ── Data ────────────────────────────────────────────────────────
     const [orders, setOrders] = useState([]);
@@ -163,7 +175,10 @@ function Orders() {
             if (term) {
                 const matchesId = String(o.id).includes(term);
                 const matchesNumber = String(o.order_number || "").toLowerCase().includes(term);
-                if (!matchesId && !matchesNumber) return false;
+                const matchesCustomer =
+                    String(o.customer_name || "").toLowerCase().includes(term) ||
+                    String(o.customer_mobile || "").includes(term);
+                if (!matchesId && !matchesNumber && !matchesCustomer) return false;
             }
 
             return true;
@@ -220,7 +235,12 @@ function Orders() {
     const typeMeta = (value) =>
         ORDER_TYPES.find((t) => t.value === value) || { icon: "", label: value };
 
-    const summaryCards = [
+    const summaryCards = salon ? [
+        { title: "Total Bills", value: summary.total, icon: <FaClipboardList />, color: "#2563EB", tab: "all" },
+        { title: "Unpaid", value: summary.new, icon: <FaFireAlt />, color: "#F59E0B", tab: "Pending" },
+        { title: "Completed", value: summary.completed, icon: <FaCheckCircle />, color: "#15803D", tab: "Completed" },
+        { title: "Cancelled", value: summary.cancelled, icon: <FaTimesCircle />, color: "#EF4444", tab: "Cancelled" }
+    ] : [
         { title: "Total Orders", value: summary.total, icon: <FaClipboardList />, color: "#2563EB", tab: "all" },
         { title: "New", value: summary.new, icon: <FaFireAlt />, color: "#3B82F6", tab: "Pending" },
         { title: "Preparing", value: summary.preparing, icon: <FaUtensils />, color: "#F59E0B", tab: "Preparing" },
@@ -238,12 +258,15 @@ function Orders() {
                 {/* Header */}
                 <div className="orders-header">
                     <div>
-                        <h2>Orders</h2>
-                        <p>Manage and monitor all restaurant orders</p>
+                        <h2>{salon ? "Bills" : "Orders"}</h2>
+                        <p>{salon ? "Every bill from the front desk" : "Manage and monitor all restaurant orders"}</p>
                     </div>
-                    <button className="orders-new-btn" onClick={() => navigate("/cashier")}>
-                        + New Order
-                    </button>
+                    {/* Salon bills are rung up by the receptionist at the counter. */}
+                    {!salon && (
+                        <button className="orders-new-btn" onClick={() => navigate("/cashier")}>
+                            + New Order
+                        </button>
+                    )}
                 </div>
 
                 {/* Summary cards */}
@@ -266,7 +289,7 @@ function Orders() {
 
                 {/* Status tabs */}
                 <div className="orders-tabs">
-                    {STATUS_TABS.map((tab) => {
+                    {statusTabs.map((tab) => {
                         const count =
                             tab.key === "all"
                                 ? orders.length
@@ -290,7 +313,7 @@ function Orders() {
                         <span className="orders-search-icon">🔍</span>
                         <input
                             type="text"
-                            placeholder="Search Order ID"
+                            placeholder={salon ? "Search bill, customer or mobile" : "Search Order ID"}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -304,12 +327,14 @@ function Orders() {
                         title="Filter by order date"
                     />
 
-                    <select value={orderType} onChange={(e) => setOrderType(e.target.value)} title="Order Type">
-                        <option value="">Order Type: All</option>
-                        <option value="Dine-In">🍽 Dine-in</option>
-                        <option value="Takeaway">📦 Takeaway</option>
-                        <option value="Delivery">🛵 Delivery</option>
-                    </select>
+                    {!salon && (
+                        <select value={orderType} onChange={(e) => setOrderType(e.target.value)} title="Order Type">
+                            <option value="">Order Type: All</option>
+                            <option value="Dine-In">🍽 Dine-in</option>
+                            <option value="Takeaway">📦 Takeaway</option>
+                            <option value="Delivery">🛵 Delivery</option>
+                        </select>
+                    )}
 
                     <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} title="Payment">
                         <option value="">Payment: All</option>
@@ -324,7 +349,7 @@ function Orders() {
                         title="Status"
                     >
                         <option value="">Status: All</option>
-                        {STATUS_TABS.filter((t) => t.key !== "all").map((tab) => (
+                        {statusTabs.filter((t) => t.key !== "all").map((tab) => (
                             <option key={tab.key} value={tab.key}>{tab.label}</option>
                         ))}
                     </select>
@@ -340,11 +365,11 @@ function Orders() {
                     <table className="orders-table">
                         <thead>
                             <tr>
-                                <th>Order ID</th>
+                                <th>{salon ? "Bill" : "Order ID"}</th>
                                 <th>Time</th>
-                                <th>Table</th>
-                                <th>Staff</th>
-                                <th>Type</th>
+                                <th>{salon ? "Customer" : "Table"}</th>
+                                <th>{salon ? "Stylist" : "Staff"}</th>
+                                {!salon && <th>Type</th>}
                                 <th>Amount</th>
                                 <th>Payment</th>
                                 <th>Status</th>
@@ -355,24 +380,24 @@ function Orders() {
 
                             {loading ? (
                                 <tr>
-                                    <td colSpan={9} className="orders-empty">Loading orders…</td>
+                                    <td colSpan={columnCount} className="orders-empty">Loading orders…</td>
                                 </tr>
                             ) : loadError ? (
                                 <tr>
-                                    <td colSpan={9} className="orders-empty">
+                                    <td colSpan={columnCount} className="orders-empty">
                                         Could not load orders.
                                         <button className="orders-retry" onClick={() => load(true)}>Retry</button>
                                     </td>
                                 </tr>
                             ) : pageRows.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="orders-empty">No orders match your filters.</td>
+                                    <td colSpan={columnCount} className="orders-empty">No orders match your filters.</td>
                                 </tr>
                             ) : (
                                 pageRows.map((order) => {
 
                                     const meta = typeMeta(order.order_type);
-                                    const canServe = ["Pending", "Preparing", "Ready"].includes(order.order_status);
+                                    const canServe = !salon && ["Pending", "Preparing", "Ready"].includes(order.order_status);
                                     const canCancel = !["Completed", "Cancelled"].includes(order.order_status);
 
                                     return (
@@ -385,14 +410,20 @@ function Orders() {
                                             <td title={new Date(order.created_at).toLocaleString()}>
                                                 {timeOf(order.created_at)}
                                             </td>
-                                            <td>{order.table_name || "—"}</td>
-                                            <td>{order.employee_name || "—"}</td>
                                             <td>
-                                                <span className="orders-type">
-                                                    <span className="orders-type-icon">{meta.icon}</span>
-                                                    {meta.label}
-                                                </span>
+                                                {salon
+                                                    ? (order.customer_name || "Walk-in")
+                                                    : (order.table_name || "—")}
                                             </td>
+                                            <td>{(salon ? order.stylist_name : order.employee_name) || "—"}</td>
+                                            {!salon && (
+                                                <td>
+                                                    <span className="orders-type">
+                                                        <span className="orders-type-icon">{meta.icon}</span>
+                                                        {meta.label}
+                                                    </span>
+                                                </td>
+                                            )}
                                             <td className="orders-amount">{money(order.grand_total)}</td>
                                             <td>
                                                 <span className={`pay-chip pay-${(order.payment_status || "").toLowerCase()}`}>
@@ -415,13 +446,18 @@ function Orders() {
                                                         <FaEye />
                                                     </button>
 
-                                                    <button
-                                                        className="action-btn edit"
-                                                        title="Edit order"
-                                                        onClick={() => { setMenuOrderId(null); setEditOrder(order); }}
-                                                    >
-                                                        <FaPen />
-                                                    </button>
+                                                    {/* Editing changes kitchen status, which a salon
+                                                        doesn't have; its bills are corrected from the
+                                                        counter's Bills screen. */}
+                                                    {!salon && (
+                                                        <button
+                                                            className="action-btn edit"
+                                                            title="Edit order"
+                                                            onClick={() => { setMenuOrderId(null); setEditOrder(order); }}
+                                                        >
+                                                            <FaPen />
+                                                        </button>
+                                                    )}
 
                                                     {(canServe || canCancel) && (
                                                         <div
@@ -450,7 +486,7 @@ function Orders() {
                                                                             className="danger"
                                                                             onClick={() => { setMenuOrderId(null); handleCancelFromRow(order); }}
                                                                         >
-                                                                            Cancel Order
+                                                                            {salon ? "Cancel Bill" : "Cancel Order"}
                                                                         </button>
                                                                     )}
                                                                 </div>

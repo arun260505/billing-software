@@ -3,6 +3,7 @@ import AdminLayout from "../../layouts/AdminLayout";
 import billingFormatService from "../../services/billingFormatService";
 import { DEFAULT_BILL_FORMAT, generateBillHtml, printBill } from "../../utils/billPrinter";
 import "../../styles/pages/Admin/Billing.css";
+import { isSalon, salonBillFormat } from "../../utils/businessType";
 
 const SAMPLE_ORDER = {
     order_number: "ORD-1024",
@@ -29,11 +30,37 @@ const SAMPLE_ORDER = {
     grand_total: 945.20
 };
 
+// The preview a salon owner sees: services, a customer, the receptionist.
+const SALON_SAMPLE_ORDER = {
+    order_number: "ORD-1024",
+    tableName: "Walk-in",
+    customer_name: "Priya Sharma",
+    cashier_name: "Anita",
+    cashier_label: "Receptionist",
+    date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    time: "11:30 AM",
+    payment_method: "UPI",
+    items: [
+        { item_name: "Haircut & Styling", quantity: 1, price: 450 },
+        { item_name: "Hair Spa", quantity: 1, price: 900 },
+        { item_name: "Eyebrow Threading", quantity: 2, price: 60 }
+    ],
+    subtotal: 1470,
+    gst: 264.60,
+    service_charge: 0,
+    charges: [],
+    grand_total: 1734.60
+};
+
 function Billing() {
     const fileInputRef = useRef(null);
+
+    // A salon bill never prints a table / dine-in line, a waiter or an FSSAI
+    // number (salonBillFormat forces them off), so those controls are hidden.
+    const salon = isSalon();
     const [format, setFormat] = useState(DEFAULT_BILL_FORMAT);
     const [restaurant, setRestaurant] = useState({
-        restaurant_name: "InWallz Restaurant",
+        restaurant_name: salon ? "InWallz Salon" : "InWallz Restaurant",
         address: "123 Commercial Street, Indiranagar",
         city: "Bangalore",
         state: "Karnataka",
@@ -197,7 +224,9 @@ function Billing() {
             if (res.data?.success) {
                 setAlertMsg({
                     type: "success",
-                    text: "✓ Billing format and restaurant details saved successfully! All cashier & waiter prints will now use this format."
+                    text: salon
+                        ? "✓ Bill format and salon details saved successfully! Every bill printed at the front desk will now use this format."
+                        : "✓ Billing format and restaurant details saved successfully! All cashier & waiter prints will now use this format."
                 });
             } else {
                 setAlertMsg({ type: "error", text: res.data?.message || "Failed to save configuration." });
@@ -212,20 +241,20 @@ function Billing() {
 
     const handleTestPrint = () => {
         printBill({
-            order: SAMPLE_ORDER,
+            order: salon ? SALON_SAMPLE_ORDER : SAMPLE_ORDER,
             restaurant: restaurant,
-            format: format
+            format: salon ? salonBillFormat(format) : format
         });
     };
 
     // Live HTML generation for preview
     const previewHtml = useMemo(() => {
         return generateBillHtml({
-            order: SAMPLE_ORDER,
+            order: salon ? SALON_SAMPLE_ORDER : SAMPLE_ORDER,
             restaurant: restaurant,
-            format: format
+            format: salon ? salonBillFormat(format) : format
         });
-    }, [format, restaurant]);
+    }, [format, restaurant, salon]);
 
     return (
         <AdminLayout>
@@ -309,7 +338,7 @@ function Billing() {
                             <div className="setting-card">
                                 <div className="setting-card-header">
                                     <div className="setting-card-icon">🏢</div>
-                                    <h3 className="setting-card-title">2. Restaurant Header &amp; Branding</h3>
+                                    <h3 className="setting-card-title">2. {salon ? "Salon" : "Restaurant"} Header &amp; Branding</h3>
                                 </div>
 
                                 {/* Logo Management Block */}
@@ -383,7 +412,7 @@ function Billing() {
                                     {/* Restaurant Name */}
                                     <div className="field-row">
                                         <div className="field-header">
-                                            <span className="field-label">Restaurant Name</span>
+                                            <span className="field-label">{salon ? "Salon Name" : "Restaurant Name"}</span>
                                             <div className="field-toggle-inline">
                                                 <span>Print on Bill</span>
                                                 <span className="switch">
@@ -401,7 +430,7 @@ function Billing() {
                                             className="field-input"
                                             value={restaurant.restaurant_name || ""}
                                             onChange={(e) => handleRestaurantChange("restaurant_name", e.target.value)}
-                                            placeholder="Enter Restaurant Name"
+                                            placeholder={salon ? "Enter Salon Name" : "Enter Restaurant Name"}
                                         />
                                     </div>
 
@@ -494,7 +523,7 @@ function Billing() {
                                                 className="field-input"
                                                 value={restaurant.email || ""}
                                                 onChange={(e) => handleRestaurantChange("email", e.target.value)}
-                                                placeholder="billing@restaurant.com"
+                                                placeholder={salon ? "billing@salon.com" : "billing@restaurant.com"}
                                             />
                                         </div>
 
@@ -520,8 +549,8 @@ function Billing() {
                                         </div>
                                     </div>
 
-                                    {/* FSSAI Number */}
-                                    <div className="field-row">
+                                    {/* FSSAI Number — a food licence, not on a salon bill */}
+                                    <div className="field-row" style={salon ? { display: "none" } : undefined}>
                                         <div className="field-header">
                                             <span className="field-label">FSSAI License Number</span>
                                             <div className="field-toggle-inline">
@@ -552,11 +581,11 @@ function Billing() {
                             <div className="setting-card">
                                 <div className="setting-card-header">
                                     <div className="setting-card-icon">📋</div>
-                                    <h3 className="setting-card-title">3. Order Information &amp; Staff</h3>
+                                    <h3 className="setting-card-title">3. {salon ? "Bill" : "Order"} Information &amp; Staff</h3>
                                 </div>
                                 <div className="toggle-grid">
                                     <label className="toggle-item">
-                                        <span className="toggle-label">Show Order / Bill #</span>
+                                        <span className="toggle-label">{salon ? "Show Bill #" : "Show Order / Bill #"}</span>
                                         <span className="switch">
                                             <input
                                                 type="checkbox"
@@ -591,7 +620,7 @@ function Billing() {
                                         </span>
                                     </label>
 
-                                    <label className="toggle-item">
+                                    <label className="toggle-item" style={salon ? { display: "none" } : undefined}>
                                         <span className="toggle-label">Show Dine In / Take Away Line</span>
                                         <span className="switch">
                                             <input
@@ -615,7 +644,7 @@ function Billing() {
                                         </span>
                                     </label>
 
-                                    <label className="toggle-item">
+                                    <label className="toggle-item" style={salon ? { display: "none" } : undefined}>
                                         <span className="toggle-label">Show Waiter Name</span>
                                         <span className="switch">
                                             <input
@@ -628,7 +657,7 @@ function Billing() {
                                     </label>
 
                                     <label className="toggle-item">
-                                        <span className="toggle-label">Show Cashier Name</span>
+                                        <span className="toggle-label">{salon ? "Show Receptionist Name" : "Show Cashier Name"}</span>
                                         <span className="switch">
                                             <input
                                                 type="checkbox"

@@ -7,6 +7,7 @@ import ChargeTable from "../../components/Admin/Charges/ChargeTable";
 import ChargeModal from "../../components/Admin/Charges/ChargeModal";
 import DeleteChargeModal from "../../components/Admin/Charges/DeleteChargeModal";
 import MenuPricingSection from "../../components/Admin/Charges/MenuPricingSection";
+import { isSalon } from "../../utils/businessType";
 
 import "../../styles/Admin/Dashboard.css";
 import "../../styles/Admin/Charges.css";
@@ -52,6 +53,10 @@ function Charges() {
             console.error("Failed to load summary:", err);
         }
     };
+
+    // A salon's charges apply to every bill; there are no service types to
+    // filter or tag by.
+    const salon = isSalon();
 
     const filteredCharges = useMemo(() => {
         let list = [...charges];
@@ -229,7 +234,7 @@ function Charges() {
                 <div className="page-header">
                     <div className="page-header-text">
                         <h2>Charges</h2>
-                        <p>Configure billing charges, pricing rules and additional restaurant fees.</p>
+                        <p>Configure billing charges, pricing rules and additional {salon ? "salon" : "restaurant"} fees.</p>
                     </div>
                     <button className="primary-btn" onClick={handleAdd}>
                         + Add Charge
@@ -249,9 +254,11 @@ function Charges() {
                     onStatusChange={setStatusFilter}
                     onReset={handleReset}
                     onAdd={handleAdd}
+                    showApplies={!salon}
                 />
 
                 <ChargeTable
+                    showApplies={!salon}
                     charges={paginatedCharges}
                     onEdit={handleEdit}
                     onDuplicate={handleDuplicate}
@@ -291,7 +298,9 @@ function Charges() {
                     </div>
                 )}
 
-                <MenuPricingSection />
+                {/* Dine-in / Takeaway / Delivery prices per menu item — a salon
+                    has one price per service, set in Services. */}
+                {!salon && <MenuPricingSection />}
             </div>
 
             <ChargeModal

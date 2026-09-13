@@ -22,8 +22,19 @@ import "../../styles/Cashier/PrinterSetup.css";
  * running the backend. In exe mode that is this till, so the status is real. When
  * the backend is a cloud server it cannot see the till's printers, and the page
  * says so rather than showing a status it cannot know.
+ *
+ * `salon`: a salon prints one customer bill at the front desk and nothing for a
+ * kitchen, whatever printer setup is stored (the default is two printers). It
+ * gets the single bill-printer box and no setup description.
  */
-function PrinterSetup() {
+const SALON_SLOTS = [{
+    key: "cashier_printer",
+    label: "Bill printer",
+    role: "Customer bills",
+    hint: "The printer at the front desk."
+}];
+
+function PrinterSetup({ salon = false }) {
 
     const [mode, setMode] = useState(DEFAULT_PRINTER_MODE);
     const [values, setValues] = useState({ cashier_printer: "", kitchen_printer: "" });
@@ -39,7 +50,7 @@ function PrinterSetup() {
     const [flash, setFlash] = useState("");
     const [loadError, setLoadError] = useState("");
 
-    const slots = requiredPrinters(mode);
+    const slots = salon ? SALON_SLOTS : requiredPrinters(mode);
 
     const loadSetting = useCallback(async () => {
         setLoading(true);
@@ -179,14 +190,15 @@ function PrinterSetup() {
 
                 <h2 className="prn-title">🖨 Printer</h2>
                 <p className="prn-sub">
-                    Connect the printers this till uses. Which ones are needed comes from
-                    the setup your admin chose — change that in Admin → Settings.
+                    {salon
+                        ? "Connect the printer this front desk prints bills on."
+                        : "Connect the printers this till uses. Which ones are needed comes from the setup your admin chose — change that in Admin → Settings."}
                 </p>
 
                 {loadError && <div className="prn-alert warn">{loadError}</div>}
 
                 {/* Which setup is running */}
-                <div className="prn-mode">
+                <div className="prn-mode" style={salon ? { display: "none" } : undefined}>
                     <span className="prn-mode-label">Setup</span>
                     <div className="prn-mode-body">
                         <strong>{activeOption?.title || mode}</strong>

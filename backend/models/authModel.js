@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { normalizeBusinessType } = require("../utils/businessType");
 
 exports.login = (username, password, callback) => {
 
@@ -13,7 +14,8 @@ exports.login = (username, password, callback) => {
             u.password,
             u.role,
             u.status,
-            r.restaurant_name
+            r.restaurant_name,
+            r.business_type
         FROM users u
         LEFT JOIN restaurants r
             ON u.restaurant_id = r.id
@@ -34,6 +36,16 @@ exports.login = (username, password, callback) => {
 
         const user = results[0];
 
+        // A stylist is a name on a salon's bills, not an account: the owner
+        // adds them without credentials. Answer exactly as for a wrong
+        // password so the username can't be probed.
+        if (user.role === "stylist") {
+            return callback(null, {
+                success: false,
+                message: "Invalid username or password."
+            });
+        }
+
         if (user.status !== "Active") {
             return callback(null, {
                 success: false,
@@ -52,12 +64,18 @@ exports.login = (username, password, callback) => {
                 });
             }
 
+            // Restaurant or salon decides which panel the user gets and which
+            // APIs they may call (middleware/businessTypeMiddleware.js). It is
+            // read from the restaurants row here, never from the client.
+            const businessType = normalizeBusinessType(user.business_type);
+
             const token = jwt.sign(
                 {
                     id: user.id,
                     restaurant_id: user.restaurant_id,
                     username: user.username,
-                    role: user.role
+                    role: user.role,
+                    business_type: businessType
                 },
                 process.env.JWT_SECRET,
                 {
@@ -72,6 +90,7 @@ exports.login = (username, password, callback) => {
                     id: user.id,
                     restaurant_id: user.restaurant_id,
                     restaurant_name: user.restaurant_name,
+                    business_type: businessType,
                     full_name: user.full_name,
                     username: user.username,
                     role: user.role

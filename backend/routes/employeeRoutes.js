@@ -5,8 +5,13 @@ const employeeController = require("../controllers/employeeController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
-// Every employee endpoint requires a valid JWT and admin role.
 router.use(authMiddleware);
+
+// The salon's stylists, for the billing screen — the receptionist needs the
+// names too. Registered before the admin-only gate below.
+router.get("/stylists", roleMiddleware(["admin", "cashier"]), employeeController.getStylists);
+
+// Every other employee endpoint is admin only.
 router.use(roleMiddleware(["admin"]));
 
 router.get("/", employeeController.getEmployees);

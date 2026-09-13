@@ -3,7 +3,8 @@ import { getAllItems, setItemAvailability } from "../../services/menuService";
 
 // A dedicated full-screen "Menu" view for the cashier: every item grouped by
 // category with an Available/Unavailable toggle. Changes save immediately.
-function MenuAvailability() {
+// `title` / `searchPlaceholder` let the salon counter call these services.
+function MenuAvailability({ title = "🍽 Menu Availability", searchPlaceholder = "Search item…" }) {
 
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -47,10 +48,10 @@ function MenuAvailability() {
         <div className="menuview">
 
                 <div className="menuavail-head">
-                    <h2>🍽 Menu Availability</h2>
+                    <h2>{title}</h2>
                     <input
                         className="menuavail-search"
-                        placeholder="Search item…"
+                        placeholder={searchPlaceholder}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />

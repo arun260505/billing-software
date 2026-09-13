@@ -37,6 +37,7 @@ import {
 
 import AdminLayout from "../../layouts/AdminLayout";
 import { getReportsOverview } from "../../services/reportService";
+import { isSalon } from "../../utils/businessType";
 
 import "../../styles/pages/Admin/Reports.css";
 
@@ -205,13 +206,15 @@ function ChartTooltip({ active, payload, label, prefix }) {
 
 function SalesOverviewCard({ series, span = 8 }) {
 
+    const salon = isSalon();
     const [mode, setMode] = useState("sales");
 
+    // A single-day range comes back hour by hour, already labelled ("14:00").
     const data = useMemo(
         () =>
             (series || []).map((p) => ({
                 ...p,
-                label: fmtDay(p.date)
+                label: p.label || fmtDay(p.date)
             })),
         [series]
     );
@@ -240,7 +243,7 @@ function SalesOverviewCard({ series, span = 8 }) {
                         className={mode === "orders" ? "active" : ""}
                         onClick={() => setMode("orders")}
                     >
-                        Orders
+                        {salon ? "Bills" : "Orders"}
                     </button>
                 </div>
             </div>
@@ -393,6 +396,8 @@ function OrderTypeCard({ orderTypes, span = 4 }) {
 
 function PaymentSummaryCard({ payments, span = 7 }) {
 
+    const salon = isSalon();
+
     const methods = payments?.methods || [];
     const pending = payments?.pending || { orders: 0, amount: 0 };
 
@@ -462,7 +467,7 @@ function PaymentSummaryCard({ payments, span = 7 }) {
                             <thead>
                                 <tr>
                                     <th>Payment Method</th>
-                                    <th className="num">Orders</th>
+                                    <th className="num">{salon ? "Bills" : "Orders"}</th>
                                     <th className="num">Amount</th>
                                     <th className="num">Share</th>
                                 </tr>
@@ -504,6 +509,8 @@ function PaymentSummaryCard({ payments, span = 7 }) {
 
 function TopItemsCard({ items, span = 7 }) {
 
+    const salon = isSalon();
+
     const [showAll, setShowAll] = useState(false);
     const visible = showAll ? items : items.slice(0, 5);
 
@@ -514,8 +521,10 @@ function TopItemsCard({ items, span = 7 }) {
         <div className={`rp-card rp-span-${span}`}>
             <div className="rp-card-head">
                 <div>
-                    <h3 className="rp-card-title">Top Selling Items</h3>
-                    <p className="rp-card-sub">Best performers by quantity sold</p>
+                    <h3 className="rp-card-title">{salon ? "Top Services" : "Top Selling Items"}</h3>
+                    <p className="rp-card-sub">
+                        {salon ? "Most booked services in this period" : "Best performers by quantity sold"}
+                    </p>
                 </div>
             </div>
 
@@ -532,9 +541,9 @@ function TopItemsCard({ items, span = 7 }) {
                             <thead>
                                 <tr>
                                     <th>Rank</th>
-                                    <th>Item</th>
+                                    <th>{salon ? "Service" : "Item"}</th>
                                     <th>Category</th>
-                                    <th className="num">Qty Sold</th>
+                                    <th className="num">{salon ? "Times Done" : "Qty Sold"}</th>
                                     <th className="num">Revenue</th>
                                     <th className="num">Share</th>
                                 </tr>
@@ -594,20 +603,25 @@ function TopItemsCard({ items, span = 7 }) {
 /* ─────────────────── low selling items card ──────────────────── */
 
 function LowItemsCard({ items, span = 12 }) {
+    const salon = isSalon();
     return (
         <div className={`rp-card rp-span-${span}`}>
             <div className="rp-card-head">
                 <div>
-                    <h3 className="rp-card-title">Low Selling Items</h3>
+                    <h3 className="rp-card-title">{salon ? "Services Not Booked" : "Low Selling Items"}</h3>
                     <p className="rp-card-sub">
-                        Available menu items with no sales in this period
+                        {salon
+                            ? "Available services nobody had in this period"
+                            : "Available menu items with no sales in this period"}
                     </p>
                 </div>
             </div>
 
             {items.length === 0 ? (
                 <p className="rp-note">
-                    Every available item recorded at least one sale in this period.
+                    {salon
+                        ? "Every available service was booked at least once in this period."
+                        : "Every available item recorded at least one sale in this period."}
                 </p>
             ) : (
                 <div className="rp-legend" style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -657,7 +671,7 @@ function PeakHoursCard({ peakHours, peak, span = 5 }) {
                                     {hourLabel((peak.hour + 1) % 24)}
                                 </strong>
                                 <span>
-                                    {peak.orders} orders · {inr(peak.sales)} sales
+                                    {peak.orders} {isSalon() ? "bills" : "orders"} · {inr(peak.sales)} sales
                                 </span>
                             </div>
                         </div>
@@ -848,6 +862,10 @@ function ChargesTaxCard({ chargesConfig, taxSummary, chargesCollected, span = 4 
 
 function buildInsights(data) {
 
+    // A salon has no kitchen, and its orders are bills.
+    const salon = isSalon();
+    const noun = salon ? "Bills" : "Orders";
+
     const out = [];
     const k = data.kpis || {};
     const c = data.comparison || {};
@@ -876,7 +894,7 @@ function buildInsights(data) {
             out.push({
                 tone: oPct >= 0 ? "good" : "bad",
                 icon: oPct >= 0 ? <FaArrowUp /> : <FaArrowDown />,
-                text: `Orders ${oPct >= 0 ? "grew" : "dropped"} by ${Math.abs(oPct).toFixed(1)}% versus the previous period.`
+                text: `${noun} ${oPct >= 0 ? "grew" : "dropped"} by ${Math.abs(oPct).toFixed(1)}% versus the previous period.`
             });
         }
 
@@ -885,13 +903,16 @@ function buildInsights(data) {
             out.push({
                 tone: aovDiff > 0 ? "good" : "bad",
                 icon: aovDiff > 0 ? <FaArrowUp /> : <FaArrowDown />,
-                text: `Average order value ${aovDiff > 0 ? "rose" : "fell"} by ${inr(Math.abs(aovDiff))}.`
+                text: `Average ${salon ? "bill" : "order"} value ${aovDiff > 0 ? "rose" : "fell"} by ${inr(Math.abs(aovDiff))}.`
             });
         }
     }
 
-    const kit = data.kitchen || {};
+    // Kitchen timing means nothing for a salon (it read a bill's paid time as
+    // "finished later than expected").
+    const kit = salon ? {} : (data.kitchen || {});
     if (
+        !salon &&
         kit.avg_prep_min !== null &&
         kit.expected_prep_min !== null &&
         kit.expected_prep_min > 0
@@ -924,7 +945,7 @@ function buildInsights(data) {
         out.push({
             tone: "bad",
             icon: <FaTimesCircle />,
-            text: `${k.cancelled_orders} order${k.cancelled_orders === 1 ? " was" : "s were"} cancelled during this period.`
+            text: `${k.cancelled_orders} ${salon ? "bill" : "order"}${k.cancelled_orders === 1 ? " was" : "s were"} cancelled during this period.`
         });
     }
 
@@ -965,12 +986,17 @@ function HealthCard({ insights, span = 8 }) {
 /* ─────────────────── staff & tables cards ────────────────────── */
 
 function StaffCard({ staff, span = 6 }) {
+    // A salon's staff report is its stylists: who did the work, for how many
+    // customers (the backend groups by the bill's stylist, not the receptionist).
+    const salon = isSalon();
     return (
         <div className={`rp-card rp-span-${span}`}>
             <div className="rp-card-head">
                 <div>
-                    <h3 className="rp-card-title">Staff Report</h3>
-                    <p className="rp-card-sub">Orders handled per employee</p>
+                    <h3 className="rp-card-title">{salon ? "Stylist Report" : "Staff Report"}</h3>
+                    <p className="rp-card-sub">
+                        {salon ? "Customers and sales per stylist" : "Orders handled per employee"}
+                    </p>
                 </div>
             </div>
 
@@ -985,16 +1011,18 @@ function StaffCard({ staff, span = 6 }) {
                     <table className="rp-table">
                         <thead>
                             <tr>
-                                <th>Staff</th>
-                                <th className="num">Orders</th>
+                                <th>{salon ? "Stylist" : "Staff"}</th>
+                                {salon && <th className="num">Customers</th>}
+                                <th className="num">{salon ? "Bills" : "Orders"}</th>
                                 <th className="num">Sales</th>
-                                <th className="num">Avg Order</th>
+                                <th className="num">{salon ? "Avg Bill" : "Avg Order"}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {staff.map((s) => (
                                 <tr key={s.name}>
                                     <td className="rp-item-name">{s.name}</td>
+                                    {salon && <td className="num">{s.customers}</td>}
                                     <td className="num">{s.orders}</td>
                                     <td className="num">{inr(s.sales)}</td>
                                     <td className="num">{inr(s.avg)}</td>
@@ -1056,36 +1084,50 @@ function TablesCard({ tables, span = 6 }) {
 
 function buildWorkbook(d) {
 
+    // A salon export must read like a salon: bills not orders, services not
+    // items, stylists not staff — and no order types (every salon bill is stored
+    // as a counter "Takeaway" order), tables or kitchen.
+    const salon = isSalon();
+    const bill = salon ? "Bill" : "Order";
+    const bills = salon ? "Bills" : "Orders";
+
     const wb = [];
 
     wb.push({
         title: "Summary",
         header: ["Metric", "Value"],
         rows: [
+            ["Business", salon ? "Salon" : "Restaurant"],
             ["Date Range", `${d.range.from} to ${d.range.to}`],
             ["Total Sales", d.kpis.total_sales],
-            ["Total Orders", d.kpis.total_orders],
-            ["Average Order Value", d.kpis.avg_order_value],
+            [`Total ${bills}`, d.kpis.total_orders],
+            [`Average ${bill} Value`, d.kpis.avg_order_value],
             ["Paid Amount", d.kpis.paid_amount],
             ["Pending Amount", d.kpis.pending_amount],
             ["Discounts", d.kpis.discounts],
             ["Tax", d.kpis.tax],
             ["Additional Charges Collected", d.kpis.charges_collected],
-            ["Cancelled Orders", d.kpis.cancelled_orders]
+            [`Cancelled ${bills}`, d.kpis.cancelled_orders]
         ]
     });
 
+    // A single-day range comes back hour by hour; say so in the sheet.
+    const hourly = d.sales_series.some((p) => p.label);
     wb.push({
-        title: "Daily Sales",
-        header: ["Date", "Sales", "Orders"],
-        rows: d.sales_series.map((p) => [p.date, p.sales, p.orders])
+        title: hourly ? "Hourly Sales" : "Daily Sales",
+        header: hourly ? ["Date", "Hour", "Sales", bills] : ["Date", "Sales", bills],
+        rows: d.sales_series.map((p) =>
+            hourly ? [p.date, p.label, p.sales, p.orders] : [p.date, p.sales, p.orders]
+        )
     });
 
-    wb.push({
-        title: "Order Types",
-        header: ["Type", "Orders", "Sales"],
-        rows: d.order_types.map((o) => [o.order_type, o.orders, o.sales])
-    });
+    if (!salon) {
+        wb.push({
+            title: "Order Types",
+            header: ["Type", "Orders", "Sales"],
+            rows: d.order_types.map((o) => [o.order_type, o.orders, o.sales])
+        });
+    }
 
     wb.push({
         title: "Payments",
@@ -1097,24 +1139,40 @@ function buildWorkbook(d) {
     });
 
     wb.push({
-        title: "Top Selling Items",
-        header: ["Rank", "Item", "Category", "Qty", "Revenue"],
+        title: salon ? "Top Services" : "Top Selling Items",
+        header: salon
+            ? ["Rank", "Service", "Category", "Times Done", "Revenue"]
+            : ["Rank", "Item", "Category", "Qty", "Revenue"],
         rows: d.top_items.map((i) => [
             i.rank, i.item_name, i.category_name, i.qty, i.revenue
         ])
     });
 
-    wb.push({
-        title: "Staff",
-        header: ["Staff", "Orders", "Sales", "Avg Order"],
-        rows: d.staff.map((s) => [s.name, s.orders, s.sales, s.avg])
-    });
+    if (salon) {
+        wb.push({
+            title: "Stylists",
+            header: ["Stylist", "Customers", "Bills", "Sales", "Avg Bill"],
+            rows: d.staff.map((s) => [s.name, s.customers, s.orders, s.sales, s.avg])
+        });
 
-    wb.push({
-        title: "Tables",
-        header: ["Table", "Orders", "Sales", "Avg Bill"],
-        rows: d.tables.map((t) => [t.table_name, t.orders, t.sales, t.avg])
-    });
+        wb.push({
+            title: "Services Not Booked",
+            header: ["Service", "Category", "Price"],
+            rows: d.low_items.map((i) => [i.item_name, i.category_name, i.price])
+        });
+    } else {
+        wb.push({
+            title: "Staff",
+            header: ["Staff", "Orders", "Sales", "Avg Order"],
+            rows: d.staff.map((s) => [s.name, s.orders, s.sales, s.avg])
+        });
+
+        wb.push({
+            title: "Tables",
+            header: ["Table", "Orders", "Sales", "Avg Bill"],
+            rows: d.tables.map((t) => [t.table_name, t.orders, t.sales, t.avg])
+        });
+    }
 
     wb.push({
         title: "Charges & Tax",
@@ -1159,7 +1217,7 @@ function exportCsv(d) {
     ].join("\n"));
     downloadBlob(
         parts.join("\n\n"),
-        `inwallz-report_${d.range.from}_to_${d.range.to}.csv`,
+        `inwallz-${isSalon() ? "salon-" : ""}report_${d.range.from}_to_${d.range.to}.csv`,
         "text/csv;charset=utf-8;"
     );
 }
@@ -1187,7 +1245,7 @@ function exportExcel(d) {
         .join("")}</body></html>`;
     downloadBlob(
         html,
-        `inwallz-report_${d.range.from}_to_${d.range.to}.xls`,
+        `inwallz-${isSalon() ? "salon-" : ""}report_${d.range.from}_to_${d.range.to}.xls`,
         "application/vnd.ms-excel"
     );
 }
@@ -1288,8 +1346,88 @@ function Reports() {
         [data, hasData]
     );
 
-    const showSection = (...keys) =>
-        tab === "overview" || keys.includes(tab);
+    // A salon has no kitchen, no tables and no service types (every bill is a
+    // counter bill), so those sections are left out and items read as services.
+    const salon = isSalon();
+    const tabs = salon
+        ? TABS
+            .filter((t) => t.key !== "kitchen" && t.key !== "tables")
+            .map((t) =>
+                t.key === "items" ? { ...t, label: "Services" } :
+                t.key === "orders" ? { ...t, label: "Bills" } :
+                t
+            )
+        : TABS;
+
+    // Which cards each tab shows, in order, with their width out of 12. Every
+    // row adds up to 12, so the grid never leaves a hole beside a card — and a
+    // salon (no kitchen, tables or service types) has its own overview.
+    const TAB_LAYOUTS = {
+        sales: [["sales", 12]],
+        orders: salon ? [["peak", 12]] : [["orderTypes", 6], ["peak", 6]],
+        items: [["items", 8], ["low", 4]],
+        payments: [["payments", 12]],
+        staff: [["staff", 12]],
+        kitchen: [["kitchen", 12]],
+        tables: [["tables", 12]],
+        charges: [["charges", 6], ["health", 6]]
+    };
+
+    const OVERVIEW_LAYOUT = salon
+        ? [
+            ["sales", 8], ["peak", 4],
+            ["payments", 6], ["staff", 6],
+            ["items", 8], ["charges", 4],
+            ["health", 6], ["low", 6]
+        ]
+        : [
+            ["sales", 8], ["orderTypes", 4],
+            ["payments", 7], ["kitchen", 5],
+            ["items", 8], ["peak", 4],
+            ["charges", 4], ["health", 8],
+            ["staff", 6], ["tables", 6],
+            ["low", 12]
+        ];
+
+    const layout = tab === "overview" ? OVERVIEW_LAYOUT : (TAB_LAYOUTS[tab] || []);
+
+    // Only called once report data has loaded.
+    const renderCard = (key, span) => {
+        switch (key) {
+            case "sales":
+                return <SalesOverviewCard key={key} series={data.sales_series} span={span} />;
+            case "orderTypes":
+                return <OrderTypeCard key={key} orderTypes={data.order_types} span={span} />;
+            case "payments":
+                return <PaymentSummaryCard key={key} payments={data.payments} span={span} />;
+            case "items":
+                return <TopItemsCard key={key} items={data.top_items} span={span} />;
+            case "peak":
+                return <PeakHoursCard key={key} peakHours={data.peak_hours} peak={data.peak} span={span} />;
+            case "kitchen":
+                return <KitchenCard key={key} kitchen={data.kitchen} span={span} />;
+            case "charges":
+                return (
+                    <ChargesTaxCard
+                        key={key}
+                        chargesConfig={data.charges_config}
+                        taxSummary={data.tax_summary}
+                        chargesCollected={data.kpis.charges_collected}
+                        span={span}
+                    />
+                );
+            case "health":
+                return <HealthCard key={key} insights={insights} span={span} />;
+            case "staff":
+                return <StaffCard key={key} staff={data.staff} span={span} />;
+            case "tables":
+                return <TablesCard key={key} tables={data.tables} span={span} />;
+            case "low":
+                return <LowItemsCard key={key} items={data.low_items} span={span} />;
+            default:
+                return null;
+        }
+    };
 
     return (
         <AdminLayout>
@@ -1301,7 +1439,7 @@ function Reports() {
                     <div>
                         <h2>Reports</h2>
                         <p className="rp-header-sub">
-                            Restaurant performance, sales and operational insights
+                            {salon ? "Salon" : "Restaurant"} performance, sales and operational insights
                         </p>
                         <span className="rp-range-label">
                             <FaCalendarAlt /> {rangeLabelText}
@@ -1466,7 +1604,7 @@ function Reports() {
                             <KpiCard
                                 icon={<FaShoppingBag />}
                                 accent="#4F46E5"
-                                label="Total Orders"
+                                label={salon ? "Total Bills" : "Total Orders"}
                                 value={data.kpis.total_orders}
                                 trend={
                                     trendPct(
@@ -1479,7 +1617,7 @@ function Reports() {
                             <KpiCard
                                 icon={<FaChartLine />}
                                 accent="#0EA5E9"
-                                label="Average Order"
+                                label={salon ? "Average Bill" : "Average Order"}
                                 value={inr(data.kpis.avg_order_value)}
                                 trend={
                                     trendPct(
@@ -1528,7 +1666,7 @@ function Reports() {
 
                         {/* tabs */}
                         <div className="rp-tabs">
-                            {TABS.map((t) => (
+                            {tabs.map((t) => (
                                 <button
                                     key={t.key}
                                     type="button"
@@ -1543,86 +1681,7 @@ function Reports() {
                         {/* sections */}
                         <div className="rp-grid">
 
-                            {showSection("sales") && (
-                                <SalesOverviewCard
-                                    series={data.sales_series}
-                                    span={tab === "overview" ? 8 : 12}
-                                />
-                            )}
-
-                            {showSection("orders") && (
-                                <OrderTypeCard
-                                    orderTypes={data.order_types}
-                                    span={tab === "orders" ? 6 : 4}
-                                />
-                            )}
-
-                            {showSection("payments") && (
-                                <PaymentSummaryCard
-                                    payments={data.payments}
-                                    span={tab === "payments" ? 12 : 7}
-                                />
-                            )}
-
-                            {showSection("items") && (
-                                <TopItemsCard
-                                    items={data.top_items}
-                                    span={tab === "items" ? 8 : 7}
-                                />
-                            )}
-
-                            {showSection("orders") && (
-                                <PeakHoursCard
-                                    peakHours={data.peak_hours}
-                                    peak={data.peak}
-                                    span={tab === "orders" ? 6 : 5}
-                                />
-                            )}
-
-                            {showSection("kitchen") && (
-                                <KitchenCard
-                                    kitchen={data.kitchen}
-                                    span={tab === "kitchen" ? 12 : 5}
-                                />
-                            )}
-
-                            {showSection("charges") && (
-                                <ChargesTaxCard
-                                    chargesConfig={data.charges_config}
-                                    taxSummary={data.tax_summary}
-                                    chargesCollected={data.kpis.charges_collected}
-                                    span={tab === "charges" ? 6 : 4}
-                                />
-                            )}
-
-                            {showSection("charges") && (
-                                <HealthCard
-                                    insights={insights}
-                                    span={tab === "charges" ? 6 : 8}
-                                />
-                            )}
-
-                            {showSection("staff") && (
-                                <StaffCard
-                                    staff={data.staff}
-                                    span={tab === "staff" ? 12 : 6}
-                                />
-                            )}
-
-                            {showSection("tables") && (
-                                <TablesCard
-                                    tables={data.tables}
-                                    span={tab === "tables" ? 12 : 6}
-                                />
-                            )}
-
-                            {showSection("items") && tab !== "overview" && (
-                                <LowItemsCard items={data.low_items} span={4} />
-                            )}
-
-                            {tab === "overview" && (
-                                <LowItemsCard items={data.low_items} span={12} />
-                            )}
+                            {layout.map(([key, span]) => renderCard(key, span))}
 
                         </div>
                     </>

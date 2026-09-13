@@ -49,12 +49,15 @@ const getAllOrders = (restaurantId, callback) => {
         SELECT
             o.*,
             c.customer_name,
+            c.mobile AS customer_mobile,
             dt.table_name,
-            u.full_name AS employee_name
+            u.full_name AS employee_name,
+            st.full_name AS stylist_name
         FROM orders o
         LEFT JOIN customers c ON o.customer_id = c.id
         LEFT JOIN dining_tables dt ON o.table_id = dt.id
         LEFT JOIN users u ON o.employee_id = u.id
+        LEFT JOIN users st ON o.stylist_id = st.id
         WHERE o.restaurant_id = ? AND o.deleted_at IS NULL
         ORDER BY o.created_at DESC
     `;
@@ -134,6 +137,7 @@ const createOrder = (order, callback) => {
             customer_id,
             table_id,
             employee_id,
+            stylist_id,
             order_number,
             order_type,
             order_status,
@@ -145,7 +149,7 @@ const createOrder = (order, callback) => {
             payment_status,
             notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     db.query(sql, [
@@ -153,6 +157,7 @@ const createOrder = (order, callback) => {
         order.customer_id,
         order.table_id,
         order.employee_id,
+        order.stylist_id || null,
         order.order_number,
         order.order_type,
         order.order_status,
@@ -1045,7 +1050,10 @@ const getTodaysBills = (restaurantId, callback) => {
             o.created_at,
             o.updated_at,
             dt.table_name,
+            c.customer_name,
+            c.mobile AS customer_mobile,
             u.full_name AS employee_name,
+            st.full_name AS stylist_name,
             (SELECT COALESCE(SUM(oi.quantity), 0)
              FROM order_items oi WHERE oi.order_id = o.id) AS item_count,
             (SELECT COALESCE(SUM(p.amount), 0)
@@ -1065,7 +1073,9 @@ const getTodaysBills = (restaurantId, callback) => {
                AND al.description LIKE CONCAT('Order #', o.id, ':%')) AS correction_count
         FROM orders o
         LEFT JOIN dining_tables dt ON o.table_id = dt.id
+        LEFT JOIN customers c ON o.customer_id = c.id
         LEFT JOIN users u ON o.employee_id = u.id
+        LEFT JOIN users st ON o.stylist_id = st.id
         WHERE o.restaurant_id = ?
           AND o.order_status IN ('Completed','Cancelled')
           AND DATE(o.created_at) = CURDATE()
@@ -1093,15 +1103,19 @@ const getBillById = (orderId, restaurantId, callback) => {
             o.created_at,
             dt.table_name,
             r.restaurant_name,
+            c.customer_name,
             u.full_name AS employee_name,
+            st.full_name AS stylist_name,
             (SELECT p.payment_method
              FROM payments p
              WHERE p.order_id = o.id AND p.payment_status = 'Success'
              ORDER BY p.id DESC LIMIT 1) AS payment_method
         FROM orders o
         LEFT JOIN dining_tables dt ON o.table_id = dt.id
+        LEFT JOIN customers c ON o.customer_id = c.id
         LEFT JOIN restaurants r ON o.restaurant_id = r.id
         LEFT JOIN users u ON o.employee_id = u.id
+        LEFT JOIN users st ON o.stylist_id = st.id
         WHERE o.id = ? AND o.restaurant_id = ?
     `;
 

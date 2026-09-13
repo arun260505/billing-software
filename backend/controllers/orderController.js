@@ -5,6 +5,8 @@ const auditLog = require("../utils/auditLog");
 const { totalsFromItems } = require("../utils/billing");
 const { getAutoCharges } = require("../utils/billingCharges");
 const { success, error } = require("../utils/response");
+const { isSalon } = require("../utils/businessType");
+const db = require("../config/db");
 
 // Totals come from utils/billing so a bill adds up the same way whether it is
 // being created, edited or reprinted. Client-sent totals are ignored — the
@@ -49,6 +51,61 @@ exports.createOrder = (req, res) => {
 
     const restaurantId = req.user.restaurant_id;   // tenant from JWT, never the body
     const { items } = req.body;
+
+    // A salon has no tables and no dine-in: every bill is a counter bill, which
+    // is what Takeaway charges and the reports already key on. Nothing goes to
+    // a kitchen, so it starts as a plain new order rather than "Preparing".
+    const salon = isSalon(req.user);
+
+    if (salon) {
+        req.body.table_id = null;
+        req.body.order_type = "Takeaway";
+        req.body.order_status = "Pending";
+    }
+
+    // customer_id went into the order unchecked, so a bill could be pinned to
+    // another restaurant's customer. It must be one of this restaurant's.
+    const customerId = req.body.customer_id ? Number(req.body.customer_id) : null;
+    req.body.customer_id = customerId;
+
+    // Only a salon bill names a stylist.
+    const stylistId = salon && req.body.stylist_id ? Number(req.body.stylist_id) : null;
+    req.body.stylist_id = stylistId;
+
+    // Every salon bill carries its customer and the stylist who did the work —
+    // the customer history and the stylist board are built from them.
+    if (salon && !customerId) return error(res, "Add the customer to this bill.", 400);
+    if (salon && !stylistId) return error(res, "Choose the stylist for this bill.", 400);
+
+    const dbp = db.promise();
+
+    Promise.all([
+        customerId
+            ? dbp.query(
+                "SELECT id FROM customers WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL LIMIT 1",
+                [customerId, restaurantId]
+            )
+            : null,
+        stylistId
+            ? dbp.query(
+                `SELECT id FROM users
+                 WHERE id = ? AND restaurant_id = ? AND role = 'stylist'
+                   AND status = 'Active' AND deleted_at IS NULL
+                 LIMIT 1`,
+                [stylistId, restaurantId]
+            )
+            : null
+    ])
+        .then(([customerRes, stylistRes]) => {
+            if (customerRes && !customerRes[0].length) return error(res, "Customer not found.", 400);
+            if (stylistRes && !stylistRes[0].length) return error(res, "That stylist isn't on this salon's staff.", 400);
+            return placeOrder(req, res, restaurantId, items);
+        })
+        .catch((err) => error(res, err.message, 500));
+
+};
+
+function placeOrder(req, res, restaurantId, items) {
 
     // Price the cart from menu_items before totalling anything. The client's
     // price field is ignored: the receipt and the database have to agree, and
@@ -124,7 +181,7 @@ exports.createOrder = (req, res) => {
 
     });
 
-};
+}
 
 // ============================ Waiter board ============================
 

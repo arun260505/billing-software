@@ -19,13 +19,14 @@ function TopItemTooltip({ active, payload, label }) {
   );
 }
 
-function TopSelling({ items = [], loading = false }) {
+// `title` / `unitLabel` let the salon dashboard talk about services.
+function TopSelling({ items = [], loading = false, title = "Top Selling Items", unitLabel = "Items sold" }) {
 
   if (loading) {
     return (
       <div className="ad-card ad-top">
         <div className="ad-card-head">
-          <h3>Top Selling Items</h3>
+          <h3>{title}</h3>
           <span className="ad-card-sub">Best sellers by quantity</span>
         </div>
         <div className="ad-skel ad-skel-block" />
@@ -64,7 +65,7 @@ function TopSelling({ items = [], loading = false }) {
   return (
     <div className="ad-card ad-top">
       <div className="ad-card-head">
-        <h3>Top Selling Items</h3>
+        <h3>{title}</h3>
         <span className="ad-card-sub">Best sellers by quantity</span>
       </div>
 
@@ -97,7 +98,7 @@ function TopSelling({ items = [], loading = false }) {
             </ResponsiveContainer>
             <div className="ad-top-center">
               <strong>{totalQty}</strong>
-              <span>Items sold</span>
+              <span>{unitLabel}</span>
             </div>
           </div>
 

@@ -7,6 +7,7 @@ import {
 
 import authService from "../services/authService";
 import ProtectedRoute from "../components/ProtectedRoute";
+import { homeFor, isSalon } from "../utils/businessType";
 
 import Login from "../pages/Auth/Login";
 
@@ -26,15 +27,24 @@ import Orders from "../pages/Admin/Orders";
 import Billing from "../pages/Admin/Billing";
 import KitchenTemplate from "../pages/Admin/KitchenTemplate";
 import Settings from "../pages/Admin/Settings";
+import Customers from "../pages/Admin/Customers";
 
-// Where each role lands after login / when hitting "/" while authenticated.
-const roleHome = {
-    super_admin: "/super_admin",
-    admin: "/admin/dashboard",
-    cashier: "/cashier",
-    waiter: "/waiter",
-    kitchen: "/kitchen"
-};
+import SalonDashboard from "../pages/Salon/Dashboard";
+import Services from "../pages/Salon/Services";
+import Inventory from "../pages/Salon/Inventory";
+import SalonPos from "../pages/Salon/Pos";
+
+// Who may open each back-office page. A salon and a restaurant share the admin
+// shell and most pages; the ones that only make sense for one of them say so
+// with `types`.
+const RESTAURANT = ["restaurant"];
+const SALON = ["salon"];
+
+const adminPage = (element, types) => (
+    <ProtectedRoute roles={["admin"]} types={types}>
+        {element}
+    </ProtectedRoute>
+);
 
 function AppRoutes() {
 
@@ -42,17 +52,17 @@ function AppRoutes() {
     const token = authService.getToken();
     const isAuthed = Boolean(token && user);
 
+    // Where "/" sends a signed-in user. null (a role this business doesn't
+    // have) shows the login rather than redirecting "/" to itself.
+    const home = isAuthed ? homeFor(user) : null;
+
     return (
         <BrowserRouter>
             <Routes>
 
                 <Route
                     path="/"
-                    element={
-                        isAuthed
-                            ? <Navigate to={roleHome[user.role] || "/"} replace />
-                            : <Login />
-                    }
+                    element={home ? <Navigate to={home} replace /> : <Login />}
                 />
 
                 <Route
@@ -69,110 +79,46 @@ function AppRoutes() {
                     element={<Navigate to="/admin/dashboard" replace />}
                 />
 
+                {/* The page reloads on login and logout, so the user read above
+                    is the one signed in for the life of this render. */}
                 <Route
                     path="/admin/dashboard"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <AdminDashboard />
-                        </ProtectedRoute>
-                    }
+                    element={adminPage(isAuthed && isSalon(user) ? <SalonDashboard /> : <AdminDashboard />)}
                 />
 
-                <Route
-                    path="/admin/reports"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <Reports />
-                        </ProtectedRoute>
-                    }
-                />
+                <Route path="/admin/reports" element={adminPage(<Reports />)} />
+                <Route path="/admin/employees" element={adminPage(<Employee />)} />
+                <Route path="/admin/categories" element={adminPage(<Categories />)} />
+                <Route path="/admin/customers" element={adminPage(<Customers />)} />
+                <Route path="/admin/charges" element={adminPage(<Charges />)} />
+                <Route path="/admin/orders" element={adminPage(<Orders />)} />
+                <Route path="/admin/billing" element={adminPage(<Billing />)} />
+                <Route path="/admin/settings" element={adminPage(<Settings />)} />
 
-                <Route
-                    path="/admin/employees"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <Employee />
-                        </ProtectedRoute>
-                    }
-                />
+                {/* Restaurant only */}
+                <Route path="/admin/menu" element={adminPage(<Menu />, RESTAURANT)} />
+                <Route path="/admin/tables" element={adminPage(<Tables />, RESTAURANT)} />
+                <Route path="/admin/kitchen-template" element={adminPage(<KitchenTemplate />, RESTAURANT)} />
 
-                <Route
-                    path="/admin/categories"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <Categories />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
-                    path="/admin/menu"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <Menu />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
-                    path="/admin/tables"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <Tables />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
-                    path="/admin/charges"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <Charges />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
-                    path="/admin/orders"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <Orders />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
-                    path="/admin/billing"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <Billing />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
-                    path="/admin/kitchen-template"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <KitchenTemplate />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
-                    path="/admin/settings"
-                    element={
-                        <ProtectedRoute roles={["admin"]}>
-                            <Settings />
-                        </ProtectedRoute>
-                    }
-                />
+                {/* Salon only */}
+                <Route path="/admin/services" element={adminPage(<Services />, SALON)} />
+                <Route path="/admin/inventory" element={adminPage(<Inventory />, SALON)} />
 
                 <Route
                     path="/cashier"
                     element={
-                        <ProtectedRoute roles={["cashier"]}>
+                        <ProtectedRoute roles={["cashier"]} types={RESTAURANT}>
                             <CashierDashboard />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* A salon's receptionist — stored as the cashier role. */}
+                <Route
+                    path="/salon/pos"
+                    element={
+                        <ProtectedRoute roles={["cashier"]} types={SALON}>
+                            <SalonPos />
                         </ProtectedRoute>
                     }
                 />
@@ -180,7 +126,7 @@ function AppRoutes() {
                 <Route
                     path="/waiter"
                     element={
-                        <ProtectedRoute roles={["waiter"]}>
+                        <ProtectedRoute roles={["waiter"]} types={RESTAURANT}>
                             <WaiterDashboard />
                         </ProtectedRoute>
                     }
@@ -189,7 +135,7 @@ function AppRoutes() {
                 <Route
                     path="/kitchen"
                     element={
-                        <ProtectedRoute roles={["kitchen"]}>
+                        <ProtectedRoute roles={["kitchen"]} types={RESTAURANT}>
                             <KitchenDashboard />
                         </ProtectedRoute>
                     }

@@ -32,7 +32,9 @@ const SYNC_TABLES = {
     printer_settings: { up: false },
     users:           { up: false },
     roles:           { up: false },
-    settings:        { up: false }
+    settings:        { up: false },
+    inventory_items:     { up: false },
+    inventory_movements: { up: false }
 };
 
 async function tableExists(table) {
@@ -84,6 +86,13 @@ async function ensureUuid(table) {
 }
 
 async function runSyncSchema() {
+    // 013: restaurant or salon. First, because login reads it. Every existing
+    // tenant is a restaurant, hence the default; `restaurants` syncs down, so a
+    // till picks the value up from the cloud row.
+    if (await tableExists("restaurants")) {
+        await ensureColumn("restaurants", "business_type", "VARCHAR(20) NOT NULL DEFAULT 'restaurant'");
+    }
+
     for (const [table, cfg] of Object.entries(SYNC_TABLES)) {
         if (!(await tableExists(table))) continue;
 
@@ -109,6 +118,8 @@ async function runSyncSchema() {
     // any older database self-heals on boot.
     if (await tableExists("orders")) {
         await ensureColumn("orders", "service_charge", "DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+        // 014: the stylist on a salon bill (a users row, role 'stylist').
+        await ensureColumn("orders", "stylist_id", "INT NULL DEFAULT NULL");
     }
     if (await tableExists("order_items")) {
         await ensureColumn("order_items", "served", "TINYINT(1) NOT NULL DEFAULT 0");

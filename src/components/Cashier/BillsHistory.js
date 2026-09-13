@@ -3,7 +3,10 @@ import { getTodaysBills } from "../../services/orderService";
 
 // Today's settled bills. The cashier opens one to correct an item that was rung
 // up twice or missed, then reprints it.
-function BillsHistory({ onOpenBill }) {
+//
+// `salon` swaps the "where" column (table / counter) for the customer, which is
+// how a salon's front desk finds a bill.
+function BillsHistory({ onOpenBill, salon = false }) {
 
     const [bills, setBills] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -28,11 +31,16 @@ function BillsHistory({ onOpenBill }) {
         return () => clearInterval(t);
     }, []);
 
+    const whereOf = (b) => salon
+        ? (b.customer_name || "Walk-in")
+        : (b.table_name ? `Table ${b.table_name}` : "Counter");
+
     const term = search.trim().toLowerCase();
     const filtered = bills.filter((b) =>
         !term ||
         (b.order_number || "").toLowerCase().includes(term) ||
-        (b.table_name ? `table ${b.table_name}` : "counter").includes(term)
+        whereOf(b).toLowerCase().includes(term) ||
+        (salon && (b.customer_mobile || "").includes(term))
     );
 
     const isCancelled = (b) => b.order_status === "Cancelled";
@@ -53,7 +61,7 @@ function BillsHistory({ onOpenBill }) {
                 <h2>🧾 Bills · Today</h2>
                 <input
                     className="menuavail-search"
-                    placeholder="Search bill no. or table…"
+                    placeholder={salon ? "Search bill no., customer or mobile…" : "Search bill no. or table…"}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                 />
@@ -77,7 +85,8 @@ function BillsHistory({ onOpenBill }) {
                         <thead>
                             <tr>
                                 <th>Bill No.</th>
-                                <th>Where</th>
+                                <th>{salon ? "Customer" : "Where"}</th>
+                                {salon && <th>Stylist</th>}
                                 <th>Time</th>
                                 <th className="num">Items</th>
                                 <th>Paid via</th>
@@ -92,7 +101,8 @@ function BillsHistory({ onOpenBill }) {
                                 return (
                                     <tr key={b.id} className={cancelled ? "bills-row-cancelled" : ""}>
                                         <td className="bills-no">{b.order_number}</td>
-                                        <td>{b.table_name ? `Table ${b.table_name}` : "Counter"}</td>
+                                        <td>{whereOf(b)}</td>
+                                        {salon && <td>{b.stylist_name || "—"}</td>}
                                         <td>{timeOf(b.created_at)}</td>
                                         <td className="num">{Number(b.item_count)}</td>
                                         <td>{cancelled ? "—" : (b.payment_method || "—")}</td>

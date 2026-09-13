@@ -31,7 +31,8 @@ exports.getEmployees = (restaurantId, callback) => {
             SUM(CASE WHEN status='Active' THEN 1 ELSE 0 END) AS active,
             SUM(CASE WHEN role='cashier' THEN 1 ELSE 0 END) AS cashiers,
             SUM(CASE WHEN role='waiter' THEN 1 ELSE 0 END) AS waiters,
-            SUM(CASE WHEN role='kitchen' THEN 1 ELSE 0 END) AS kitchen_staff
+            SUM(CASE WHEN role='kitchen' THEN 1 ELSE 0 END) AS kitchen_staff,
+            SUM(CASE WHEN role='stylist' THEN 1 ELSE 0 END) AS stylists
         FROM users
         WHERE restaurant_id = ?
           AND role <> 'super_admin'
@@ -48,7 +49,23 @@ exports.getEmployees = (restaurantId, callback) => {
 
 };
 
+// Active stylists, for picking one on a salon bill (tenant-scoped).
+exports.getStylists = (restaurantId, callback) => {
+
+    db.query(
+        `SELECT id, full_name
+         FROM users
+         WHERE restaurant_id = ? AND role = 'stylist'
+           AND status = 'Active' AND deleted_at IS NULL
+         ORDER BY full_name ASC`,
+        [restaurantId],
+        callback
+    );
+
+};
+
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 
 exports.addEmployee = (data, callback) => {
@@ -74,7 +91,11 @@ exports.addEmployee = (data, callback) => {
         .toLowerCase()
         .replace(/\s+/g, "");
 
-    const baseUsername = `${name}_${data.role}@${restaurant}`;
+    // username_role is the role as the business calls it (a salon's cashier is
+    // its receptionist); the stored role stays data.role.
+    const roleLabel = data.username_role || data.role;
+
+    const baseUsername = `${name}_${roleLabel}@${restaurant}`;
 
     // Check if username already exists
     db.query(
@@ -89,15 +110,19 @@ exports.addEmployee = (data, callback) => {
             let username = baseUsername;
 
             if (result[0].total > 0) {
-                username = `${name}_${data.role}${result[0].total + 1}@${restaurant}`;
+                username = `${name}_${roleLabel}${result[0].total + 1}@${restaurant}`;
             }
 
             // Use the password shown to the admin in the Add-Employee form
             // (data.password). Only generate one as a fallback if none was sent,
             // so that what the admin sees is exactly what gets stored.
-            let plainPassword = (data.password && String(data.password).trim().length >= 6)
-                ? String(data.password).trim()
-                : "";
+            // no_login (a stylist): a long random password nobody is ever shown,
+            // so the row can't be signed into even before authModel refuses it.
+            let plainPassword = data.no_login
+                ? crypto.randomBytes(24).toString("hex")
+                : (data.password && String(data.password).trim().length >= 6)
+                    ? String(data.password).trim()
+                    : "";
 
             if (!plainPassword) {
 
@@ -156,7 +181,7 @@ VALUES
                         callback(null, {
                             result,
                             username,
-                            password: plainPassword
+                            password: data.no_login ? null : plainPassword
                         });
 
                     }

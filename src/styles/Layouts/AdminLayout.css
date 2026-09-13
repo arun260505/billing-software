@@ -8,6 +8,11 @@
 .admin-main{
 
     flex:1;
+    /* A flex item won't shrink below its widest content by default, so one wide
+       report table stretched every admin page past a phone's width. Letting it
+       shrink keeps the page at the screen width; wide tables scroll inside their
+       own boxes instead. */
+    min-width:0;
     margin-left:260px;
     transition:.3s;
 

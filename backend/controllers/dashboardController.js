@@ -75,6 +75,19 @@ exports.getSalesChart = (req, res) => {
 
 };
 
+// GET /api/dashboard/stylists — the salon's live stylist board for today.
+exports.getStylistBoard = (req, res) => {
+
+    dashboardModel.getStylistBoard(req.user.restaurant_id, (err, result) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Stylist board fetched.", result);
+
+    });
+
+};
+
 // Heartbeat for the Connection Status widget: verifies backend + database.
 exports.getHealth = (req, res) => {
 

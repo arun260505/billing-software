@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 
 import { getOrderDetails, cancelOrder } from "../../services/orderService";
 import { updateTicketStatus } from "../../services/kitchenService";
+import { isSalon } from "../../utils/businessType";
 
 import "../../styles/pages/Admin/Orders.css";
 import useEscapeClose from "../../hooks/useEscapeClose";
@@ -10,6 +11,9 @@ import useEscapeClose from "../../hooks/useEscapeClose";
 // current status — the database stores no status history, so no timestamps
 // are invented here.
 const STATUS_FLOW = ["Pending", "Confirmed", "Preparing", "Ready", "Served", "Completed"];
+
+// A salon bill has no kitchen stages: it is rung up, then paid.
+const SALON_STATUS_FLOW = ["Pending", "Completed"];
 
 const STATUS_OPTIONS = ["Pending", "Preparing", "Ready", "Served", "Completed", "Cancelled"];
 
@@ -56,7 +60,12 @@ function OrderDetailsModal({ order, payments = [], editable = false, onClose, on
 
     const orderPayments = payments.filter((p) => String(p.order_id) === String(order.id));
 
-    const reachedIndex = STATUS_FLOW.indexOf(currentStatus);
+    // A salon sees a bill (customer, stylist, services), not a kitchen order.
+    const salon = isSalon();
+    const flow = salon ? SALON_STATUS_FLOW : STATUS_FLOW;
+    const reachedIndex = flow.indexOf(currentStatus);
+    const stepLabel = (step) =>
+        step === "Pending" ? "Created" : salon && step === "Completed" ? "Paid" : step;
 
     const handleSaveStatus = async () => {
         if (!statusDraft || statusDraft === currentStatus) return;
@@ -100,12 +109,14 @@ function OrderDetailsModal({ order, payments = [], editable = false, onClose, on
 
                 <div className="orders-modal-head">
                     <div>
-                        <h2>Order #{order.id}</h2>
+                        <h2>{salon ? "Bill" : "Order"} #{order.id}</h2>
                         <span className="orders-modal-sub">{order.order_number}</span>
                     </div>
                     <div className="orders-modal-head-right">
                         <span className={`order-badge badge-${(currentStatus || "").toLowerCase()}`}>
-                            {currentStatus === "Pending" ? "New" : currentStatus}
+                            {currentStatus === "Pending"
+                                ? (salon ? "Unpaid" : "New")
+                                : salon && currentStatus === "Completed" ? "Paid" : currentStatus}
                         </span>
                         <button className="orders-modal-close" onClick={onClose}>✕</button>
                     </div>
@@ -125,16 +136,38 @@ function OrderDetailsModal({ order, payments = [], editable = false, onClose, on
                             })}
                         </span>
                     </div>
+                    {/* Every salon bill is stored as a counter "Takeaway" order —
+                        an internal detail, not something to show a salon. */}
+                    {!salon && (
+                        <div className="orders-meta-item">
+                            <label>Order Type</label>
+                            <span>{TYPE_LABELS[order.order_type] || order.order_type}</span>
+                        </div>
+                    )}
+                    {/* A salon bill has a customer, not a table. */}
+                    {salon ? (
+                        <div className="orders-meta-item">
+                            <label>Customer</label>
+                            <span>
+                                {order.customer_name
+                                    ? `${order.customer_name}${order.customer_mobile ? ` · ${order.customer_mobile}` : ""}`
+                                    : "Walk-in"}
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="orders-meta-item">
+                            <label>Table</label>
+                            <span>{order.table_name ? order.table_name : "—"}</span>
+                        </div>
+                    )}
+                    {salon && (
+                        <div className="orders-meta-item">
+                            <label>Stylist</label>
+                            <span>{order.stylist_name || "—"}</span>
+                        </div>
+                    )}
                     <div className="orders-meta-item">
-                        <label>Order Type</label>
-                        <span>{TYPE_LABELS[order.order_type] || order.order_type}</span>
-                    </div>
-                    <div className="orders-meta-item">
-                        <label>Table</label>
-                        <span>{order.table_name ? order.table_name : "—"}</span>
-                    </div>
-                    <div className="orders-meta-item">
-                        <label>Staff</label>
+                        <label>{salon ? "Billed by" : "Staff"}</label>
                         <span>{order.employee_name || "—"}</span>
                     </div>
                     <div className="orders-meta-item">
@@ -150,7 +183,7 @@ function OrderDetailsModal({ order, payments = [], editable = false, onClose, on
                 {/* Progress (current status position only — no fabricated history) */}
                 {!cancelled ? (
                     <div className="orders-progress">
-                        {STATUS_FLOW.map((step, i) => (
+                        {flow.map((step, i) => (
                             <React.Fragment key={step}>
                                 {i > 0 && (
                                     <span className={`orders-progress-bar${reachedIndex >= i ? " done" : ""}`} />
@@ -159,27 +192,27 @@ function OrderDetailsModal({ order, payments = [], editable = false, onClose, on
                                     <span className="orders-progress-dot">
                                         {reachedIndex >= i ? "✓" : ""}
                                     </span>
-                                    {step === "Pending" ? "Created" : step}
+                                    {stepLabel(step)}
                                 </span>
                             </React.Fragment>
                         ))}
                     </div>
                 ) : (
-                    <div className="orders-cancelled-banner">This order was cancelled.</div>
+                    <div className="orders-cancelled-banner">This {salon ? "bill" : "order"} was cancelled.</div>
                 )}
 
                 {/* Items */}
                 <div className="orders-items-box">
-                    <h3>Items</h3>
+                    <h3>{salon ? "Services" : "Items"}</h3>
                     {loadingItems ? (
-                        <p className="orders-muted">Loading items…</p>
+                        <p className="orders-muted">Loading {salon ? "services" : "items"}…</p>
                     ) : items.length === 0 ? (
-                        <p className="orders-muted">No items found for this order.</p>
+                        <p className="orders-muted">No {salon ? "services" : "items"} found for this {salon ? "bill" : "order"}.</p>
                     ) : (
                         <table className="orders-items-table">
                             <thead>
                                 <tr>
-                                    <th>Item</th>
+                                    <th>{salon ? "Service" : "Item"}</th>
                                     <th>Qty</th>
                                     <th>Price</th>
                                     <th>Total</th>
@@ -228,7 +261,7 @@ function OrderDetailsModal({ order, payments = [], editable = false, onClose, on
 
                 {order.notes && (
                     <div className="orders-notes-box">
-                        <label>Order Notes</label>
+                        <label>{salon ? "Notes" : "Order Notes"}</label>
                         <p>{order.notes}</p>
                     </div>
                 )}

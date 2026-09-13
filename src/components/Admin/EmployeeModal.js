@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import useEscapeClose from "../../hooks/useEscapeClose";
+import { isSalon } from "../../utils/businessType";
 
 // `editEmployee` switches the modal to edit mode: the fields prefill from that
 // staff member and the generated-credentials block is hidden, because the
@@ -7,6 +8,10 @@ import useEscapeClose from "../../hooks/useEscapeClose";
 function EmployeeModal({ show, onClose, onSave, editEmployee = null }) {
 
     const isEdit = Boolean(editEmployee);
+
+    // A salon has an owner and receptionists only. A receptionist is stored as
+    // the cashier role, which is what the till and billing permissions expect.
+    const salon = isSalon();
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
@@ -18,6 +23,9 @@ function EmployeeModal({ show, onClose, onSave, editEmployee = null }) {
         role: "cashier",
         status: "Active"
     });
+
+    // A stylist is only a name on bills — no username or password is made.
+    const noLogin = form.role === "stylist";
 
     const [generatedUsername, setGeneratedUsername] = useState("");
     const [generatedPassword, setGeneratedPassword] = useState("");
@@ -56,8 +64,11 @@ function EmployeeModal({ show, onClose, onSave, editEmployee = null }) {
 
         }
 
+        // Matches the backend: a salon's cashier logs in as "…_receptionist@…".
+        const roleName = salon && form.role === "cashier" ? "receptionist" : form.role;
+
         setGeneratedUsername(
-            `${cleanName}_${form.role}@${restaurant}`
+            `${cleanName}_${roleName}@${restaurant}`
         );
 
     };
@@ -133,8 +144,9 @@ function EmployeeModal({ show, onClose, onSave, editEmployee = null }) {
             return;
         }
 
-        if (isEdit) {
-            // Editing never touches the username or the password.
+        if (isEdit || noLogin) {
+            // Editing never touches the username or the password, and a stylist
+            // has neither.
             onSave({ ...form, full_name: name });
             return;
         }
@@ -226,15 +238,31 @@ function EmployeeModal({ show, onClose, onSave, editEmployee = null }) {
 
                             <label>Role</label>
 
+                            {/* A salon role is fixed once added (the backend ignores a
+                                change), so editing shows it read-only. */}
                             <select
                                 name="role"
                                 value={form.role}
                                 onChange={handleChange}
+                                disabled={salon && isEdit}
                             >
-                                <option value="admin">Admin</option>
-                                <option value="cashier">Cashier</option>
-                                <option value="waiter">Waiter</option>
-                                <option value="kitchen">Kitchen</option>
+                                {salon ? (
+                                    <>
+                                        <option value="cashier">Receptionist — can log in</option>
+                                        <option value="stylist">Stylist — name only, no login</option>
+                                        {/* Only shown when editing the owner's own row. */}
+                                        {isEdit && form.role === "admin" && (
+                                            <option value="admin">Owner</option>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <option value="admin">Admin</option>
+                                        <option value="cashier">Cashier</option>
+                                        <option value="waiter">Waiter</option>
+                                        <option value="kitchen">Kitchen</option>
+                                    </>
+                                )}
                             </select>
 
                         </div>
@@ -258,7 +286,7 @@ function EmployeeModal({ show, onClose, onSave, editEmployee = null }) {
 
                     {/* Credentials are issued once, at creation. Editing a staff
                         member must not silently regenerate their login. */}
-                    <div className="generated-box" hidden={isEdit}>
+                    <div className="generated-box" hidden={isEdit || noLogin}>
 
                         <h3>Generated Login Credentials</h3>
 
@@ -326,7 +354,7 @@ function EmployeeModal({ show, onClose, onSave, editEmployee = null }) {
                             type="submit"
                             className="save-btn"
                         >
-                            Create Employee
+                            {isEdit ? "Save Changes" : noLogin ? "Add Stylist" : "Create Employee"}
                         </button>
 
                     </div>

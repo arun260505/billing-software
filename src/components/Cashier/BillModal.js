@@ -159,7 +159,9 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
 
                 <div className="bill-meta">
                     <span><strong>Bill:</strong> {order.order_number}</span>
-                    <span><strong>Table:</strong> {order.tableName}</span>
+                    {/* placeLabel lets a salon bill say "Customer:" here. */}
+                    <span><strong>{order.placeLabel || "Table"}:</strong> {order.tableName}</span>
+                    {order.stylist_name && <span><strong>Stylist:</strong> {order.stylist_name}</span>}
                 </div>
 
                 <div className="bill-items">

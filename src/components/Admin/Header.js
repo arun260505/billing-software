@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { FaSignOutAlt } from "react-icons/fa";
+import { isSalon } from "../../utils/businessType";
 import "../../styles/Admin/Header.css";
 
 function Header() {
+
+    const salon = isSalon();
 
     const [now, setNow] = useState(new Date());
 
@@ -34,7 +37,7 @@ function Header() {
     return (
         <header className="admin-header">
             <div className="header-left">
-                <h2>Admin Dashboard</h2>
+                <h2>{salon ? "Salon Dashboard" : "Admin Dashboard"}</h2>
                 <p>Welcome back!</p>
             </div>
 
@@ -51,12 +54,12 @@ function Header() {
 
                 <div className="admin-profile">
                     <div className="profile-image">
-                        A
+                        {salon ? "O" : "A"}
                     </div>
 
                     <div className="profile-info">
-                        <h4>Admin</h4>
-                        <span>Restaurant Admin</span>
+                        <h4>{salon ? "Owner" : "Admin"}</h4>
+                        <span>{salon ? "Salon Owner" : "Restaurant Admin"}</span>
                     </div>
                 </div>
             </div>

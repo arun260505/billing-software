@@ -4,9 +4,11 @@ const router = express.Router();
 const tableController = require("../controllers/tableController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
+const { restaurantOnly } = require("../middleware/businessTypeMiddleware");
 
-// All table endpoints require a valid JWT (tenant-scoped).
+// All table endpoints require a valid JWT (tenant-scoped). A salon has no tables.
 router.use(authMiddleware);
+router.use(restaurantOnly);
 
 // Reads — any authenticated role.
 router.get("/dashboard/stats", tableController.getDashboardStats);

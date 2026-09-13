@@ -43,10 +43,10 @@ const resolveRange = (req) => {
 
 };
 
-const safeOverview = async ({ restaurantId, from, to }) => {
+const safeOverview = async ({ restaurantId, from, to, businessType }) => {
 
     try {
-        const data = await reportModel.getOverview({ restaurantId, from, to });
+        const data = await reportModel.getOverview({ restaurantId, from, to, businessType });
         return { data };
     } catch (err) {
         return { err };
@@ -63,7 +63,8 @@ exports.getOverview = (req, res) => {
     safeOverview({
         restaurantId: req.user.restaurant_id,
         from: range.from,
-        to: range.to
+        to: range.to,
+        businessType: req.user.business_type
     }).then(({ data, err }) => {
 
         if (err) return error(res, err.message, 500);

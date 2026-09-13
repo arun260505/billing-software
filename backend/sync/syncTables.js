@@ -30,9 +30,16 @@ const SYNC_ORDER = [
     { table: "printer_settings", direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "menu_items",      direction: "down", fks: { restaurant_id: "restaurants", category_id: "categories" } },
     { table: "users",           direction: "down", fks: { restaurant_id: "restaurants", created_by: "users" } },
-    { table: "orders",          direction: "up",   fks: { restaurant_id: "restaurants", customer_id: "customers", table_id: "dining_tables" } },
+    // stylist_id (014) points at users, which a till already has from the pull.
+    { table: "orders",          direction: "up",   fks: { restaurant_id: "restaurants", customer_id: "customers", table_id: "dining_tables", stylist_id: "users" } },
     { table: "order_items",     direction: "up",   fks: { order_id: "orders", menu_item_id: "menu_items" } },
-    { table: "payments",        direction: "up",   fks: { restaurant_id: "restaurants", order_id: "orders" } }
+    { table: "payments",        direction: "up",   fks: { restaurant_id: "restaurants", order_id: "orders" } },
+    // Salon stock, kept by the owner like the menu, so it flows cloud -> till.
+    // Deliberately last: a pull stops at the first table that fails, so a till
+    // on this code talking to a cloud that doesn't have these tables yet still
+    // pulls everything above them.
+    { table: "inventory_items",     direction: "down", fks: { restaurant_id: "restaurants" } },
+    { table: "inventory_movements", direction: "down", fks: { restaurant_id: "restaurants", inventory_item_id: "inventory_items", created_by: "users" } }
 ];
 
 const BY_TABLE = Object.fromEntries(SYNC_ORDER.map((t) => [t.table, t]));

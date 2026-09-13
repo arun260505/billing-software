@@ -29,3 +29,9 @@ Thumbs.db
 
 # VS Code
 .vscode/inwallz_billing_dump.sql
+
+# Build artifacts (never commit)
+InWallz-Waiter-AUTO.apk
+*.apk
+backend/scripts/RawPrinter.dll
+backend/scripts/*.dll

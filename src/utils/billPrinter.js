@@ -151,8 +151,11 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_table_name) metaRows.push(isParcel ? `<strong>Take Away</strong>` : `<strong>Dine In:</strong> ${escapeHtml(seatValue)}`);
     if (cfg.show_time) metaRows.push(`<strong>Time:</strong> ${timeStr}`);
     if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) metaRows.push(`<strong>Waiter:</strong> ${escapeHtml(order.waiter_name || order.waiter)}`);
-    if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaRows.push(`<strong>Cashier:</strong> ${escapeHtml(order.cashier_name || order.cashier)}`);
+    // cashier_label: a salon's front desk prints as "Receptionist".
+    if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaRows.push(`<strong>${escapeHtml(order.cashier_label || "Cashier")}:</strong> ${escapeHtml(order.cashier_name || order.cashier)}`);
     if (cfg.show_order_number && orderNumber) metaRows.push(`<strong>Bill No.:</strong> ${escapeHtml(orderNumber)}`);
+    // A salon bill always names the stylist who did the work.
+    if (order.stylist_name) metaRows.push(`<strong>Stylist:</strong> ${escapeHtml(order.stylist_name)}`);
 
     if (isA4) {
         metaHtml += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">`;

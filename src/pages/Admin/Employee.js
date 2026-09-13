@@ -9,6 +9,7 @@ import EmployeeTable from "../../components/Admin/EmployeeTable";
 
 import employeeService from "../../services/employeeService";
 import EmployeeSuccessModal from "../../components/Admin/EmployeeSuccessModal";
+import { businessLabel, roleLabel } from "../../utils/businessType";
 
 import "../../styles/Admin/Dashboard.css";
 import "../../styles/Admin/Employee.css";
@@ -76,6 +77,15 @@ const visibleEmployees = employees.filter((e) => {
 
         const response = await employeeService.addEmployee(form);
 
+        // A stylist has no login, so there are no credentials to show.
+        if (!response.data.data.password) {
+            setShowModal(false);
+            loadEmployees();
+            loadSummary();
+            alert(`${form.full_name} added as a stylist.`);
+            return;
+        }
+
         setCredentials({
             full_name: form.full_name,
             username: response.data.data.username,
@@ -94,7 +104,7 @@ const visibleEmployees = employees.filter((e) => {
 
         console.error(err);
 
-        alert("Failed to create employee.");
+        alert(err.response?.data?.message || err.friendlyMessage || "Failed to create employee.");
 
     }
 
@@ -142,8 +152,8 @@ const handleDeleteEmployee = async (employee) => {
 const handleViewEmployee = (employee) => {
     alert(
         `${employee.full_name}\n\n` +
-        `Username : ${employee.username}\n` +
-        `Role     : ${employee.role}\n` +
+        `Username : ${employee.role === "stylist" ? "— (no login)" : employee.username}\n` +
+        `Role     : ${roleLabel(employee.role)}\n` +
         `Mobile   : ${employee.mobile || "—"}\n` +
         `Email    : ${employee.email || "—"}\n` +
         `Status   : ${employee.status}\n` +
@@ -180,7 +190,7 @@ const handleViewEmployee = (employee) => {
 
                         <h2>Employee Management</h2>
 
-                        <p>Manage restaurant employees efficiently.</p>
+                        <p>Manage {businessLabel().toLowerCase()} employees efficiently.</p>
 
                     </div>
                     <EmployeeCards summary={summary} />

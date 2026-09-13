@@ -16,5 +16,7 @@ router.get("/top-items", dashboardController.getTopItems);
 router.get("/tables", dashboardController.getTableStatus);
 router.get("/sales-chart", dashboardController.getSalesChart);
 router.get("/health", dashboardController.getHealth);
+// Salon: today's customers / bills / sales per stylist (the live board).
+router.get("/stylists", dashboardController.getStylistBoard);
 
 module.exports = router;

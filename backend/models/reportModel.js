@@ -130,7 +130,11 @@ const getTableSales = (restaurantId, callback) => {
 // Full overview payload for the Admin Reports page. Every query is scoped
 // to the authenticated restaurant plus an inclusive date range, and every
 // result is empty-safe so the UI can render clean empty states.
-const getOverview = async ({ restaurantId, from, to }) => {
+const getOverview = async ({ restaurantId, from, to, businessType }) => {
+
+    // A salon's staff report is about its stylists (who did the work), not the
+    // receptionist who rang the bill up.
+    const salon = businessType === "salon";
 
     const rangeFilter =
         "o.restaurant_id = ? AND o.order_status <> 'Cancelled' AND DATE(o.created_at) BETWEEN ? AND ?";
@@ -280,17 +284,30 @@ const getOverview = async ({ restaurantId, from, to }) => {
         WHERE ${rangeFilter}
     `;
 
+    const staffColumn = salon ? "o.stylist_id" : "o.employee_id";
     const staffSql = `
         SELECT
             u.full_name,
             COUNT(o.id) AS orders,
+            COUNT(DISTINCT o.customer_id) AS customers,
             IFNULL(SUM(o.grand_total), 0) AS sales
         FROM orders o
-        INNER JOIN users u ON o.employee_id = u.id
+        INNER JOIN users u ON ${staffColumn} = u.id
         WHERE ${rangeFilter}
-        GROUP BY o.employee_id, u.full_name
+        GROUP BY ${staffColumn}, u.full_name
         ORDER BY sales DESC
         LIMIT 10
+    `;
+
+    // Sales by hour, for a single-day range (see salesSeries below).
+    const hourlySql = `
+        SELECT
+            HOUR(o.created_at) AS hour,
+            COUNT(*) AS orders,
+            IFNULL(SUM(CASE WHEN o.payment_status = 'Paid' THEN o.grand_total END), 0) AS sales
+        FROM orders o
+        WHERE ${rangeFilter}
+        GROUP BY HOUR(o.created_at)
     `;
 
     const tablesSql = `
@@ -342,7 +359,7 @@ const getOverview = async ({ restaurantId, from, to }) => {
         kpiRows, cancelledRows, chargesRows, seriesRows, orderTypeRows,
         methodRows, pendingRows, topItemRows, lowItemRows, peakRows,
         kitchenOrderRows, kitchenCountRows, staffRows, tableRows,
-        chargeConfigRows, settingsRows, comparisonRows
+        chargeConfigRows, settingsRows, comparisonRows, hourlyRows
     ] = await Promise.all([
         q(kpisSql, [restaurantId, from, to]),
         q(cancelledSql, [restaurantId, from, to]),
@@ -360,14 +377,15 @@ const getOverview = async ({ restaurantId, from, to }) => {
         q(tablesSql, [restaurantId, from, to]),
         q(chargesConfigSql, [restaurantId]),
         q(settingsSql, [restaurantId]),
-        q(comparisonKpisSql, [restaurantId, prevFrom, prevTo])
+        q(comparisonKpisSql, [restaurantId, prevFrom, prevTo]),
+        q(hourlySql, [restaurantId, from, to])
     ]);
 
     // Fill missing calendar days so the trend chart never shows gaps.
     const seriesMap = {};
     seriesRows.forEach((r) => { seriesMap[dateKeyOf(r.date)] = r; });
 
-    const salesSeries = [];
+    let salesSeries = [];
     for (
         let d = new Date(`${from}T00:00:00`);
         d <= new Date(`${to}T00:00:00`);
@@ -380,6 +398,28 @@ const getOverview = async ({ restaurantId, from, to }) => {
             orders: row ? num(row.orders) : 0,
             sales: row ? num(row.sales) : 0
         });
+    }
+
+    // One day plotted by day is a single dot. Plot it hour by hour instead,
+    // across the working day (9:00–21:00) stretched to cover any bill outside it.
+    if (from === to) {
+        const byHour = {};
+        hourlyRows.forEach((r) => { byHour[num(r.hour)] = r; });
+        const hours = hourlyRows.map((r) => num(r.hour));
+        const first = Math.min(9, ...hours);
+        const last = Math.max(21, ...hours);
+
+        salesSeries = [];
+        for (let h = first; h <= last; h++) {
+            const row = byHour[h];
+            salesSeries.push({
+                date: from,
+                hour: h,
+                label: `${String(h).padStart(2, "0")}:00`,
+                orders: row ? num(row.orders) : 0,
+                sales: row ? num(row.sales) : 0
+            });
+        }
     }
 
     let peak = null;
@@ -498,6 +538,7 @@ const getOverview = async ({ restaurantId, from, to }) => {
         staff: staffRows.map((r) => ({
             name: r.full_name,
             orders: num(r.orders),
+            customers: num(r.customers),
             sales: num(r.sales),
             avg: num(r.orders) > 0 ? Math.round(num(r.sales) / num(r.orders)) : 0
         })),

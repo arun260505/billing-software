@@ -6,10 +6,14 @@ import {
     FaConciergeBell,
     FaUtensils
 } from "react-icons/fa";
+import { isSalon } from "../../utils/businessType";
 
 function EmployeeCards({ summary }) {
 
-    const cards = [
+    // A salon has receptionists (stored as cashiers) and no waiters or kitchen.
+    const salon = isSalon();
+
+    const allCards = [
 
         {
             title: "Total Employees",
@@ -26,7 +30,7 @@ function EmployeeCards({ summary }) {
         },
 
         {
-            title: "Cashiers",
+            title: salon ? "Receptionists" : "Cashiers",
             value: summary.cashiers || 0,
             icon: <FaCashRegister />,
             color: "#F59E0B"
@@ -36,17 +40,31 @@ function EmployeeCards({ summary }) {
             title: "Waiters",
             value: summary.waiters || 0,
             icon: <FaConciergeBell />,
-            color: "#8B5CF6"
+            color: "#8B5CF6",
+            restaurantOnly: true
         },
 
         {
             title: "Kitchen Staff",
             value: summary.kitchen_staff || 0,
             icon: <FaUtensils />,
-            color: "#EF4444"
+            color: "#EF4444",
+            restaurantOnly: true
         }
 
     ];
+
+    const cards = salon
+        ? [
+            ...allCards.filter((c) => !c.restaurantOnly),
+            {
+                title: "Stylists",
+                value: summary.stylists || 0,
+                icon: <FaConciergeBell />,
+                color: "#EC4899"
+            }
+        ]
+        : allCards;
 
     return (
 

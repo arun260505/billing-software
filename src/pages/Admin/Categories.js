@@ -10,6 +10,7 @@ import CategoryModal from "../../components/Admin/CategoryModal";
 import DeleteCategoryModal from "../../components/Admin/DeleteCategoryModal";
 
 import categoryService from "../../services/categoryService";
+import { isSalon } from "../../utils/businessType";
 
 import "../../styles/Admin/Dashboard.css";
 import "../../styles/Admin/Categories.css";
@@ -177,7 +178,11 @@ const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
 
                         <h2>Category Management</h2>
 
-                        <p>Manage restaurant menu categories.</p>
+                        <p>
+                            {isSalon()
+                                ? "Group your services — Hair, Skin, Nails, Spa…"
+                                : "Manage restaurant menu categories."}
+                        </p>
 
                     </div>
 

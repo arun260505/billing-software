@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const { ensureActivationRecord } = require("../utils/activationKeys");
+const { BUSINESS_TYPES, DEFAULT_BUSINESS_TYPE } = require("../utils/businessType");
 
 // Creating an admin also creates that admin's restaurant and links them, so
 // the admin is a proper tenant and can manage employees/menu/tables/etc.
@@ -16,13 +17,24 @@ const createAdmin = async (req, res) => {
             mobile
         } = req.body;
 
+        // Restaurant or salon. Set once, here, and never editable afterwards —
+        // updateAdmin deliberately doesn't accept it.
+        const businessType = req.body.businessType || DEFAULT_BUSINESS_TYPE;
+
         if (!fullName || !username || !password || !restaurantName || !mobile) {
 
             return res.status(400).json({
                 success: false,
-                message: "All fields are required (full name, username, password, restaurant name, mobile)."
+                message: "All fields are required (full name, username, password, business name, mobile)."
             });
 
+        }
+
+        if (!BUSINESS_TYPES.includes(businessType)) {
+            return res.status(400).json({
+                success: false,
+                message: "Business type must be Restaurant or Salon."
+            });
         }
 
         // Server-side checks, because the form's validation only stops honest
@@ -66,14 +78,14 @@ const createAdmin = async (req, res) => {
                     return res.status(400).json({ success: false, message: "Username already exists." });
                 }
 
-                // 1) Create the restaurant for this admin.
+                // 1) Create the restaurant (or salon) for this admin.
                 db.query(
 
                     `INSERT INTO restaurants
-                    (restaurant_name, owner_name, mobile, status)
-                    VALUES (?, ?, ?, 'Active')`,
+                    (restaurant_name, owner_name, mobile, business_type, status)
+                    VALUES (?, ?, ?, ?, 'Active')`,
 
-                    [restaurantName, fullName, mobile],
+                    [restaurantName, fullName, mobile, businessType],
 
                     async (err, restResult) => {
 
@@ -116,7 +128,9 @@ const createAdmin = async (req, res) => {
 
                                     return res.json({
                                         success: true,
-                                        message: "Admin & Restaurant created successfully.",
+                                        message: businessType === "salon"
+                                            ? "Admin & Salon created successfully."
+                                            : "Admin & Restaurant created successfully.",
                                         activation_key: activationKey
                                     });
 
@@ -167,8 +181,11 @@ const getAdmins = async (req, res) => {
                 u.status,
                 u.created_at,
                 u.restaurant_id,
+                r.restaurant_name,
+                COALESCE(r.business_type, 'restaurant') AS business_type,
                 ra.activation_key
             FROM users u
+            LEFT JOIN restaurants r ON r.id = u.restaurant_id
             LEFT JOIN restaurant_activations ra ON ra.restaurant_id = u.restaurant_id
             WHERE u.role='admin' AND u.deleted_at IS NULL
             ORDER BY u.id DESC`

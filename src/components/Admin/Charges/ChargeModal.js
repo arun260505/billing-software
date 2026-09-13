@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { FaTimes, FaChevronDown, FaChevronRight } from "react-icons/fa";
 import useEscapeClose from "../../../hooks/useEscapeClose";
+import { isSalon } from "../../../utils/businessType";
 
 function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
+
+    // A salon bills every visit at the counter — no dine-in, takeaway or
+    // delivery, and no waiter. Its charges apply to every bill, so the
+    // service-type and "start ticked on" choices are hidden and saved as all-on.
+    const salon = isSalon();
 
     const initial = {
         charge_name: "",
@@ -69,7 +75,7 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
         const e = {};
         if (!form.charge_name.trim()) e.charge_name = "Charge name is required.";
         if (!form.amount || Number(form.amount) <= 0) e.amount = "Enter a valid amount.";
-        if (!form.applies_dinein && !form.applies_takeaway && !form.applies_delivery) {
+        if (!salon && !form.applies_dinein && !form.applies_takeaway && !form.applies_delivery) {
             e.applies = "Select at least one option.";
         }
         // Per-item / per-person / per-hour have no meaning as a tax and would
@@ -95,8 +101,11 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
             auto_apply,
             removable,
             // Where a removable extra starts ticked — only meaningful when removable.
-            preselect_cashier: removable ? form.preselect_cashier : false,
-            preselect_waiter: removable ? form.preselect_waiter : false
+            preselect_cashier: removable ? (salon || form.preselect_cashier) : false,
+            preselect_waiter: removable ? (!salon && form.preselect_waiter) : false,
+            // Salon bills are counter (Takeaway) orders; on for every type so
+            // the charge reaches every one of them.
+            ...(salon ? { applies_dinein: true, applies_takeaway: true, applies_delivery: true } : {})
         });
     };
 
@@ -126,7 +135,7 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                 <p className="charge-modal-subtitle">
                     {isEditMode
                         ? "Update billing charge configuration."
-                        : "Create a billing charge for this restaurant."}
+                        : `Create a billing charge for this ${salon ? "salon" : "restaurant"}.`}
                 </p>
 
                 <form onSubmit={handleSubmit}>
@@ -163,7 +172,9 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                                     ? "Adds up into the bill's tax line and the GST figure in Reports. Not registered for GST? Don't create one."
                                     : form.charge_role === "Service"
                                         ? "Adds up into the bill's service-charge line. Delete it to stop levying a service charge."
-                                        : "Packing, delivery, AC — priced on top of the goods and listed separately on the bill."}
+                                        : salon
+                                            ? "Priced on top of the services and listed separately on the bill."
+                                            : "Packing, delivery, AC — priced on top of the goods and listed separately on the bill."}
                             </p>
                         </div>
 
@@ -209,7 +220,7 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                                     <option value="Percentage">Percentage</option>
                                     {!isTaxLike && <option value="Per Item">Per Item</option>}
                                     {!isTaxLike && <option value="Per Person">Per Person</option>}
-                                    {!isTaxLike && <option value="Per Table">Per Table</option>}
+                                    {!isTaxLike && !salon && <option value="Per Table">Per Table</option>}
                                     {!isTaxLike && <option value="Per Hour">Per Hour</option>}
                                 </select>
                                 {errors.charge_type && <div className="field-error">{errors.charge_type}</div>}
@@ -231,7 +242,8 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                             </div>
                         </div>
 
-                        {/* Applies To */}
+                        {/* Applies To — a restaurant's service types. */}
+                        {!salon && (
                         <div className="charge-form-group">
                             <label>Applies To</label>
                             <div className="applies-cards">
@@ -256,6 +268,7 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                             </div>
                             {errors.applies && <div className="field-error">{errors.applies}</div>}
                         </div>
+                        )}
 
                         {/* How it reaches the bill. A tax or service charge is
                             always automatic — one the cashier could forget to
@@ -314,7 +327,7 @@ function ChargeModal({ show, onClose, onSave, charge, isEditMode }) {
                             usually adds parcel/packing, so cashier defaults on;
                             the waiter bills what was eaten, so waiter defaults off.
                             Either can be flipped per charge. */}
-                        {!isTaxLike && form.auto_apply && form.removable && (
+                        {!salon && !isTaxLike && form.auto_apply && form.removable && (
                             <div className="toggle-row" style={{ paddingLeft: "12px", borderLeft: "2px solid #eef1f6" }}>
                                 <span className="toggle-label">
                                     Start ticked on…

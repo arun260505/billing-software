@@ -96,3 +96,22 @@
     font-size:13px;
     color:#64748B;
 }
+
+/* The header was a fixed 80px row with a 30px gutter and no breakpoint, so on a
+   phone it pushed every admin page ~680px wide and the page scrolled sideways. */
+@media (max-width: 1024px){
+    .admin-header{ padding:0 16px; gap:12px; }
+    .header-clock{ display:none; }
+}
+
+@media (max-width: 640px){
+    .admin-header{ height:auto; min-height:64px; padding:10px 12px; }
+    .header-left{ min-width:0; }
+    .header-left h2{ font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .header-left p{ display:none; }
+    .header-right{ gap:8px; flex-shrink:0; }
+    .logout-btn{ padding:8px 10px; }
+    .logout-btn span{ display:none; }
+    .profile-info{ display:none; }
+    .profile-image{ width:38px; height:38px; margin-right:0; }
+}

@@ -1,8 +1,11 @@
 import React from "react";
+import { isSalon } from "../../utils/businessType";
 
 // The search box and both dropdowns were uncontrolled and had no handlers, so
 // typing or choosing anything did nothing at all.
 function EmployeeFilters({ onAdd, search, role, status, onChange }) {
+
+    const salon = isSalon();
 
     return (
 
@@ -17,10 +20,20 @@ function EmployeeFilters({ onAdd, search, role, status, onChange }) {
 
             <select value={role} onChange={(e) => onChange("role", e.target.value)}>
                 <option value="">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="cashier">Cashier</option>
-                <option value="waiter">Waiter</option>
-                <option value="kitchen">Kitchen</option>
+                {salon ? (
+                    <>
+                        <option value="admin">Owner</option>
+                        <option value="cashier">Receptionist</option>
+                        <option value="stylist">Stylist</option>
+                    </>
+                ) : (
+                    <>
+                        <option value="admin">Admin</option>
+                        <option value="cashier">Cashier</option>
+                        <option value="waiter">Waiter</option>
+                        <option value="kitchen">Kitchen</option>
+                    </>
+                )}
             </select>
 
             <select value={status} onChange={(e) => onChange("status", e.target.value)}>

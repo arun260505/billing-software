@@ -21,7 +21,16 @@ const TYPE_ICONS = {
   Delivery: "🛵"
 };
 
-function RecentOrders({ orders = [], loading = false, onRetry }) {
+// `title` / `subtitle` / `showType` let the salon dashboard show "Recent Bills"
+// without a service-type column (every salon bill is a counter bill).
+function RecentOrders({
+  orders = [],
+  loading = false,
+  onRetry,
+  title = "Recent Orders",
+  subtitle = "Latest activity across the restaurant",
+  showType = true
+}) {
   const navigate = useNavigate();
 
   const goToOrders = () => navigate("/admin/orders");
@@ -30,8 +39,8 @@ function RecentOrders({ orders = [], loading = false, onRetry }) {
     <div className="ad-card ad-recent">
       <div className="ad-card-head">
         <div>
-          <h3>Recent Orders</h3>
-          <span className="ad-card-sub">Latest activity across the restaurant</span>
+          <h3>{title}</h3>
+          <span className="ad-card-sub">{subtitle}</span>
         </div>
         <button className="ad-view-all" onClick={goToOrders}>
           View All <FaArrowRight />
@@ -62,7 +71,7 @@ function RecentOrders({ orders = [], loading = false, onRetry }) {
               <tr>
                 <th>Order ID</th>
                 <th>Time</th>
-                <th>Type</th>
+                {showType && <th>Type</th>}
                 <th className="num">Items</th>
                 <th>Amount</th>
                 <th>Payment</th>
@@ -82,14 +91,16 @@ function RecentOrders({ orders = [], loading = false, onRetry }) {
                         minute: "2-digit"
                       })}
                     </td>
-                    <td>
-                      <span className="ad-recent-type">
-                        {TYPE_ICONS[type] && (
-                          <span className="ad-recent-type-icon">{TYPE_ICONS[type]}</span>
-                        )}
-                        {type}
-                      </span>
-                    </td>
+                    {showType && (
+                      <td>
+                        <span className="ad-recent-type">
+                          {TYPE_ICONS[type] && (
+                            <span className="ad-recent-type-icon">{TYPE_ICONS[type]}</span>
+                          )}
+                          {type}
+                        </span>
+                      </td>
+                    )}
                     <td className="num">{Number(order.total_items || 0)}</td>
                     <td className="ad-recent-amt">{money(order.grand_total)}</td>
                     <td>

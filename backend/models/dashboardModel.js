@@ -54,6 +54,17 @@ const getSummary = (restaurantId, callback) => {
              WHERE restaurant_id = ? AND payment_status='Success'
              AND DATE(payment_date)=CURDATE()) AS other_amount,
 
+            -- Salon dashboard: distinct customers billed today, and stock
+            -- items at or below their reorder level.
+            (SELECT COUNT(DISTINCT customer_id) FROM orders
+             WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
+               AND customer_id IS NOT NULL
+               AND order_status <> 'Cancelled') AS customers_today,
+
+            (SELECT COUNT(*) FROM inventory_items
+             WHERE restaurant_id = ? AND deleted_at IS NULL
+               AND status = 'Active' AND quantity <= min_quantity) AS low_stock_items,
+
             (SELECT restaurant_name FROM restaurants WHERE id=?) AS restaurant_name,
 
             -- Opening hours and the open/closed switch live in BOTH tables, and
@@ -232,6 +243,48 @@ const getSalesChart = (period, restaurantId, callback) => {
 
 };
 
+// Salon: each stylist's day so far (tenant-scoped). Customers, bills and sales
+// count paid bills only; unpaid_bills shows what's still open at the desk. Every
+// active stylist is listed, including those with nothing yet, so the owner sees
+// who is idle; an inactive one appears only if they billed today.
+const getStylistBoard = (restaurantId, callback) => {
+
+    const sql = `
+        SELECT
+            u.id,
+            u.full_name,
+            COUNT(DISTINCT CASE WHEN o.order_status = 'Completed' THEN o.customer_id END) AS customers,
+            COALESCE(SUM(o.order_status = 'Completed'), 0) AS bills,
+            COALESCE(SUM(o.order_status = 'Pending'), 0) AS unpaid_bills,
+            COALESCE(SUM(CASE WHEN o.order_status = 'Completed' THEN o.grand_total END), 0) AS sales,
+            (SELECT COALESCE(SUM(oi.quantity), 0)
+               FROM order_items oi
+               JOIN orders o2 ON o2.id = oi.order_id
+              WHERE o2.stylist_id = u.id
+                AND o2.restaurant_id = u.restaurant_id
+                AND o2.order_status = 'Completed'
+                AND o2.deleted_at IS NULL
+                AND DATE(o2.created_at) = CURDATE()) AS services,
+            MAX(CASE WHEN o.order_status = 'Completed' THEN o.created_at END) AS last_bill_at
+        FROM users u
+        LEFT JOIN orders o
+               ON o.stylist_id = u.id
+              AND o.restaurant_id = u.restaurant_id
+              AND o.order_status IN ('Completed', 'Pending')
+              AND o.deleted_at IS NULL
+              AND DATE(o.created_at) = CURDATE()
+        WHERE u.restaurant_id = ?
+          AND u.role = 'stylist'
+          AND u.deleted_at IS NULL
+        GROUP BY u.id, u.full_name, u.status
+        HAVING u.status = 'Active' OR bills > 0
+        ORDER BY sales DESC, customers DESC, u.full_name ASC
+    `;
+
+    db.query(sql, [restaurantId], callback);
+
+};
+
 // Trivial heartbeat used by the Connection Status widget — verifies the
 // database connection is alive (tenant-agnostic).
 const ping = (callback) => {
@@ -245,5 +298,6 @@ module.exports = {
     getTopItems,
     getTableStatus,
     getSalesChart,
+    getStylistBoard,
     ping
 };

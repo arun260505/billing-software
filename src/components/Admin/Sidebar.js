@@ -1,25 +1,44 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import { isSalon } from "../../utils/businessType";
 import "../../styles/Admin/Sidebar.css";
+
+const RESTAURANT_MENUS = [
+  { name: "Dashboard", path: "/admin/dashboard" },
+  { name: "Restaurant", path: "/admin/restaurant" },
+  { name: "Employees", path: "/admin/employees" },
+  { name: "Menu", path: "/admin/menu" },
+  { name: "Categories", path: "/admin/categories" },
+  { name: "Tables", path: "/admin/tables" },
+  { name: "Customers", path: "/admin/customers" },
+  { name: "Orders", path: "/admin/orders" },
+  { name: "Charges", path: "/admin/charges" },
+  { name: "Billing", path: "/admin/billing" },
+  { name: "Kitchen Template", path: "/admin/kitchen-template" },
+  { name: "Reports", path: "/admin/reports" },
+  { name: "Settings", path: "/admin/settings" }
+];
+
+// A salon owner's panel: no tables, menu or kitchen. Services are the salon's
+// menu items, bills are its orders.
+const SALON_MENUS = [
+  { name: "Dashboard", path: "/admin/dashboard" },
+  { name: "Services", path: "/admin/services" },
+  { name: "Categories", path: "/admin/categories" },
+  { name: "Customers", path: "/admin/customers" },
+  { name: "Inventory", path: "/admin/inventory" },
+  { name: "Employees", path: "/admin/employees" },
+  { name: "Bills", path: "/admin/orders" },
+  { name: "Charges", path: "/admin/charges" },
+  { name: "Bill Format", path: "/admin/billing" },
+  { name: "Reports", path: "/admin/reports" },
+  { name: "Settings", path: "/admin/settings" }
+];
 
 function Sidebar({ isOpen }) {
   const location = useLocation();
 
-  const menus = [
-    { name: "Dashboard", path: "/admin/dashboard" },
-    { name: "Restaurant", path: "/admin/restaurant" },
-    { name: "Employees", path: "/admin/employees" },
-    { name: "Menu", path: "/admin/menu" },
-    { name: "Categories", path: "/admin/categories" },
-    { name: "Tables", path: "/admin/tables" },
-    { name: "Customers", path: "/admin/customers" },
-    { name: "Orders", path: "/admin/orders" },
-    { name: "Charges", path: "/admin/charges" },
-    { name: "Billing", path: "/admin/billing" },
-    { name: "Kitchen Template", path: "/admin/kitchen-template" },
-    { name: "Reports", path: "/admin/reports" },
-    { name: "Settings", path: "/admin/settings" }
-  ];
+  const menus = isSalon() ? SALON_MENUS : RESTAURANT_MENUS;
 
   return (
     <div className={`sidebar ${isOpen ? "" : "collapsed"}`}>

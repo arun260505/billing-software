@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { allAutoChargesFor, billTotals } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
+import { isSalon } from "../../utils/businessType";
 
 // A settled bill, opened for correction: adjust a quantity that was rung up
 // twice, drop an item that was never served, add one that was missed — then
@@ -63,7 +64,12 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
     );
     const pick = (mi) => { onAddItem(mi); setSearch(""); setAdding(false); };
 
-    const where = bill.table_name ? `Table ${bill.table_name}` : "Counter";
+    // A salon bill is identified by its customer and stylist, and holds services.
+    const salon = isSalon();
+    const noun = salon ? "service" : "item";
+    const where = salon
+        ? [bill.customer_name || "Walk-in", bill.stylist_name && `Stylist: ${bill.stylist_name}`].filter(Boolean).join(" · ")
+        : bill.table_name ? `Table ${bill.table_name}` : "Counter";
 
     return (
         <div className="tbill-overlay" onClick={onClose}>
@@ -79,7 +85,7 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
 
                 <div className="tbill-body">
                     {groups.length === 0 ? (
-                        <p className="tbill-empty">No items on this bill.</p>
+                        <p className="tbill-empty">No {noun}s on this bill.</p>
                     ) : (
                         groups.map((g) => (
                             <div key={g.key} className="tbill-row">
@@ -98,8 +104,8 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                                         className="tbill-del"
                                         disabled={busy || groups.length === 1}
                                         title={groups.length === 1
-                                            ? "A bill must keep at least one item"
-                                            : "Remove this item"}
+                                            ? `A bill must keep at least one ${noun}`
+                                            : `Remove this ${noun}`}
                                         onClick={() => onRemoveGroup(g.rows)}
                                     >✕</button>
                                 </div>
@@ -111,7 +117,7 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                         <div className="tbill-add">
                             <input
                                 className="tbill-add-search"
-                                placeholder="Search item to add…"
+                                placeholder={`Search ${noun} to add…`}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 autoFocus
@@ -119,7 +125,9 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                             <div className="tbill-add-list">
                                 {addable.length === 0 ? (
                                     <p className="tbill-empty">
-                                        {(menuItems || []).length === 0 ? "Loading menu…" : "No matching items."}
+                                        {(menuItems || []).length === 0
+                                            ? (salon ? "Loading services…" : "Loading menu…")
+                                            : `No matching ${noun}s.`}
                                     </p>
                                 ) : (
                                     addable.slice(0, 30).map((mi) => (
@@ -135,7 +143,7 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                         </div>
                     ) : (
                         <button className="tbill-add-toggle" disabled={busy} onClick={() => setAdding(true)}>
-                            ＋ Add a missed item
+                            ＋ Add a missed {noun}
                         </button>
                     )}
                 </div>

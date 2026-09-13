@@ -1,10 +1,16 @@
 # InWallz Billing Software — Project Status
 
-A multi-tenant restaurant POS (Point of Sale). Each restaurant's data is isolated
-by `restaurant_id`, taken from the logged-in user's JWT and never trusted from the
-request body.
+A multi-tenant POS (Point of Sale) for **restaurants and salons**. Each business's
+data is isolated by `restaurant_id`, taken from the logged-in user's JWT and never
+trusted from the request body. (The column keeps the name `restaurant_id` for
+both kinds of business.)
 
-_Last updated: 2026-09-05_
+_Last updated: 2026-09-13_
+
+> **Salons:** a business is either a restaurant or a salon, chosen by the super
+> admin and locked afterwards. Salons get their own owner panel, a receptionist
+> billing screen, customer management and inventory.
+> Full details: **[SALON_MODULE.md](SALON_MODULE.md)**.
 
 ---
 
@@ -69,6 +75,17 @@ Usernames are per-restaurant, e.g. `ravikumar_waiter@<restaurant>`.
 | waiter     | Takes table orders (mobile-first UI)       | `*_waiter@<restaurant>`        |
 | cashier    | Billing + counter orders (desktop POS)     | `*_cashier@<restaurant>`       |
 | kitchen    | Kitchen display                            | `kitchen@inwallz` / `Kitchen@123` |
+
+**Salons** have two roles that log in: **Owner** (stored as `admin`) and
+**Receptionist** (stored as `cashier`, username `*_receptionist@<salon>`). They
+also have **Stylists** (`role = 'stylist'`): added by name only, never able to
+sign in, and required on every salon bill. The backend refuses any other role for
+a salon.
+
+| Local dev demo salon "Glow Salon" | Username | Password |
+|---|---|---|
+| Owner        | `glowowner` | `Glow@2026` |
+| Receptionist | `priya_receptionist@glowsalon` | `Desk@2026` |
 
 ---
 
@@ -218,8 +235,18 @@ dialog — they are previews, not till prints.
 | `PUT  /api/printer-settings`           | Change the printer setup (admin only)    |
 | `PUT  /api/printer-settings/devices`   | Set the till's printers (cashier/admin)  |
 | `GET  /api/system/printers`            | Printers installed on the server PC      |
+| `GET  /api/customers/search?q=`        | Customer suggestions while billing (3+ digits / 2+ letters) |
+| `POST /api/customers/resolve`          | Find a customer by mobile, or create them |
+| `GET  /api/customers/:id/history`      | A customer's bills                       |
+| `GET  /api/inventory` (+ `/summary`, `/movements`) | Stock items and the movement log (admin) |
+| `POST /api/inventory/:id/stock`        | Stock In / Out / Adjust (admin)          |
+| `GET  /api/employees/stylists`         | Salon stylists for the billing dropdown (admin, cashier) |
+| `GET  /api/dashboard/stylists`         | Live per-stylist board for today (admin) |
 
-All are tenant-scoped (`restaurant_id` from the JWT).
+All are tenant-scoped (`restaurant_id` from the JWT). Table, kitchen, KOT and
+running-order endpoints additionally refuse a **salon** login
+(`middleware/businessTypeMiddleware.js`). See [SALON_MODULE.md](SALON_MODULE.md)
+for the full salon API.
 
 ---
 
@@ -232,6 +259,8 @@ All are tenant-scoped (`restaurant_id` from the JWT).
 | `006_printer_settings.sql`             | Adds `printer_settings` (the printer setup) |
 | `007_printer_devices.sql`              | Adds `cashier_printer`/`kitchen_printer` to it |
 | `008_order_charges.sql`                | Adds `order_charges` + `orders.charges_total` |
+| `013_business_type_inventory.sql`      | Adds `restaurants.business_type` + `inventory_items` / `inventory_movements` |
+| `014_order_stylist.sql`                | Adds `orders.stylist_id` (the stylist on a salon bill) |
 
 Apply any not already in the DB dump. Two files share the `003_` prefix
 (`003_charges.sql`, `003_order_service_charge.sql`) — they touch different
@@ -317,6 +346,13 @@ restaurant, orphans deferred).
 ---
 
 ## Known follow-ups / ideas
+
+- **Salon module:** still needs a hands-on click-through and a run on the exe
+  till before release. Deploy the **cloud before the exe**: a new till's order
+  push carries `stylist_id`, which an old cloud rejects (see SALON_MODULE.md §6.8, §8).
+- **Reports page** (both types) was fixed on 2026-09-13: single-tab cards were
+  collapsing, Overview had gaps, and every admin page overflowed on phones
+  (SALON_MODULE.md §7).
 
 - **Parcel** was removed from the cashier (a new idea is planned for it).
 - **Counter cards** on the kitchen are limited to *today's* orders.
