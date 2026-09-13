@@ -144,6 +144,24 @@ async function runSyncSchema() {
             console.error("orders order_number index reshape skipped:", e.message);
         }
     }
+    // 017: same story as order numbers (015) for payment numbers. PAY-YYYYMMDD-
+    // NNNN restarts per business each day, so two businesses' first payment of a
+    // day share PAY-...-0001. A GLOBAL unique index on payment_number made the
+    // second business's payment collide on the cloud. Make it per-restaurant.
+    if (await tableExists("payments")) {
+        try {
+            if (!(await indexExists("payments", "uq_payments_restaurant_payment"))) {
+                await db.query(
+                    "ALTER TABLE payments ADD UNIQUE INDEX uq_payments_restaurant_payment (restaurant_id, payment_number)"
+                );
+            }
+            if (await indexExists("payments", "payment_number")) {
+                await db.query("ALTER TABLE payments DROP INDEX payment_number");
+            }
+        } catch (e) {
+            console.error("payments payment_number index reshape skipped:", e.message);
+        }
+    }
     if (await tableExists("order_items")) {
         await ensureColumn("order_items", "served", "TINYINT(1) NOT NULL DEFAULT 0");
     }
