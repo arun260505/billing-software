@@ -84,7 +84,7 @@ function RecentOrders({
                 const type = order.order_type || "—";
                 return (
                   <tr key={order.id} onClick={goToOrders} title="Open Orders">
-                    <td className="ad-recent-id">#{order.id}</td>
+                    <td className="ad-recent-id">{order.order_number}</td>
                     <td>
                       {new Date(order.created_at).toLocaleTimeString([], {
                         hour: "2-digit",
