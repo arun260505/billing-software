@@ -315,10 +315,26 @@ const updateAdmin = (req, res) => {
                 });
             }
 
-            res.json({
-                success: true,
-                message: "Admin updated successfully."
-            });
+            // The bill / settings shop number comes from restaurants.mobile (and
+            // the owner name from restaurants.owner_name), so mirror the change
+            // there too — otherwise editing the number here left bills on the old
+            // one. Scoped to this admin's restaurant.
+            db.query(
+                `UPDATE restaurants
+                    SET mobile = COALESCE(?, mobile),
+                        owner_name = ?
+                  WHERE id = (SELECT restaurant_id FROM users WHERE id = ?)`,
+                [phone || null, name, id],
+                (rErr) => {
+                    if (rErr) {
+                        return res.status(500).json({ success: false, message: rErr.message });
+                    }
+                    res.json({
+                        success: true,
+                        message: "Admin updated successfully."
+                    });
+                }
+            );
 
         }
     );

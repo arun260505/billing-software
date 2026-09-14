@@ -1,9 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getDayState, openDay, closeDay, getDaySummary } from "../services/dayService";
 import authService from "../services/authService";
-import {
-    whatsappNumber, whatsappUrl, openWhatsApp, getWhatsAppOverride, effectiveVia
-} from "../utils/whatsappBill";
+import { openWhatsApp } from "../utils/whatsappBill";
 import "../styles/DayControl.css";
 
 // Open / close the BUSINESS day (cash-up). A day runs from Open until Close, so
@@ -23,12 +21,6 @@ function fmtDate(d) {
     const dt = new Date(d + "T00:00:00");
     return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
-
-// The report goes to a number remembered on this till (asked once), so it opens
-// straight into that chat — the same way a bill opens the customer's chat.
-const REPORT_TO_KEY = "inwallz_day_report_to";
-const getReportTo = () => { try { return window.localStorage.getItem(REPORT_TO_KEY) || ""; } catch (e) { return ""; } };
-const setReportTo = (v) => { try { window.localStorage.setItem(REPORT_TO_KEY, v); } catch (e) { /* ignore */ } };
 
 // The Z-report as a WhatsApp message.
 function buildDayReport(s, shopName, dateStr) {
@@ -126,21 +118,10 @@ function useDay() {
         const shop = authService.getUser?.()?.restaurant_name;
         const text = buildDayReport(summary, shop, dateStr);
         if (!text) return;
-        // Same as a bill: send to a number (remembered on this till, asked once)
-        // via whatsappUrl(phone, text, via) so it opens straight into the chat —
-        // no browser "Share on WhatsApp" landing page.
-        let phone = whatsappNumber(getReportTo());
-        if (!phone) {
-            const typed = window.prompt("Send the day report to which WhatsApp number? (this is saved, asked only once)", getReportTo());
-            if (typed === null) return;
-            phone = whatsappNumber(typed);
-            if (!phone) { window.alert("That doesn't look like a valid mobile number."); return; }
-            setReportTo(String(typed).trim());
-        }
-        const via = effectiveVia(getWhatsAppOverride(), "web");
-        if (!openWhatsApp(whatsappUrl(phone, text, via), via)) {
-            window.alert("WhatsApp didn't open — allow pop-ups for this page, then try again.");
-        }
+        // Open the WhatsApp desktop app directly via its own handler, with the
+        // report typed in — no number to enter and no browser "Share on WhatsApp"
+        // landing page. They pick the chat in the app.
+        openWhatsApp("whatsapp://send?text=" + encodeURIComponent(text), "app");
     }, []);
 
     return {
