@@ -12,6 +12,13 @@ export function isNativeApp() {
     return Boolean(window.Capacitor?.isNativePlatform?.());
 }
 
+// The salon-owner alerts app is the same React bundle built with
+// REACT_APP_TARGET=owner. It talks to the cloud (baked REACT_APP_API_URL) and
+// works on ANY network, so it must skip the LAN/WiFi gates the till apps use.
+export function isOwnerApp() {
+    return process.env.REACT_APP_TARGET === "owner";
+}
+
 export function getStoredServer() {
     try {
         return localStorage.getItem(HOST_KEY) || null;

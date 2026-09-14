@@ -1,0 +1,8 @@
+{
+  "appId": "com.inwallz.billing",
+  "appName": "InWallz Billing",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

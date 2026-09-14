@@ -1,0 +1,8 @@
+# Generated / heavy artifacts for the owner app Capacitor shell.
+# The android/ project is produced by build-owner-apk.ps1 (copied from the
+# proven ../android config, then rebranded), so it is not tracked.
+node_modules/
+www/
+android/
+assets/
+package-lock.json

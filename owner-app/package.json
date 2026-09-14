@@ -1,0 +1,13 @@
+{
+  "name": "inwallz-billing-owner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "InWallz Billing — salon owner alerts app (Capacitor shell). Wraps the owner-mode React build and talks to the cloud.",
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/local-notifications": "^8.3.1"
+  }
+}

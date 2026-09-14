@@ -1,0 +1,237 @@
+/* Salon-owner alerts app — mobile-first, self-contained styling. */
+
+.own-login,
+.own-home {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: #0f1115;
+    color: #e9ecf1;
+    font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Login ---------- */
+.own-login {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: radial-gradient(120% 80% at 50% 0%, #1c2233 0%, #0f1115 60%);
+}
+.own-login-card {
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+}
+.own-logo {
+    width: 92px;
+    height: 92px;
+    object-fit: contain;
+    margin: 0 auto 14px;
+    display: block;
+}
+.own-brand {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+.own-sub {
+    margin: 4px 0 26px;
+    color: #8a93a6;
+    font-size: 14px;
+}
+.own-login form {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.own-login label {
+    font-size: 12px;
+    color: #8a93a6;
+    margin-top: 10px;
+}
+.own-login input {
+    background: #191d27;
+    border: 1px solid #2a3040;
+    border-radius: 12px;
+    padding: 14px;
+    color: #fff;
+    font-size: 16px;
+    outline: none;
+}
+.own-login input:focus {
+    border-color: #4f7cff;
+}
+.own-login button {
+    margin-top: 22px;
+    background: linear-gradient(180deg, #4f7cff, #3a63e0);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.own-login button:disabled { opacity: 0.6; }
+.own-err {
+    margin-top: 12px;
+    background: #3a1d22;
+    border: 1px solid #6b2c34;
+    color: #ffb4be;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+}
+
+/* ---------- Header ---------- */
+.own-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 16px 14px;
+    padding-top: calc(16px + env(safe-area-inset-top));
+    background: #151a24;
+    border-bottom: 1px solid #232a38;
+}
+.own-header-logo {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+    border-radius: 9px;
+}
+.own-header-txt { flex: 1; min-width: 0; }
+.own-header-title { font-size: 17px; font-weight: 800; }
+.own-header-sub {
+    font-size: 12px;
+    color: #8a93a6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.own-logout {
+    background: #232a38;
+    border: none;
+    color: #cdd4e0;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+/* ---------- Scroll body ---------- */
+.own-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px calc(24px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+}
+
+.own-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.own-pill {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 12px;
+    border-radius: 999px;
+}
+.own-pill.open { background: #10331f; color: #66e29a; }
+.own-pill.closed { background: #2a2f3a; color: #9aa4b6; }
+.own-refresh {
+    background: #232a38;
+    border: none;
+    color: #cdd4e0;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+}
+.own-refresh:disabled { opacity: 0.5; }
+
+/* ---------- Cards ---------- */
+.own-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+.own-card {
+    background: #171c26;
+    border: 1px solid #232a38;
+    border-radius: 16px;
+    padding: 16px;
+}
+.own-card.accent {
+    background: linear-gradient(160deg, #1d2740, #171c26);
+    border-color: #2c3a5c;
+}
+.own-card-label { font-size: 12px; color: #8a93a6; }
+.own-card-value { font-size: 26px; font-weight: 800; margin: 6px 0 4px; }
+.own-card-value.warn { color: #ffb454; }
+.own-card-foot { font-size: 12px; color: #778196; }
+
+/* ---------- Sections ---------- */
+.own-section { margin-top: 20px; }
+.own-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #8a93a6;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 10px;
+}
+.own-empty {
+    background: #171c26;
+    border: 1px dashed #2a3140;
+    border-radius: 14px;
+    padding: 16px;
+    color: #8a93a6;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.own-lowrow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #171c26;
+    border: 1px solid #232a38;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+}
+.own-lowname { font-size: 15px; font-weight: 600; }
+.own-lowqty { font-size: 13px; color: #ffb454; font-weight: 700; }
+.own-lowqty.out { color: #ff6b7a; }
+
+/* ---------- Alerts feed ---------- */
+.own-alert {
+    display: flex;
+    gap: 12px;
+    background: #171c26;
+    border: 1px solid #232a38;
+    border-radius: 14px;
+    padding: 13px 14px;
+    margin-bottom: 9px;
+}
+.own-alert-icon { font-size: 20px; line-height: 1.2; }
+.own-alert-body { flex: 1; min-width: 0; }
+.own-alert-title { font-size: 15px; font-weight: 700; }
+.own-alert-text { font-size: 13px; color: #b7c0d0; margin-top: 3px; line-height: 1.45; }
+.own-alert-time { font-size: 11px; color: #6b7488; margin-top: 5px; }
+
+.own-foot {
+    text-align: center;
+    color: #5c657a;
+    font-size: 12px;
+    margin-top: 18px;
+}

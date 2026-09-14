@@ -3,7 +3,8 @@ import NetworkGate from "./components/NetworkGate";
 import WifiGuard from "./components/WifiGuard";
 import ServerConfig from "./components/ServerConfig";
 import AppNotify, { installAlertBridge } from "./components/AppNotify";
-import { isNativeApp, getStoredServer, hasBakedApiUrl, isManualMode } from "./services/serverConfig";
+import OwnerApp from "./ownerApp/OwnerApp";
+import { isNativeApp, getStoredServer, hasBakedApiUrl, isManualMode, isOwnerApp } from "./services/serverConfig";
 
 // Every window.alert() in the app now shows as a tidy in-app popup (AppNotify)
 // instead of the browser's "localhost:5050 says …" box. Installed once, here.
@@ -16,7 +17,13 @@ function App() {
     // render the app directly — no setup, no gate (a false block there would
     // lock the admin out for nothing).
     let inner;
-    if (isNativeApp()) {
+    if (isNativeApp() && isOwnerApp()) {
+
+        // Salon-owner alerts app: cloud-connected, works on ANY network, so it
+        // skips the LAN discovery and same-WiFi gates entirely. Self-contained
+        // login + dashboard + alert polling.
+        inner = <OwnerApp />;
+    } else if (isNativeApp()) {
 
         // Cloud APK (URL baked in): connects to the cloud but must be on the
         // same WiFi as the cashier — WifiGuard enforces that and blocks on
