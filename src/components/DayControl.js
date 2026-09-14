@@ -1,16 +1,18 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getDayState, openDay, closeDay, getDaySummary } from "../services/dayService";
+import authService from "../services/authService";
+import {
+    whatsappNumber, whatsappUrl, openWhatsApp, getWhatsAppOverride, effectiveVia
+} from "../utils/whatsappBill";
 import "../styles/DayControl.css";
 
-// Open/close the business day (cash-up). Three ways in:
-//   <DayProvider gate>   wrap a POS: blocks billing until the day is open, shows
-//                        the open/pending/closed prompts + the cash-up modal.
-//   <DayProvider gate={false}>  owner panel: only the forgot-to-close pop-up.
-//   <DayButton />        a button inside a DayProvider (reads its context).
-//   <HeaderDayButton />  a SELF-CONTAINED Open/Close button for the admin top
-//                        bar (next to Logout) — fetches its own state, no
-//                        provider needed. Owner/admin only (that's who sees the
-//                        header). Never a browser alert.
+// Open / close the BUSINESS day (cash-up). A day runs from Open until Close, so
+// after-midnight sales stay on the still-open day and reopening continues it.
+//   <DayProvider gate>            a POS: blocks billing until a day is open, shows
+//                                 the open prompt + the forgot-to-close notice.
+//   <DayButton />                 a button inside a DayProvider (POS header).
+//   <HeaderDayButton />           self-contained Open/Close for the owner top bar,
+//                                 with its own notice + cash-up (no provider).
 
 const DayCtx = createContext(null);
 
@@ -20,6 +22,31 @@ function fmtDate(d) {
     if (!d) return "";
     const dt = new Date(d + "T00:00:00");
     return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+const REPORT_TO_KEY = "inwallz_day_report_to";
+const getReportTo = () => { try { return window.localStorage.getItem(REPORT_TO_KEY) || ""; } catch (e) { return ""; } };
+const setReportTo = (v) => { try { window.localStorage.setItem(REPORT_TO_KEY, v); } catch (e) { /* ignore */ } };
+
+// The Z-report as a WhatsApp message.
+function buildDayReport(s, shopName, dateStr) {
+    if (!s) return "";
+    const L = [];
+    L.push(`*${(shopName || "InWallz").trim()} — Day Sales Report*`);
+    if (dateStr) L.push(fmtDate(dateStr));
+    L.push("");
+    L.push(`Bills: ${s.bill_count}`);
+    L.push(`Gross sales: ${rupee(s.gross_sales)}`);
+    if (Number(s.discount_total) > 0) L.push(`Discount: -${rupee(s.discount_total)}`);
+    if (Number(s.tax_total) > 0) L.push(`Tax / charges: ${rupee(s.tax_total)}`);
+    L.push(`*Net sales: ${rupee(s.net_sales)}*`);
+    L.push("");
+    L.push(`Cash: ${rupee(s.cash_total)}`);
+    L.push(`Card: ${rupee(s.card_total)}`);
+    L.push(`UPI: ${rupee(s.upi_total)}`);
+    if (Number(s.other_total) > 0) L.push(`Other: ${rupee(s.other_total)}`);
+    L.push(`*Collected: ${rupee(s.collected_total)}*`);
+    return L.join("\n");
 }
 
 function SummaryRows({ s }) {
@@ -42,8 +69,6 @@ function SummaryRows({ s }) {
     );
 }
 
-// All the day state + actions, so a POS provider and a standalone header button
-// can share one implementation.
 function useDay() {
     const [state, setState] = useState(null);
     const [busy, setBusy] = useState(false);
@@ -52,61 +77,86 @@ function useDay() {
     const [confirming, setConfirming] = useState(false);
     const [counted, setCounted] = useState("");
     const [notes, setNotes] = useState("");
-    const [todaySummary, setTodaySummary] = useState(null);
+    const [modalSummary, setModalSummary] = useState(null);
+    const [staleDismissed, setStaleDismissed] = useState(false);
 
     const refresh = useCallback(async () => {
         try { const res = await getDayState(); setState(res.data?.data || null); }
         catch (e) { setState({ error: true }); }
     }, []);
 
-    useEffect(() => { refresh(); }, [refresh]);
+    // Re-check on mount, when the window regains focus (e.g. after the PC wakes /
+    // the app is reopened), and once a minute — so the "close or keep billing"
+    // notice appears after midnight or after a restart, not only on a manual reload.
+    useEffect(() => {
+        refresh();
+        const t = setInterval(refresh, 60000);
+        const onFocus = () => refresh();
+        window.addEventListener("focus", onFocus);
+        return () => { clearInterval(t); window.removeEventListener("focus", onFocus); };
+    }, [refresh]);
 
     const openCloseModal = useCallback(async () => {
-        setShowClose(true); setConfirming(false); setErr(""); setTodaySummary(null);
-        setCounted(""); setNotes("");
-        // Pull the day's live totals so the cashier can check the collection.
-        try {
-            const r = await getDaySummary();
-            setTodaySummary(r.data?.data?.summary || null);
-        } catch (e) { /* leave loading — never blocks the close */ }
+        setShowClose(true); setConfirming(false); setErr(""); setModalSummary(null); setCounted(""); setNotes("");
+        try { const r = await getDaySummary(); setModalSummary(r.data?.data?.summary || null); }
+        catch (e) { /* leave loading */ }
     }, []);
 
     const doOpen = useCallback(async () => {
         setBusy(true); setErr("");
-        try { await openDay(); await refresh(); }
+        try { await openDay(); setStaleDismissed(false); await refresh(); }
         catch (e) { setErr(e.response?.data?.message || "Could not open the day."); }
         finally { setBusy(false); }
     }, [refresh]);
 
-    const doClose = useCallback(async (date) => {
+    const doClose = useCallback(async () => {
         setBusy(true); setErr("");
         try {
-            await closeDay({ date, counted_cash: counted === "" ? null : Number(counted), notes });
-            setShowClose(false); setConfirming(false); setCounted(""); setNotes("");
+            await closeDay({ counted_cash: counted === "" ? null : Number(counted), notes });
+            setShowClose(false); setConfirming(false); setCounted(""); setNotes(""); setStaleDismissed(false);
             await refresh();
         } catch (e) {
             setErr(e.response?.data?.message || "Could not close the day.");
         } finally { setBusy(false); }
     }, [counted, notes, refresh]);
 
+    const shareReport = useCallback((summary, dateStr) => {
+        const shop = authService.getUser?.()?.restaurant_name;
+        const text = buildDayReport(summary, shop, dateStr);
+        if (!text) return;
+        let phone = whatsappNumber(getReportTo());
+        if (!phone) {
+            const typed = window.prompt("Send the day report to which WhatsApp number? (10 digits with country code if outside India)", getReportTo());
+            if (typed === null) return;
+            phone = whatsappNumber(typed);
+            if (!phone) { window.alert("That doesn't look like a valid mobile number."); return; }
+            setReportTo(String(typed).trim());
+        }
+        const via = effectiveVia(getWhatsAppOverride(), "web");
+        if (!openWhatsApp(whatsappUrl(phone, text, via), via)) {
+            window.alert("WhatsApp didn't open — allow pop-ups for this page, then try again.");
+        }
+    }, []);
+
     return {
         state, busy, err, showClose, setShowClose, confirming, setConfirming,
-        counted, setCounted, notes, setNotes, todaySummary,
-        refresh, openCloseModal, doOpen, doClose
+        counted, setCounted, notes, setNotes, modalSummary,
+        staleDismissed, setStaleDismissed, refresh, openCloseModal, doOpen, doClose, shareReport
     };
 }
 
-// The cash-up modal (opened from a Close Day button). Two-step confirm.
+// The cash-up + Z-report modal. Two-step confirm; WhatsApp share of the report.
 function CashUpModal({ day }) {
     const { state, busy, err, showClose, setShowClose, confirming, setConfirming,
-        counted, setCounted, notes, setNotes, todaySummary, doClose } = day;
+        counted, setCounted, notes, setNotes, modalSummary, doClose, shareReport } = day;
     if (!showClose || !state || state.error) return null;
+    const dateStr = state.active_date || state.today;
     return (
         <div className="dayctl-overlay" onClick={() => !busy && setShowClose(false)}>
             <div className="dayctl-modal" onClick={(e) => e.stopPropagation()}>
-                <h3>Close {fmtDate(state.date)}</h3>
-                <p className="dayctl-sub">Check the collection before closing.</p>
-                <SummaryRows s={todaySummary} />
+                <h3>Close {fmtDate(dateStr)}</h3>
+                <p className="dayctl-sub">Check the collection, share the report, then close.</p>
+                <SummaryRows s={modalSummary} />
                 <label className="dayctl-field">
                     <span>Cash counted (optional)</span>
                     <input type="number" min="0" inputMode="decimal" placeholder="Count the drawer"
@@ -118,6 +168,12 @@ function CashUpModal({ day }) {
                         value={notes} onChange={(e) => setNotes(e.target.value)} disabled={busy} />
                 </label>
                 {err && <div className="dayctl-err">{err}</div>}
+
+                <button className="dayctl-share" disabled={busy || !modalSummary}
+                    onClick={() => shareReport(modalSummary, dateStr)}>
+                    💬 Send report on WhatsApp
+                </button>
+
                 {!confirming ? (
                     <div className="dayctl-actions">
                         <button className="dayctl-ghost" disabled={busy} onClick={() => setShowClose(false)}>Cancel</button>
@@ -125,10 +181,10 @@ function CashUpModal({ day }) {
                     </div>
                 ) : (
                     <div className="dayctl-confirm">
-                        <p>Close the day now? You'll need to <b>open the day again tomorrow</b> before billing.</p>
+                        <p>Close {fmtDate(dateStr)} now? You'll need to <b>open the day again</b> before billing next.</p>
                         <div className="dayctl-actions">
                             <button className="dayctl-ghost" disabled={busy} onClick={() => setConfirming(false)}>Back</button>
-                            <button className="dayctl-primary" disabled={busy} onClick={() => doClose(state.date)}>
+                            <button className="dayctl-primary" disabled={busy} onClick={doClose}>
                                 {busy ? "Closing…" : "Yes, close the day"}
                             </button>
                         </div>
@@ -139,98 +195,93 @@ function CashUpModal({ day }) {
     );
 }
 
+// The forgot-to-close notice: the day was opened on an earlier date and never
+// closed. Not a hard block — they can close it or keep billing (which keeps
+// adding to that earlier day, never colliding with a new one).
+function StaleNotice({ day }) {
+    const { state, busy, err, openCloseModal, staleDismissed, setStaleDismissed } = day;
+    if (!state || state.error || !state.is_open || !state.stale || staleDismissed) return null;
+    return (
+        <div className="dayctl-overlay">
+            <div className="dayctl-modal">
+                <h3>Close {fmtDate(state.active_date)}?</h3>
+                <p className="dayctl-sub">
+                    This day was opened on {fmtDate(state.active_date)} and hasn't been closed. Its sales are still
+                    running. Close it to finish that day, or keep billing — new sales stay on {fmtDate(state.active_date)} until you close it.
+                </p>
+                <SummaryRows s={state.summary} />
+                {err && <div className="dayctl-err">{err}</div>}
+                <div className="dayctl-actions">
+                    <button className="dayctl-ghost" disabled={busy} onClick={() => setStaleDismissed(true)}>Keep billing</button>
+                    <button className="dayctl-primary" disabled={busy} onClick={openCloseModal}>Close {fmtDate(state.active_date)}</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function DayProvider({ gate = true, children }) {
     const day = useDay();
-    const { state, busy, err, doClose, doOpen, openCloseModal } = day;
+    const { state, busy, err, doOpen, openCloseModal } = day;
     const ready = state && !state.error;
 
     return (
         <DayCtx.Provider value={{ state: ready ? state : null, openCloseModal }}>
             {children}
 
-            {/* 1) A past day with sales was never closed — clear it first. */}
-            {ready && state.pending_date && (
-                <div className="dayctl-overlay">
-                    <div className="dayctl-modal">
-                        <h3>Close {fmtDate(state.pending_date)} sales</h3>
-                        <p className="dayctl-sub">This day wasn't closed. Review the totals and close it to continue.</p>
-                        <SummaryRows s={state.pending_summary} />
-                        {err && <div className="dayctl-err">{err}</div>}
-                        <button className="dayctl-primary" disabled={busy} onClick={() => doClose(state.pending_date)}>
-                            {busy ? "Closing…" : `Close ${fmtDate(state.pending_date)}`}
-                        </button>
-                    </div>
-                </div>
-            )}
+            {/* Forgot-to-close notice (POS + owner). */}
+            {ready && <StaleNotice day={day} />}
 
-            {/* 2) Today closed (POS only) — done for the day, with a Reopen. */}
-            {ready && gate && !state.pending_date && state.is_closed && (
+            {/* POS only: no day open → must open before billing. */}
+            {ready && gate && !state.is_open && !state.stale && (
                 <div className="dayctl-overlay">
                     <div className="dayctl-modal">
-                        <h3>Day closed</h3>
-                        <p className="dayctl-sub">Today's sales are closed. Open the day again only if you need to keep billing.</p>
+                        <h3>{state.started_today ? "Day closed" : "Open the day"}</h3>
+                        <p className="dayctl-sub">
+                            {state.started_today
+                                ? "Today's sales are closed. Open the day again to keep billing."
+                                : "Open the day to start billing."}
+                        </p>
                         {err && <div className="dayctl-err">{err}</div>}
                         <button className="dayctl-primary" disabled={busy} onClick={doOpen}>
-                            {busy ? "Opening…" : "Open the day again"}
+                            {busy ? "Opening…" : state.started_today ? "Open the day again" : "Open day"}
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* 3) Today not opened (POS only) — open before billing. */}
-            {ready && gate && !state.pending_date && state.status === "none" && (
-                <div className="dayctl-overlay">
-                    <div className="dayctl-modal">
-                        <h3>Open the day</h3>
-                        <p className="dayctl-sub">Open {fmtDate(state.date)} to start billing.</p>
-                        {err && <div className="dayctl-err">{err}</div>}
-                        <button className="dayctl-primary" disabled={busy} onClick={doOpen}>
-                            {busy ? "Opening…" : "Open day"}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* 4) Cash-up modal, opened from a Close Day button. */}
             <CashUpModal day={day} />
         </DayCtx.Provider>
     );
 }
 
-// A button inside a DayProvider (reads its context). Shows "Close Day" while the
-// day is open; hidden once today is closed (the provider's prompt handles that).
+// A button inside a DayProvider (POS header): "Close Day" while a day is open.
 export function DayButton({ className = "pos-dayclose" }) {
     const ctx = useContext(DayCtx);
-    if (!ctx || !ctx.state) return null;
-    if (ctx.state.is_closed) return null;
+    if (!ctx || !ctx.state || !ctx.state.is_open) return null;
     return (
-        <button type="button" className={className} onClick={ctx.openCloseModal}>
-            Close Day
-        </button>
+        <button type="button" className={className} onClick={ctx.openCloseModal}>Close Day</button>
     );
 }
 
-// A self-contained Open/Close Day control for the admin top bar (next to
-// Logout). Needs no DayProvider — it fetches its own state and carries its own
-// cash-up modal. "Close Day" while open; "Open Day" once closed, so the owner
-// can do both from the header. Renders nothing until the state is known, so a
-// blip never leaves a dead button in the bar.
+// Self-contained Open/Close for the owner top bar (next to Logout): "Close Day"
+// while open, "Open Day" once closed — plus its own forgot-to-close notice and
+// cash-up modal. Renders nothing until the state is known.
 export function HeaderDayButton({ className = "header-dayclose" }) {
     const day = useDay();
     const { state, busy, openCloseModal, doOpen } = day;
     if (!state || state.error) return null;
-
-    const closed = state.is_closed;
     return (
         <>
             <button
                 type="button"
-                className={`${className}${closed ? " is-open-action" : ""}`}
+                className={`${className}${state.is_open ? "" : " is-open-action"}`}
                 disabled={busy}
-                onClick={closed ? doOpen : openCloseModal}
+                onClick={state.is_open ? openCloseModal : doOpen}
             >
-                {closed ? (busy ? "Opening…" : "Open Day") : "Close Day"}
+                {state.is_open ? "Close Day" : (busy ? "Opening…" : "Open Day")}
             </button>
+            <StaleNotice day={day} />
             <CashUpModal day={day} />
         </>
     );

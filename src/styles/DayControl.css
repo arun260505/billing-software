@@ -90,6 +90,23 @@
 }
 .dayctl-field input:focus { outline: none; border-color: #2563eb; }
 
+/* Send the Z-report on WhatsApp (Close Day). */
+.dayctl-share {
+    width: 100%;
+    height: 46px;
+    margin-bottom: 12px;
+    border: 1px solid #16a34a;
+    border-radius: 10px;
+    background: #fff;
+    color: #15803d;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+}
+.dayctl-share:hover { background: #f0fdf4; }
+.dayctl-share:disabled { opacity: .55; cursor: default; }
+
 .dayctl-actions { display: flex; gap: 10px; }
 .dayctl-primary {
     flex: 1;

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import AdminLayout from "../../layouts/AdminLayout";
-import { DayProvider } from "../../components/DayControl";
 import DashboardCard from "../../components/Admin/DashboardCard";
 import SalesChart from "../../components/Admin/SalesChart";
 import PaymentSummary from "../../components/Admin/PaymentSummary";
@@ -182,9 +181,6 @@ function Dashboard() {
 
   return (
     <AdminLayout>
-      {/* Owner can close the business day (or a day the cashier forgot). No
-          gating here — the panel isn't a billing screen. */}
-      <DayProvider gate={false}>
       <div className="dashboard-content ad-dashboard">
 
         {/* Page title */}
@@ -301,7 +297,6 @@ function Dashboard() {
         )}
 
       </div>
-      </DayProvider>
     </AdminLayout>
   );
 }
