@@ -14,6 +14,7 @@ import MenuCard from "../../components/Waiter/MenuCard";
 import CartItem from "../../components/Waiter/CartItem";
 import BillModal from "../../components/Cashier/BillModal";
 import TableBillModal from "../../components/Cashier/TableBillModal";
+import DayControl from "../../components/DayControl";
 import MenuAvailability from "../../components/Cashier/MenuAvailability";
 import BillsHistory from "../../components/Cashier/BillsHistory";
 import PrinterSetup from "../../components/Cashier/PrinterSetup";
@@ -1000,6 +1001,10 @@ function Dashboard() {
     // ── Render (desktop POS) ────────────────────────────────────────
     return (
         <div className="cashier-app pos">
+
+            {/* Open/close the business day (cash-up). Blocks billing until the
+                day is opened; pops the previous day's close if it was forgotten. */}
+            <DayControl />
 
             {/* ══ LEFT SIDEBAR (drawer) ══ */}
             {sidebarOpen && <div className="pos-scrim" onClick={() => setSidebarOpen(false)} />}

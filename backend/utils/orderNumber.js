@@ -12,7 +12,13 @@ const db = require("../config/db");
 const generateOrderNumber = (restaurantId, callback) => {
 
     const orderDate = new Date().toISOString().split("T")[0];
-    const dateKey = orderDate.replace(/-/g, "");
+    // Short, day-scoped number: ORD-DDMM + a 3-digit daily sequence, e.g.
+    // ORD-1409001 (14 Sep, bill 1). No year — the sequence still resets per
+    // calendar date (order_sequences keys on the full date), and order_number is
+    // no longer a unique key (uuid is identity), so a number recurring on the
+    // same date next year is harmless.
+    const [, mm, dd] = orderDate.split("-");
+    const dayKey = `${dd}${mm}`;
 
     db.getConnection((connErr, conn) => {
 
@@ -29,7 +35,7 @@ const generateOrderNumber = (restaurantId, callback) => {
             conn.commit((commitErr) => {
                 if (commitErr) return fail(commitErr);
                 conn.release();
-                callback(null, `ORD-${dateKey}-${String(sequence).padStart(4, "0")}`);
+                callback(null, `ORD-${dayKey}${String(sequence).padStart(3, "0")}`);
             });
         };
 

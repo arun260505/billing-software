@@ -1,0 +1,12 @@
+-- 021_order_number_short.sql
+--
+-- Order numbers are now short and dateful without a year: ORD-DDMM + a 3-digit
+-- daily sequence, e.g. ORD-1409001 (14 Sep, bill 1). The sequence still resets
+-- per calendar date (order_sequences keys on the full date), so the same string
+-- recurs on the same date next year.
+--
+-- Because of that recurrence, order_number carries NO unique index — row
+-- identity is `uuid` (the sync upserts on it), so a repeating order_number can
+-- never overwrite another order. syncColumns.js drops any unique index left on
+-- order_number (the legacy global `order_number` and 015's
+-- uq_orders_restaurant_order). Payment numbers keep their year and uniqueness.

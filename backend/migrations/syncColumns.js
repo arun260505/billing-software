@@ -21,6 +21,7 @@ const SYNC_TABLES = {
     orders:          { up: true },
     order_items:     { up: true },
     payments:        { up: true },
+    day_closures:    { up: true },
     dining_tables:   { up: true },
     customers:       { up: true },
     restaurants:     { up: false },
@@ -121,27 +122,23 @@ async function runSyncSchema() {
         // 014: the stylist on a salon bill (a users row, role 'stylist').
         await ensureColumn("orders", "stylist_id", "INT NULL DEFAULT NULL");
 
-        // 015: order numbers are per-restaurant sequential (ORD-YYYYMMDD-NNNN)
-        // with no restaurant prefix, so two restaurants generate the SAME number
-        // on the same day. The cloud holds every restaurant's orders in one
-        // table; a GLOBAL unique index on order_number made the second
-        // restaurant's synced order collide with the first and overwrite it via
-        // ON DUPLICATE KEY UPDATE. Make uniqueness per-restaurant instead.
-        // (order_number was globally unique, so no (restaurant_id, order_number)
-        // duplicates can exist yet — the composite index is safe to add first.)
+        // 015/021: order_number carries NO unique index. It is a short, human
+        // label (ORD-DDMM + daily sequence, no year), so the same string recurs
+        // on the same date next year and would collide under any unique index.
+        // Row identity is `uuid` (the sync upserts on it), so a repeating
+        // order_number can never overwrite another order. Drop every unique index
+        // that was ever put on order_number: the legacy global `order_number` and
+        // the per-restaurant `uq_orders_restaurant_order` from 015.
         try {
-            if (!(await indexExists("orders", "uq_orders_restaurant_order"))) {
-                await db.query(
-                    "ALTER TABLE orders ADD UNIQUE INDEX uq_orders_restaurant_order (restaurant_id, order_number)"
-                );
+            if (await indexExists("orders", "uq_orders_restaurant_order")) {
+                await db.query("ALTER TABLE orders DROP INDEX uq_orders_restaurant_order");
             }
             if (await indexExists("orders", "order_number")) {
                 await db.query("ALTER TABLE orders DROP INDEX order_number");
             }
         } catch (e) {
-            // Never take the server down over an index reshape — leave the old
-            // index in place and log, so it can be fixed rather than blocking boot.
-            console.error("orders order_number index reshape skipped:", e.message);
+            // Never take the server down over an index change — log and continue.
+            console.error("orders order_number index change skipped:", e.message);
         }
     }
     // 017: same story as order numbers (015) for payment numbers. PAY-YYYYMMDD-

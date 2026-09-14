@@ -193,6 +193,47 @@ db.query(`
     });
 });
 
+// 020: end-of-day close / cash-up (Z-report). One snapshot row per business day
+// recording the day's totals and Cash/Card/UPI collection at close time. Created
+// at the till (cashier or owner) and synced UP to the cloud for reports.
+db.query(`
+    CREATE TABLE IF NOT EXISTS day_closures (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        uuid           CHAR(36) NOT NULL DEFAULT (UUID()),
+        restaurant_id  INT NOT NULL,
+        business_date  DATE NOT NULL,
+        bill_count     INT NOT NULL DEFAULT 0,
+        gross_sales    DECIMAL(12,2) NOT NULL DEFAULT 0,
+        discount_total DECIMAL(12,2) NOT NULL DEFAULT 0,
+        tax_total      DECIMAL(12,2) NOT NULL DEFAULT 0,
+        net_sales      DECIMAL(12,2) NOT NULL DEFAULT 0,
+        cash_total     DECIMAL(12,2) NOT NULL DEFAULT 0,
+        card_total     DECIMAL(12,2) NOT NULL DEFAULT 0,
+        upi_total      DECIMAL(12,2) NOT NULL DEFAULT 0,
+        other_total    DECIMAL(12,2) NOT NULL DEFAULT 0,
+        counted_cash   DECIMAL(12,2) NULL,
+        cash_variance  DECIMAL(12,2) NULL,
+        notes          VARCHAR(500) DEFAULT NULL,
+        status         VARCHAR(10) NOT NULL DEFAULT 'open',
+        opened_by      INT DEFAULT NULL,
+        opened_at      TIMESTAMP NULL DEFAULT NULL,
+        closed_by      INT DEFAULT NULL,
+        closed_at      TIMESTAMP NULL DEFAULT NULL,
+        created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        deleted_at     TIMESTAMP NULL DEFAULT NULL,
+        synced_at      TIMESTAMP NULL DEFAULT NULL,
+        UNIQUE KEY uq_day_closures_uuid (uuid),
+        KEY idx_day_closures_restaurant (restaurant_id),
+        KEY idx_day_closures_date (restaurant_id, business_date),
+        CONSTRAINT fk_day_closures_restaurant
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+    )
+`, (err) => {
+    if (err) console.error("day_closures table migration error:", err.message);
+    else console.log("Day closures table ready.");
+});
+
 db.query(`
     CREATE TABLE IF NOT EXISTS bill_formats (
         id                   INT AUTO_INCREMENT PRIMARY KEY,
@@ -668,6 +709,7 @@ const printerSettingRoutes = require("./routes/printerSettingRoutes");
 const printRoutes = require("./routes/printRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
+const dayRoutes = require("./routes/dayRoutes");
 
 /*
 |--------------------------------------------------------------------------
@@ -711,6 +753,7 @@ app.use("/api/printer-settings", printerSettingRoutes);
 app.use("/api/print", printRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/day", dayRoutes);
 /*
 |--------------------------------------------------------------------------
 | Test Route

@@ -1,0 +1,8 @@
+-- 020_day_closures.sql
+--
+-- End-of-day open / close (cash-up / Z-report). One row per business day:
+-- created "open" when the cashier opens the day, updated to "closed" with a
+-- snapshot of the day's totals + Cash/Card/UPI collection when they close it.
+-- Written at the till (cashier or owner) and synced UP to the cloud for reports.
+-- Created at runtime by server.js (CREATE TABLE IF NOT EXISTS). See
+-- models/dayModel.js for the open/close/pending logic.

@@ -39,6 +39,8 @@ const SYNC_ORDER = [
     { table: "orders",          direction: "up",   fks: { restaurant_id: "restaurants", customer_id: "customers", table_id: "dining_tables", stylist_id: "users" } },
     { table: "order_items",     direction: "up",   fks: { order_id: "orders", menu_item_id: "menu_items" } },
     { table: "payments",        direction: "up",   fks: { restaurant_id: "restaurants", order_id: "orders" } },
+    // Day close / cash-up snapshots: written at the till, pushed up for reports.
+    { table: "day_closures",    direction: "up",   fks: { restaurant_id: "restaurants", opened_by: "users", closed_by: "users" } },
     // Salon stock, kept by the owner like the menu, so it flows cloud -> till.
     // Deliberately last: a pull stops at the first table that fails, so a till
     // on this code talking to a cloud that doesn't have these tables yet still
