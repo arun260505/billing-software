@@ -5,9 +5,10 @@ const inventoryController = require("../controllers/inventoryController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
-// Stock is the owner's to manage; every query is scoped to the JWT's restaurant.
+// Stock is managed by the owner and the front desk (the receptionist keeps it on
+// the till and sells products), so admin + cashier. Scoped to the JWT's restaurant.
 router.use(authMiddleware);
-router.use(roleMiddleware(["admin"]));
+router.use(roleMiddleware(["admin", "cashier"]));
 
 // Static paths before "/:id".
 router.get("/", inventoryController.getItems);

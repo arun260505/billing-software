@@ -28,6 +28,7 @@ import BillsHistory from "../../components/Cashier/BillsHistory";
 import BillEditModal from "../../components/Cashier/BillEditModal";
 import MenuAvailability from "../../components/Cashier/MenuAvailability";
 import PrinterSetup from "../../components/Cashier/PrinterSetup";
+import Inventory from "./Inventory";
 
 import { DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
 import { printBill as printCorrectedBill } from "../../utils/printBill";
@@ -70,6 +71,7 @@ const VIEWS = [
     { key: "billing", label: "🧾 Billing" },
     { key: "services", label: "✂ Services" },
     { key: "bills", label: "📋 Bills" },
+    { key: "inventory", label: "📦 Inventory" },
     { key: "printer", label: "🖨 Printer" }
 ];
 
@@ -214,8 +216,10 @@ function SalonPos() {
             const res = await getStylists();
             const list = res.data.data || [];
             setStylists(list);
-            // A stylist the owner removed or deactivated can't stay picked.
-            setStylistId((cur) => (list.some((s) => String(s.id) === cur) ? cur : ""));
+            // A stylist the owner removed or deactivated can't stay picked — but
+            // the receptionist (this user) is always a valid pick.
+            const meId = currentUser && currentUser.id ? String(currentUser.id) : "";
+            setStylistId((cur) => (cur === meId || list.some((s) => String(s.id) === cur) ? cur : ""));
         } catch (e) {
             console.error("Failed to load stylists:", e);
         }
@@ -513,7 +517,7 @@ function SalonPos() {
 
         // Checked before the customer is saved, so a missing stylist never
         // leaves a half-made bill behind.
-        const stylist = stylists.find((s) => String(s.id) === stylistId);
+        const stylist = stylistOptions.find((s) => String(s.id) === stylistId);
         if (!stylist) { alert("Choose the stylist for this bill."); return; }
 
         setBusy(true);
@@ -618,6 +622,13 @@ function SalonPos() {
     // Printer screen, read live from this PC), else the salon-wide default
     // (desk.whatsapp_via, set by the owner in Settings).
     const waVia = effectiveVia(getWhatsAppOverride(), desk.whatsapp_via);
+
+    // The receptionist can also do a service / sell a product, so they can pick
+    // themselves as the provider on a bill, alongside the salon's stylists.
+    const meId = currentUser && currentUser.id ? String(currentUser.id) : null;
+    const stylistOptions = meId && !stylists.some((s) => String(s.id) === meId)
+        ? [...stylists, { id: currentUser.id, full_name: `${receptionistName} (Reception)` }]
+        : stylists;
 
     // Open WhatsApp with the bill typed in. Success is self-evident (the WhatsApp
     // window opens), so there's no confirmation card — only a popup if it was
@@ -855,6 +866,8 @@ function SalonPos() {
                 <MenuAvailability title="✂ Service Availability" searchPlaceholder="Search service…" />
             ) : activeView === "bills" ? (
                 <BillsHistory salon onOpenBill={openBillForEdit} onWhatsApp={sendSavedBillOnWhatsApp} />
+            ) : activeView === "inventory" ? (
+                <Inventory embedded />
             ) : activeView === "printer" && !noPrinter ? (
                 <PrinterSetup salon />
             ) : (
@@ -976,7 +989,7 @@ function SalonPos() {
 
                         <div className="sl-cust">
                             <span className="sl-cust-label">Stylist</span>
-                            {stylists.length === 0 ? (
+                            {stylistOptions.length === 0 ? (
                                 <span className="sl-cust-new">No stylists yet — the owner adds them in Employees.</span>
                             ) : (
                                 <select
@@ -986,7 +999,7 @@ function SalonPos() {
                                     aria-label="Stylist"
                                 >
                                     <option value="">Choose stylist *</option>
-                                    {stylists.map((s) => (
+                                    {stylistOptions.map((s) => (
                                         <option key={s.id} value={String(s.id)}>{s.full_name}</option>
                                     ))}
                                 </select>

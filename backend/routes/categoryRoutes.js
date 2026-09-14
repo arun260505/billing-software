@@ -5,15 +5,16 @@ const categoryController = require("../controllers/categoryController");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
-// All category endpoints require a valid JWT and admin role.
+// All category endpoints require a valid JWT.
 router.use(authMiddleware);
-router.use(roleMiddleware(["admin"]));
 
-router.get("/", categoryController.getCategories);
-router.get("/summary", categoryController.getSummary);
-router.post("/", categoryController.addCategory);
-router.put("/:id", categoryController.updateCategory);
-router.patch("/:id/timing", categoryController.updateCategoryTiming);
-router.delete("/:id", categoryController.deleteCategory);
+// Reading the category list is needed at the front desk too (e.g. filing a stock
+// item under a category), so admin + cashier can read; only admin can change them.
+router.get("/", roleMiddleware(["admin", "cashier"]), categoryController.getCategories);
+router.get("/summary", roleMiddleware(["admin", "cashier"]), categoryController.getSummary);
+router.post("/", roleMiddleware(["admin"]), categoryController.addCategory);
+router.put("/:id", roleMiddleware(["admin"]), categoryController.updateCategory);
+router.patch("/:id/timing", roleMiddleware(["admin"]), categoryController.updateCategoryTiming);
+router.delete("/:id", roleMiddleware(["admin"]), categoryController.deleteCategory);
 
 module.exports = router;

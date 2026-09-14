@@ -402,7 +402,11 @@ function HistoryModal({ item, onClose }) {
     );
 }
 
-function Inventory() {
+function Inventory({ embedded = false }) {
+
+    // Rendered as its own admin page (with the sidebar/header) or embedded inside
+    // the front-desk POS as a tab — same content, just no AdminLayout when embedded.
+    const Wrap = embedded ? React.Fragment : AdminLayout;
 
     const [items, setItems] = useState([]);
     const [summary, setSummary] = useState({});
@@ -500,7 +504,7 @@ function Inventory() {
     };
 
     return (
-        <AdminLayout>
+        <Wrap>
             <div className="dashboard-content sl-page">
 
                 <div className="sl-head">
@@ -644,7 +648,7 @@ function Inventory() {
             {modal?.kind === "history" && (
                 <HistoryModal item={modal.item} onClose={() => setModal(null)} />
             )}
-        </AdminLayout>
+        </Wrap>
     );
 }
 
