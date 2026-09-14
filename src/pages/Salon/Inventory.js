@@ -17,6 +17,19 @@ import "../../styles/pages/Salon/Salon.css";
 
 const UNITS = ["pcs", "ml", "L", "g", "kg", "bottle", "tube", "box", "pack", "sachet"];
 
+// Ready-made categories a salon can slot stock items under. Shown by default in
+// the item form and the filter; any older custom category still appears too.
+const DEFAULT_CATEGORIES = [
+    "Hair Care",
+    "Skin Care",
+    "Nail Care",
+    "Colour & Chemicals",
+    "Consumables",
+    "Tools & Equipment",
+    "Retail Products",
+    "Other"
+];
+
 const money = (v) =>
     `₹${Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -107,10 +120,13 @@ function ItemModal({ item, categories, onClose, onSaved }) {
 
                         <div className="sl-field">
                             <label htmlFor="inv-cat">Category</label>
-                            <input id="inv-cat" list="inv-categories" value={form.category} onChange={set("category")} placeholder="e.g. Hair care" maxLength={100} />
-                            <datalist id="inv-categories">
-                                {categories.map((c) => <option key={c} value={c} />)}
-                            </datalist>
+                            <select id="inv-cat" value={form.category} onChange={set("category")}>
+                                <option value="">— Select category —</option>
+                                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                                {form.category && !categories.includes(form.category) && (
+                                    <option value={form.category}>{form.category}</option>
+                                )}
+                            </select>
                         </div>
 
                         <div className="sl-field">
@@ -414,8 +430,15 @@ function Inventory() {
         if (tab === "log") loadMovements();
     }, [tab, loadMovements]);
 
+    // The default categories, plus any custom ones already on stock items — so
+    // the ready-made list always shows and old data isn't lost.
     const categories = useMemo(
-        () => [...new Set(items.map((i) => i.category).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+        () => [
+            ...DEFAULT_CATEGORIES,
+            ...[...new Set(items.map((i) => i.category).filter(Boolean))]
+                .filter((c) => !DEFAULT_CATEGORIES.includes(c))
+                .sort((a, b) => a.localeCompare(b))
+        ],
         [items]
     );
 
