@@ -76,6 +76,8 @@ var
 begin
   Exec(ExpandConstant('{cmd}'), '/c net stop InWallzServer', '', SW_HIDE, ewWaitUntilTerminated, rc);
   Exec(ExpandConstant('{cmd}'), '/c net stop InWallzMySQL', '', SW_HIDE, ewWaitUntilTerminated, rc);
+  // Close the native till window too, or its exe/DLLs can't be overwritten.
+  Exec(ExpandConstant('{cmd}'), '/c taskkill /f /im InWallzTill.exe', '', SW_HIDE, ewWaitUntilTerminated, rc);
   // Give Windows a moment to release the file handles after the services stop.
   Sleep(2000);
   Result := '';

@@ -224,20 +224,14 @@ Say "Opening firewall port $Port (all profiles)"
 netsh advfirewall firewall delete rule name="InWallz $Port" 2>$null | Out-Null
 netsh advfirewall firewall add rule name="InWallz $Port" dir=in action=allow protocol=TCP localport=$Port profile=any | Out-Null
 
-# 7) Register the till as a real installed app, not a browser window. Edge's
-# WebAppInstallForceList policy auto-installs the till as a PWA the first time
-# Edge runs (i.e. when the desktop shortcut is clicked): it gets its own
-# taskbar identity and the InWallz icon from the app manifest, and is pinnable.
-# Best-effort - if Edge is absent the app-mode shortcut still works.
+# 7) The till now runs as its own native window (till\InWallzTill.exe, a WebView2
+# shell), so the icon is drawn by Windows from the exe - crisp, like the installer.
+# Edge's force-installed PWA is no longer used; remove that policy if a prior
+# version set it, so Edge stops auto-installing the old blurry PWA.
 try {
-    Say "Registering the till as an app (Edge)"
     $pol = "HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebAppInstallForceList"
-    if (-not (Test-Path $pol)) { New-Item -Path $pol -Force | Out-Null }
-    $entry = '{"url":"http://localhost:' + $Port + '/","default_launch_container":"window","create_desktop_shortcut":true,"custom_name":"InWallz Till"}'
-    New-ItemProperty -Path $pol -Name "1" -Value $entry -PropertyType String -Force | Out-Null
-} catch {
-    Say "App registration skipped: $($_.Exception.Message)"
-}
+    if (Test-Path $pol) { Remove-Item $pol -Recurse -Force -ErrorAction SilentlyContinue }
+} catch { }
 
 # 8) Pre-warm the RAW printer helper: compile its DLL once now so the very first
 # bill/kitchen ticket prints instantly instead of paying a one-time ~2s compile.
@@ -251,12 +245,9 @@ try {
     Say "Printer warm-up skipped: $($_.Exception.Message)"
 }
 
-# 9) Clean up old till desktop shortcuts, then open the till once so Edge
-# installs it as a PWA (WebAppInstallForceList, step 7) and recreates a single
-# desktop shortcut. Edge makes a fresh shortcut on every install, so without the
-# cleanup an update piles up "InWallz Till (1)", "(2)", ... Deleting them first
-# leaves exactly one. The PWA shortcut launches the app as a real PWA - it groups
-# under one taskbar icon when pinned and carries the logo from the manifest.
+# 9) Desktop shortcut -> the native till app (till\InWallzTill.exe). Windows draws
+# the icon from the exe's embedded .ico, so it is crisp. Delete any old shortcuts
+# first so an update never piles up "InWallz Till (1)", "(2)", ...
 Say "Removing old till desktop shortcuts"
 $desktopDirs = @()
 try { $desktopDirs += [Environment]::GetFolderPath("CommonDesktopDirectory") } catch {}
@@ -268,25 +259,9 @@ foreach ($dk in ($desktopDirs | Select-Object -Unique)) {
     }
 }
 
-# Create the desktop shortcut OURSELVES, directly. Relying on Edge's
-# WebAppInstallForceList policy to make the shortcut is unreliable - it is
-# asynchronous and often never fires, which left machines with the app running
-# but no icon on the desktop. A real .lnk to Edge in app-mode, with the InWallz
-# favicon, always appears. (The PWA policy above still gives it a proper taskbar
-# identity when the user pins it.)
 Say "Creating the till desktop shortcut"
+$till = Join-Path $InstallDir "till\InWallzTill.exe"
 try {
-    $edge = @(
-        "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
-        "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
-    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-
-    $icon = Join-Path $InstallDir "app\build\favicon.ico"
-    $target = if ($edge) { $edge } else { "msedge.exe" }
-    $workdir = if ($edge) { Split-Path $edge } else { $InstallDir }
-
-    # All-users desktop so every account on the till sees it; fall back to this
-    # user's desktop if that isn't writable.
     $dest = $null
     try { $dest = [Environment]::GetFolderPath("CommonDesktopDirectory") } catch {}
     if (-not ($dest -and (Test-Path $dest))) { $dest = [Environment]::GetFolderPath("Desktop") }
@@ -294,10 +269,10 @@ try {
 
     $ws = New-Object -ComObject WScript.Shell
     $sc = $ws.CreateShortcut($lnk)
-    $sc.TargetPath = $target
-    $sc.Arguments = "--app=http://localhost:$Port/"
-    if (Test-Path $icon) { $sc.IconLocation = "$icon,0" }
-    $sc.WorkingDirectory = $workdir
+    $sc.TargetPath = $till
+    $sc.Arguments = "http://localhost:$Port/"
+    $sc.IconLocation = "$till,0"
+    $sc.WorkingDirectory = (Split-Path $till)
     $sc.Description = "InWallz Till"
     $sc.Save()
     Say "Desktop shortcut created: $lnk"
@@ -305,9 +280,9 @@ try {
     Say "Could not create the desktop shortcut: $($_.Exception.Message)"
 }
 
-Say "Opening the till once to register the app"
+Say "Opening the till"
 try {
-    Start-Process "cmd.exe" -ArgumentList "/c start msedge --app=http://localhost:$Port"
+    Start-Process -FilePath $till -ArgumentList "http://localhost:$Port/" -WorkingDirectory (Split-Path $till)
 } catch {
     Say "Could not open the till automatically: $($_.Exception.Message)"
 }
