@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdminLayout from "../../layouts/AdminLayout";
 import useEscapeClose from "../../hooks/useEscapeClose";
+import categoryService from "../../services/categoryService";
 import {
     getInventory,
     getInventorySummary,
@@ -16,19 +17,6 @@ import "../../styles/Admin/Dashboard.css";
 import "../../styles/pages/Salon/Salon.css";
 
 const UNITS = ["pcs", "ml", "L", "g", "kg", "bottle", "tube", "box", "pack", "sachet"];
-
-// Ready-made categories a salon can slot stock items under. Shown by default in
-// the item form and the filter; any older custom category still appears too.
-const DEFAULT_CATEGORIES = [
-    "Hair Care",
-    "Skin Care",
-    "Nail Care",
-    "Colour & Chemicals",
-    "Consumables",
-    "Tools & Equipment",
-    "Retail Products",
-    "Other"
-];
 
 const money = (v) =>
     `₹${Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -400,11 +388,19 @@ function Inventory() {
     // Which modal is open: { kind: "item" | "stock" | "history", item }.
     const [modal, setModal] = useState(null);
 
+    // The salon's own categories (created in Categories) — items are filed under
+    // these, so they read the same everywhere.
+    const [salonCats, setSalonCats] = useState([]);
+
     const load = useCallback(async () => {
         try {
-            const [itemsRes, summaryRes] = await Promise.all([getInventory(), getInventorySummary()]);
+            const [itemsRes, summaryRes, catsRes] = await Promise.all([
+                getInventory(), getInventorySummary(), categoryService.getCategories()
+            ]);
             setItems(itemsRes.data.data || []);
             setSummary(summaryRes.data.data || {});
+            const cats = catsRes.data?.data || catsRes.data || [];
+            setSalonCats(cats.map((c) => c.category_name).filter(Boolean));
             setLoadError(false);
         } catch (err) {
             console.error("Inventory load error:", err);
@@ -430,16 +426,16 @@ function Inventory() {
         if (tab === "log") loadMovements();
     }, [tab, loadMovements]);
 
-    // The default categories, plus any custom ones already on stock items — so
-    // the ready-made list always shows and old data isn't lost.
+    // The salon's own categories, plus any category already saved on a stock item
+    // that isn't in that list (so older data isn't lost).
     const categories = useMemo(
         () => [
-            ...DEFAULT_CATEGORIES,
+            ...salonCats,
             ...[...new Set(items.map((i) => i.category).filter(Boolean))]
-                .filter((c) => !DEFAULT_CATEGORIES.includes(c))
+                .filter((c) => !salonCats.includes(c))
                 .sort((a, b) => a.localeCompare(b))
         ],
-        [items]
+        [items, salonCats]
     );
 
     const filtered = useMemo(() => {
