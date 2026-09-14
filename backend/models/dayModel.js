@@ -67,15 +67,24 @@ async function summaryForDay(restaurantId, dayId) {
         [dayId, restaurantId]
     );
 
+    // Tender split — counted only for orders that are actually Paid (not Pending
+    // or Cancelled) and fall in the day's window. Tying payments to finalized
+    // orders this way keeps "collected" equal to "net" even if a stray/half-
+    // settled payment ever exists, so the cash-up can't drift.
     const [rows] = await db.query(
         `SELECT p.payment_method AS method, IFNULL(SUM(p.amount), 0) AS total
          FROM day_closures dc
+         JOIN orders o
+             ON o.restaurant_id = dc.restaurant_id
+            AND o.payment_status = 'Paid'
+            AND o.order_status <> 'Cancelled'
+            AND o.deleted_at IS NULL
+            AND o.created_at >= COALESCE(dc.opened_at, dc.business_date)
+            AND (dc.closed_at IS NULL OR o.created_at < dc.closed_at)
          JOIN payments p
-             ON p.restaurant_id = dc.restaurant_id
+             ON p.order_id = o.id
             AND p.payment_status = 'Success'
             AND p.deleted_at IS NULL
-            AND p.payment_date >= COALESCE(dc.opened_at, dc.business_date)
-            AND (dc.closed_at IS NULL OR p.payment_date < dc.closed_at)
          WHERE dc.id = ? AND dc.restaurant_id = ?
          GROUP BY p.payment_method`,
         [dayId, restaurantId]
