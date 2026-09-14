@@ -38,6 +38,16 @@ const SALON_UUID = "9ed93a4b-af7b-11f1-a779-005056c00001";
 
 const DRY = process.argv.includes("--dry");
 
+// Target a specific restaurant by id (--rid=N or SEED_RESTAURANT_ID). Needed once
+// there is more than one salon (e.g. Crystal Cuts alongside the demo salon), so
+// the script doesn't have to guess which one. Falls back to the uuid/business_type
+// lookup below when not given.
+const ARG_RID = (() => {
+    const a = process.argv.find((x) => x.startsWith("--rid="));
+    const v = a ? a.slice(6) : process.env.SEED_RESTAURANT_ID;
+    return v ? Number(v) : null;
+})();
+
 /*
 | The menu. One object per category, in the exact display order the owner wants:
 |   Men (haircut, oil massage, hair spa, coloring) → Women (the same, by length)
@@ -282,22 +292,32 @@ async function main() {
     });
 
     try {
-        // 1) Locate the salon tenant.
-        let [salon] = await conn.query(
-            "SELECT id, restaurant_name, business_type FROM restaurants WHERE uuid = ? AND deleted_at IS NULL",
-            [SALON_UUID]
-        );
-        if (salon.length === 0) {
-            [salon] = await conn.query(
-                "SELECT id, restaurant_name, business_type FROM restaurants WHERE business_type = 'salon' AND deleted_at IS NULL"
-            );
-        }
-        if (salon.length === 0) throw new Error("No salon tenant found (uuid or business_type='salon').");
-        if (salon.length > 1) {
-            throw new Error(
-                "Multiple salon tenants found; refusing to guess. Set SALON_UUID to the right one:\n" +
-                salon.map((s) => `  id=${s.id} ${s.restaurant_name}`).join("\n")
-            );
+        // 1) Locate the target tenant. An explicit --rid wins; otherwise fall
+        //    back to the salon uuid, then the single business_type='salon'.
+        let salon;
+        if (ARG_RID) {
+            salon = (await conn.query(
+                "SELECT id, restaurant_name, business_type FROM restaurants WHERE id = ? AND deleted_at IS NULL",
+                [ARG_RID]
+            ))[0];
+            if (salon.length === 0) throw new Error(`No restaurant with id ${ARG_RID}.`);
+        } else {
+            salon = (await conn.query(
+                "SELECT id, restaurant_name, business_type FROM restaurants WHERE uuid = ? AND deleted_at IS NULL",
+                [SALON_UUID]
+            ))[0];
+            if (salon.length === 0) {
+                salon = (await conn.query(
+                    "SELECT id, restaurant_name, business_type FROM restaurants WHERE business_type = 'salon' AND deleted_at IS NULL"
+                ))[0];
+            }
+            if (salon.length === 0) throw new Error("No salon tenant found (uuid or business_type='salon').");
+            if (salon.length > 1) {
+                throw new Error(
+                    "Multiple salon tenants found; refusing to guess. Pass --rid=<id>:\n" +
+                    salon.map((s) => `  id=${s.id} ${s.restaurant_name}`).join("\n")
+                );
+            }
         }
         const rid = salon[0].id;
         console.log(`Salon: id=${rid} "${salon[0].restaurant_name}" (${salon[0].business_type})`);
