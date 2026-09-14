@@ -944,12 +944,18 @@ function Dashboard() {
                     charges: totals.charges,
                     total: totals.total,
                     method,
-                    isReprint: true
+                    isReprint: true,
+                    // Bill + WhatsApp: open WhatsApp only after the print dialog
+                    // closes, so launching it can't steal focus from printing.
+                    onAfter: whatsapp ? () => sendBillOnWhatsApp(header) : null
                 });
-                if (!opened) alert("Bill saved, but the print window was blocked. Allow pop-ups to print.");
+                if (!opened) {
+                    alert("Bill saved, but the print window was blocked. Allow pop-ups to print.");
+                    if (whatsapp) sendBillOnWhatsApp(header);   // still send it
+                }
+            } else if (whatsapp) {
+                sendBillOnWhatsApp(header);
             }
-
-            if (whatsapp) sendBillOnWhatsApp(header);
 
             const diff = Number(result.difference || 0);
             if (Math.abs(diff) >= 0.01) {

@@ -2,11 +2,12 @@ import AppRoutes from "./routes/AppRoutes";
 import NetworkGate from "./components/NetworkGate";
 import WifiGuard from "./components/WifiGuard";
 import ServerConfig from "./components/ServerConfig";
+import AppNotify, { installAlertBridge } from "./components/AppNotify";
 import { isNativeApp, getStoredServer, hasBakedApiUrl, isManualMode } from "./services/serverConfig";
 
-//import { ToastContainer } from "react-toastify";
-
-//import "react-toastify/dist/ReactToastify.css";
+// Every window.alert() in the app now shows as a tidy in-app popup (AppNotify)
+// instead of the browser's "localhost:5050 says …" box. Installed once, here.
+installAlertBridge();
 
 function App() {
 
@@ -14,37 +15,42 @@ function App() {
     // The cloud + cashier run in a browser against a reachable backend, so they
     // render the app directly — no setup, no gate (a false block there would
     // lock the admin out for nothing).
+    let inner;
     if (isNativeApp()) {
 
         // Cloud APK (URL baked in): connects to the cloud but must be on the
         // same WiFi as the cashier — WifiGuard enforces that and blocks on
         // mobile data.
         if (hasBakedApiUrl()) {
-            return (
+            inner = (
                 <WifiGuard>
                     <AppRoutes />
                 </WifiGuard>
             );
-        }
-
         // LAN APK: the NetworkGate auto-discovers the till on the WiFi, so there
         // is no IP to type — on the same network it just connects, on any other
         // network it shows "not on the restaurant network" and can close.
         // ServerConfig appears only if the user explicitly chose manual entry
         // (a rare network the scan could not reach) and hasn't set one yet.
-        if (isManualMode() && !getStoredServer()) {
-            return <ServerConfig />;
+        } else if (isManualMode() && !getStoredServer()) {
+            inner = <ServerConfig />;
+        } else {
+            inner = (
+                <NetworkGate>
+                    <AppRoutes />
+                </NetworkGate>
+            );
         }
-
-        return (
-            <NetworkGate>
-                <AppRoutes />
-            </NetworkGate>
-        );
-
+    } else {
+        inner = <AppRoutes />;
     }
 
-    return <AppRoutes />;
+    return (
+        <>
+            {inner}
+            <AppNotify />
+        </>
+    );
 
 }
 

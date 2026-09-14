@@ -542,18 +542,23 @@
 .cashier-app .tbill-generate:hover { background: #1d4ed8; }
 .cashier-app .tbill-generate:disabled { background: #94a3b8; cursor: default; }
 
-/* Reprint + WhatsApp delivery (Bills → correct & reprint). */
-.cashier-app .tbill-deliver { position: sticky; bottom: 0; margin-top: 12px; box-shadow: 0 -8px 18px #f8fafc; }
-.cashier-app .tbill-deliver .tbill-generate { position: static; margin-top: 0; box-shadow: none; }
-.cashier-app .tbill-deliver-wa { display: flex; gap: 10px; margin-top: 10px; }
+/* WhatsApp delivery (Bills → correct & reprint): Send on WhatsApp / Bill + WhatsApp. */
+.cashier-app .tbill-deliver-wa {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    position: sticky;
+    bottom: 0;
+    box-shadow: 0 -8px 18px #f8fafc;
+}
 .cashier-app .tbill-wa {
     flex: 1;
-    padding: 13px;
+    padding: 15px;
     border-radius: 12px;
     border: 1px solid #16a34a;
     background: #fff;
     color: #15803d;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 800;
     cursor: pointer;
 }

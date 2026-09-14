@@ -101,9 +101,6 @@ function SalonPos() {
     const [notice, setNotice] = useState("");
 
     // ── WhatsApp bill (click-to-chat) ───────────────────────────────
-    // waBill: the last paid bill, ready to send — { number, customer, phone, text,
-    // opened, blocked }. Preferences belong to this PC (utils/whatsappBill.js).
-    const [waBill, setWaBill] = useState(null);
     // The till's Web/App override lives in this PC (localStorage) and is set on
     // the Printer screen (Settings → 🖨 Printer). Read live at send time so a
     // change there takes effect without a reload. null = follow the salon default.
@@ -270,13 +267,6 @@ function SalonPos() {
         const t = setInterval(() => loadMenuItems(selectedCategory), 10000);
         return () => clearInterval(t);
     }, [selectedCategory]);
-
-    // The WhatsApp panel belongs to the bill just paid; starting the next
-    // customer's bill puts it away.
-    const hasCart = cart.length > 0;
-    useEffect(() => {
-        if (hasCart) setWaBill(null);
-    }, [hasCart]);
 
     // A notice clears itself.
     useEffect(() => {
@@ -629,9 +619,13 @@ function SalonPos() {
     // (desk.whatsapp_via, set by the owner in Settings).
     const waVia = effectiveVia(getWhatsAppOverride(), desk.whatsapp_via);
 
+    // Open WhatsApp with the bill typed in. Success is self-evident (the WhatsApp
+    // window opens), so there's no confirmation card — only a popup if it was
+    // blocked so the receptionist knows to retry.
     const sendOnWhatsApp = (entry) => {
-        const opened = openWhatsApp(whatsappUrl(entry.phone, entry.text, waVia), waVia);
-        setWaBill({ ...entry, opened, blocked: !opened });
+        if (!openWhatsApp(whatsappUrl(entry.phone, entry.text, waVia), waVia)) {
+            alert("WhatsApp didn't open — allow pop-ups for this page, then send the bill again.");
+        }
     };
 
     // BillModal hands over the bill as paid (picked charges, payment method)
@@ -762,12 +756,18 @@ function SalonPos() {
                     charges: totals.charges,
                     total: totals.total,
                     method,
-                    isReprint: true
+                    isReprint: true,
+                    // Bill + WhatsApp: open WhatsApp only after the print dialog
+                    // closes, so launching it can't steal focus from printing.
+                    onAfter: whatsapp ? () => sendReeditedBillOnWhatsApp(header) : null
                 });
-                if (!opened) alert("Bill saved, but the print window was blocked. Allow pop-ups to print.");
+                if (!opened) {
+                    alert("Bill saved, but the print window was blocked. Allow pop-ups to print.");
+                    if (whatsapp) sendReeditedBillOnWhatsApp(header);   // still send it
+                }
+            } else if (whatsapp) {
+                sendReeditedBillOnWhatsApp(header);
             }
-
-            if (whatsapp) sendReeditedBillOnWhatsApp(header);
 
             const diff = Number(result.difference || 0);
             if (Math.abs(diff) >= 0.01) {
@@ -1068,34 +1068,6 @@ function SalonPos() {
                                 </button>
                             </div>
                             {notice && <div className="sl-notice" role="status">{notice}</div>}
-
-                            {waBill && (
-                                <div className="sl-wa" role="status">
-                                    <div className="sl-wa-head">
-                                        <span className="sl-wa-title">
-                                            {waBill.blocked
-                                                ? "WhatsApp didn't open by itself"
-                                                : `WhatsApp opened for ${waBill.customer}`}
-                                        </span>
-                                        <button type="button" className="sl-wa-close" onClick={() => setWaBill(null)} aria-label="Dismiss">✕</button>
-                                    </div>
-                                    <span className="sl-wa-hint">
-                                        {waBill.blocked
-                                            ? "Allow pop-ups for this page so it opens by itself next time."
-                                            : waVia === "app"
-                                                ? "Press Send in WhatsApp. Nothing opened? Install WhatsApp Desktop or switch to WhatsApp Web."
-                                                : "The bill is typed in — press Send in WhatsApp."}
-                                    </span>
-                                    <button type="button" className="sl-wa-send" onClick={() => sendOnWhatsApp(waBill)}>
-                                        {waBill.blocked ? "Send bill on WhatsApp" : "Open WhatsApp again"}
-                                    </button>
-                                    <div className="sl-wa-prefs">
-                                        <span className="sl-wa-note">
-                                            Opens in {waVia === "app" ? "WhatsApp app" : "WhatsApp Web"}. Change this under 🖨 Printer.
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </aside>
 

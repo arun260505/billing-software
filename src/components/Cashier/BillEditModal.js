@@ -200,10 +200,11 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                             charges: chargeLines
                         };
                         const reprintLabel = busy ? "Working…" : `🖨 ${changed ? "Save & Reprint" : "Reprint"} · ₹${total.toFixed(2)}`;
-                        // Without a WhatsApp handler (or in a no-printer salon) the
-                        // single button keeps the old behaviour. With both, the same
-                        // corrected bill can go out on paper, on WhatsApp, or both —
-                        // always the same order number (rebill reuses the order).
+                        // With a WhatsApp handler, the corrected bill goes out as
+                        // "Send on WhatsApp" (send only) or "Bill + WhatsApp" (print
+                        // AND send) — no separate print-only button. Both reuse the
+                        // same order number (rebill reuses the order). Without a
+                        // handler, fall back to the plain reprint button.
                         if (!onWhatsApp) {
                             return (
                                 <button className="tbill-generate" disabled={busy || groups.length === 0}
@@ -213,21 +214,15 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                             );
                         }
                         return (
-                            <div className="tbill-deliver">
-                                <button className="tbill-generate" disabled={busy || groups.length === 0}
-                                    onClick={() => onReprint(method, totals)}>
-                                    {reprintLabel}
+                            <div className="tbill-deliver-wa">
+                                <button className="tbill-wa" disabled={busy || groups.length === 0}
+                                    onClick={() => onWhatsApp(method, totals, { print: false })}>
+                                    {busy ? "Working…" : "Send on WhatsApp"}
                                 </button>
-                                <div className="tbill-deliver-wa">
-                                    <button className="tbill-wa" disabled={busy || groups.length === 0}
-                                        onClick={() => onWhatsApp(method, totals, { print: false })}>
-                                        Send on WhatsApp
-                                    </button>
-                                    <button className="tbill-wa tbill-wa-both" disabled={busy || groups.length === 0}
-                                        onClick={() => onWhatsApp(method, totals, { print: true })}>
-                                        Bill + WhatsApp
-                                    </button>
-                                </div>
+                                <button className="tbill-wa tbill-wa-both" disabled={busy || groups.length === 0}
+                                    onClick={() => onWhatsApp(method, totals, { print: true })}>
+                                    {busy ? "Working…" : `Bill + WhatsApp · ₹${total.toFixed(2)}`}
+                                </button>
                             </div>
                         );
                     })()}

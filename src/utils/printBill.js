@@ -40,7 +40,11 @@ export function printBill({
     charges = [],
     total = 0,
     method = "",
-    isReprint = false
+    isReprint = false,
+    // Runs once the print dialog closes (printed or cancelled). Used to open
+    // WhatsApp AFTER printing for "Bill + WhatsApp", so launching WhatsApp
+    // doesn't steal focus and drop the print dialog.
+    onAfter = null
 }) {
 
     // The tax and service lines were "GST 5%" and "Service 2%" hardcoded here,
@@ -113,6 +117,16 @@ export function printBill({
 
     w.document.close();
     w.focus();
+
+    // Fire onAfter once — when the print dialog closes, or as a safety fallback
+    // if that event never arrives (some popup windows don't emit it).
+    if (typeof onAfter === "function") {
+        let done = false;
+        const after = () => { if (done) return; done = true; try { onAfter(); } catch (e) { /* ignore */ } };
+        try { w.onafterprint = after; } catch (e) { /* ignore */ }
+        setTimeout(after, 8000);
+    }
+
     w.print();
 
     return true;
