@@ -180,7 +180,9 @@ export function DayProvider({ gate = true, children }) {
 export function DayButton({ className = "pos-dayclose" }) {
     const ctx = useContext(DayCtx);
     if (!ctx || !ctx.state) return null;
-    if (ctx.state.status !== "open") return null;
+    // Show while there is a day to close (open, or not yet formally opened);
+    // hide once today is already closed.
+    if (ctx.state.is_closed) return null;
     return (
         <button type="button" className={className} onClick={ctx.openCloseModal}>
             Close Day
