@@ -21,7 +21,17 @@ import PrinterSetup from "../../components/Cashier/PrinterSetup";
 import BillEditModal from "../../components/Cashier/BillEditModal";
 import { registerNetwork } from "../../services/systemService";
 import billingFormatService from "../../services/billingFormatService";
+import settingsService from "../../services/settingsService";
 import chargeService from "../../services/chargeService";
+import {
+    buildBillMessage,
+    billFromSaved,
+    whatsappNumber,
+    whatsappUrl,
+    openWhatsApp,
+    getWhatsAppOverride,
+    effectiveVia
+} from "../../utils/whatsappBill";
 import kitchenFormatService from "../../services/kitchenFormatService";
 import printerSettingService from "../../services/printerSettingService";
 import { DEFAULT_BILL_FORMAT } from "../../utils/billPrinter";
@@ -92,6 +102,12 @@ function Dashboard() {
     // kitchen ticket prints when the order is sent, follows the bill, or never prints.
     const [printerMode, setPrinterMode] = useState(DEFAULT_PRINTER_MODE);
     const [restaurantInfo, setRestaurantInfo] = useState(null);
+    // WhatsApp: the shop's message template + shop number + the owner's default
+    // Web/App choice (Settings → Bills & WhatsApp). Bills → correct & reprint can
+    // send the same bill on WhatsApp. `waOverride` is this till's own Web/App
+    // choice (per-PC, in localStorage); null = follow the restaurant default.
+    const [waSettings, setWaSettings] = useState({ whatsapp_template: "", shop_mobile: "", whatsapp_via: "web" });
+    const [waOverride] = useState(getWhatsAppOverride);
     // Everything billed on top of the goods — GST, service charge, packing —
     // lives in Admin → Charges. A restaurant with none configured bills neither
     // tax nor service, which is the point of them being rows and not settings.
@@ -113,6 +129,23 @@ function Dashboard() {
             }
         } catch (e) {
             console.error("Failed to load bill format in cashier:", e);
+        }
+    };
+
+    // WhatsApp message template + shop number + Web/App default (Settings, synced
+    // from admin). Read-only here; used only to send a bill from Bills → reprint.
+    const loadWhatsAppSettings = async () => {
+        try {
+            const res = await settingsService.getRestaurant();
+            const s = res.data?.data || {};
+            setWaSettings({
+                whatsapp_template: s.whatsapp_template || "",
+                shop_mobile: s.shop_mobile || "",
+                whatsapp_via: s.whatsapp_via === "app" ? "app" : "web"
+            });
+        } catch (e) {
+            // Not fatal — WhatsApp send falls back to the built-in template.
+            console.error("Failed to load WhatsApp settings in cashier:", e);
         }
     };
 
@@ -161,6 +194,7 @@ function Dashboard() {
         loadKitchenFormat();
         loadPrinterMode();
         loadCharges();
+        loadWhatsAppSettings();
 
         // Register this restaurant's WAN IP so waiter phones on the same WiFi
         // are recognised as "on the restaurant network" (cloud model).
@@ -849,14 +883,46 @@ function Dashboard() {
         }
     };
 
-    // Save the corrected totals (syncing the recorded payment) and reprint.
-    const handleBillReprint = async (method, totals) => {
+    // The shop, as the WhatsApp message wants it (name / number / address). The
+    // number is the restaurant's own (restaurants.mobile), overridable in Settings.
+    const shopForMessage = () => ({
+        restaurant_name: restaurantInfo?.restaurant_name || currentUser?.restaurant_name,
+        address: restaurantInfo?.address,
+        mobile: waSettings.shop_mobile || restaurantInfo?.mobile
+    });
+
+    // What this till opens WhatsApp in: its own override, else the restaurant
+    // default (Settings → Bills & WhatsApp).
+    const waVia = effectiveVia(waOverride, waSettings.whatsapp_via);
+
+    // Send an already-saved bill on WhatsApp — reuses the order (same number),
+    // never creates a new one. Prompts for the number if the bill has none.
+    const sendBillOnWhatsApp = (header) => {
+        let phone = whatsappNumber(header.customer_mobile || editingBill?.customer_mobile);
+        if (!phone) {
+            const typed = window.prompt("Customer's WhatsApp number (with country code or 10 digits):", "");
+            if (typed === null) return true;   // cancelled — not an error
+            phone = whatsappNumber(typed);
+            if (!phone) { alert("That doesn't look like a valid mobile number."); return false; }
+        }
+        const text = buildBillMessage(billFromSaved(header, editingBillItems), shopForMessage(), waSettings.whatsapp_template);
+        if (!openWhatsApp(whatsappUrl(phone, text, waVia), waVia)) {
+            alert("The browser blocked the WhatsApp window. Allow pop-ups for this page, then try again.");
+            return false;
+        }
+        return true;
+    };
+
+    // Save the corrected totals (syncing the recorded payment), then hand the bill
+    // over: print, WhatsApp, or both. Always the same order number (rebill reuses
+    // the order) — it never creates a new bill.
+    const deliverCorrectedBill = async (method, totals, { print = true, whatsapp = false } = {}) => {
         setBillEditBusy(true);
         try {
             const res = await rebillOrder(editingBill.id, method);
             const result = res.data.data;
 
-            // Re-read the header so the receipt shows the stored figures.
+            // Re-read the header so the receipt / message show the stored figures.
             let header = editingBill;
             try {
                 header = (await getBill(editingBill.id)).data.data;
@@ -864,22 +930,25 @@ function Dashboard() {
                 console.error("Bill header reload failed, printing from screen:", e);
             }
 
-            const opened = printCorrectedBill({
-                title: header.restaurant_name || restaurantInfo?.restaurant_name || "InWallz",
-                billNumber: header.order_number,
-                place: header.table_name ? `Table ${header.table_name}` : "Counter",
-                items: editingBillItems,
-                subtotal: totals.subtotal,
-                discount: totals.discount,
-                discountLabel: totals.discountLabel,
-                taxLines: totals.taxLines,
-                charges: totals.charges,
-                total: totals.total,
-                method,
-                isReprint: true
-            });
+            if (print) {
+                const opened = printCorrectedBill({
+                    title: header.restaurant_name || restaurantInfo?.restaurant_name || "InWallz",
+                    billNumber: header.order_number,
+                    place: header.table_name ? `Table ${header.table_name}` : "Counter",
+                    items: editingBillItems,
+                    subtotal: totals.subtotal,
+                    discount: totals.discount,
+                    discountLabel: totals.discountLabel,
+                    taxLines: totals.taxLines,
+                    charges: totals.charges,
+                    total: totals.total,
+                    method,
+                    isReprint: true
+                });
+                if (!opened) alert("Bill saved, but the print window was blocked. Allow pop-ups to print.");
+            }
 
-            if (!opened) alert("Bill saved, but the print window was blocked. Allow pop-ups to print.");
+            if (whatsapp) sendBillOnWhatsApp(header);
 
             const diff = Number(result.difference || 0);
             if (Math.abs(diff) >= 0.01) {
@@ -897,6 +966,35 @@ function Dashboard() {
             alert(e.response?.data?.message || e.friendlyMessage || "Could not save the corrected bill.");
         } finally {
             setBillEditBusy(false);
+        }
+    };
+
+    // Bills → correct & reprint: paper only, or (with the option) WhatsApp / both.
+    const handleBillReprint = (method, totals) => deliverCorrectedBill(method, totals, { print: true, whatsapp: false });
+    const handleBillWhatsApp = (method, totals, opts = {}) =>
+        deliverCorrectedBill(method, totals, { print: !!opts.print, whatsapp: true });
+
+    // Bills list → WhatsApp: resend a saved bill without correcting it. Loads the
+    // bill's items first (the list row has none), then opens WhatsApp.
+    const sendSavedBillOnWhatsApp = async (bill) => {
+        try {
+            const [head, rows] = await Promise.all([getBill(bill.id), getOrderDetails(bill.id)]);
+            const header = head.data.data;
+            const items = rows.data.data || [];
+            let phone = whatsappNumber(header.customer_mobile || bill.customer_mobile);
+            if (!phone) {
+                const typed = window.prompt("Customer's WhatsApp number (with country code or 10 digits):", "");
+                if (typed === null) return;
+                phone = whatsappNumber(typed);
+                if (!phone) { alert("That doesn't look like a valid mobile number."); return; }
+            }
+            const text = buildBillMessage(billFromSaved(header, items), shopForMessage(), waSettings.whatsapp_template);
+            if (!openWhatsApp(whatsappUrl(phone, text, waVia), waVia)) {
+                alert("The browser blocked the WhatsApp window. Allow pop-ups for this page, then try again.");
+            }
+        } catch (e) {
+            console.error("WhatsApp bill error:", e);
+            alert("Could not load this bill.");
         }
     };
 
@@ -1069,7 +1167,7 @@ function Dashboard() {
             </header>
 
             {activeView === "menu" ? <MenuAvailability /> :
-             activeView === "bills" ? <BillsHistory onOpenBill={openBillForEdit} /> :
+             activeView === "bills" ? <BillsHistory onOpenBill={openBillForEdit} onWhatsApp={sendSavedBillOnWhatsApp} /> :
              activeView === "printer" ? <PrinterSetup /> : (
             <>
             {/* ══ TABLE BAR ══ */}
@@ -1259,6 +1357,7 @@ function Dashboard() {
                     onRemoveGroup={handleBillRemove}
                     onAddItem={handleBillAdd}
                     onReprint={handleBillReprint}
+                    onWhatsApp={handleBillWhatsApp}
                     onClose={closeBillEdit}
                 />
             )}

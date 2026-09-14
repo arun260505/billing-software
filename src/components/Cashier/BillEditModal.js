@@ -12,7 +12,7 @@ import { isSalon } from "../../utils/businessType";
 // the backend then refused to agree with. They now come from the restaurant's
 // own charge rows (Admin → Charges), like everywhere else.
 function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [],
-                         onSetQty, onRemoveGroup, onAddItem, onReprint, onClose }) {
+                         onSetQty, onRemoveGroup, onAddItem, onReprint, onWhatsApp, onClose }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
@@ -193,17 +193,44 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                         </div>
                     </div>
 
-                    <button
-                        className="tbill-generate"
-                        disabled={busy || groups.length === 0}
-                        onClick={() => onReprint(method, {
+                    {(() => {
+                        const totals = {
                             subtotal, gst, service, total, discount, discountLabel,
                             taxLines: [...taxLines, ...serviceLines],
                             charges: chargeLines
-                        })}
-                    >
-                        {busy ? "Working…" : `🖨 ${changed ? "Save & Reprint" : "Reprint"} · ₹${total.toFixed(2)}`}
-                    </button>
+                        };
+                        const reprintLabel = busy ? "Working…" : `🖨 ${changed ? "Save & Reprint" : "Reprint"} · ₹${total.toFixed(2)}`;
+                        // Without a WhatsApp handler (or in a no-printer salon) the
+                        // single button keeps the old behaviour. With both, the same
+                        // corrected bill can go out on paper, on WhatsApp, or both —
+                        // always the same order number (rebill reuses the order).
+                        if (!onWhatsApp) {
+                            return (
+                                <button className="tbill-generate" disabled={busy || groups.length === 0}
+                                    onClick={() => onReprint(method, totals)}>
+                                    {reprintLabel}
+                                </button>
+                            );
+                        }
+                        return (
+                            <div className="tbill-deliver">
+                                <button className="tbill-generate" disabled={busy || groups.length === 0}
+                                    onClick={() => onReprint(method, totals)}>
+                                    {reprintLabel}
+                                </button>
+                                <div className="tbill-deliver-wa">
+                                    <button className="tbill-wa" disabled={busy || groups.length === 0}
+                                        onClick={() => onWhatsApp(method, totals, { print: false })}>
+                                        Send on WhatsApp
+                                    </button>
+                                    <button className="tbill-wa tbill-wa-both" disabled={busy || groups.length === 0}
+                                        onClick={() => onWhatsApp(method, totals, { print: true })}>
+                                        Bill + WhatsApp
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
 
             </div>
