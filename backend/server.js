@@ -234,6 +234,34 @@ db.query(`
     else console.log("Day closures table ready.");
 });
 
+// Owner alerts feed (day open/close, closing summary, low stock). Raised at the
+// till and synced UP to the cloud, where the owner's phone app reads them over
+// any network. See models/notificationModel.js and sync/syncTables.js.
+db.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        uuid           CHAR(36) NOT NULL DEFAULT (UUID()),
+        restaurant_id  INT NOT NULL,
+        type           VARCHAR(40) NOT NULL,
+        title          VARCHAR(160) NOT NULL,
+        body           TEXT DEFAULT NULL,
+        meta           TEXT DEFAULT NULL,
+        dedup_key      VARCHAR(120) DEFAULT NULL,
+        created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        deleted_at     TIMESTAMP NULL DEFAULT NULL,
+        synced_at      TIMESTAMP NULL DEFAULT NULL,
+        UNIQUE KEY uq_notifications_uuid (uuid),
+        KEY idx_notifications_restaurant (restaurant_id, id),
+        KEY idx_notifications_dedup (restaurant_id, dedup_key),
+        CONSTRAINT fk_notifications_restaurant
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+    )
+`, (err) => {
+    if (err) console.error("notifications table migration error:", err.message);
+    else console.log("Notifications table ready.");
+});
+
 db.query(`
     CREATE TABLE IF NOT EXISTS bill_formats (
         id                   INT AUTO_INCREMENT PRIMARY KEY,
@@ -710,6 +738,7 @@ const printRoutes = require("./routes/printRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
 const dayRoutes = require("./routes/dayRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 /*
 |--------------------------------------------------------------------------
@@ -754,6 +783,7 @@ app.use("/api/print", printRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/day", dayRoutes);
+app.use("/api/notifications", notificationRoutes);
 /*
 |--------------------------------------------------------------------------
 | Test Route

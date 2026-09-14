@@ -1,4 +1,7 @@
 const db = require("../config/db").promise();
+const notify = require("./notificationModel");
+
+const rupee = (n) => `₹${(Math.round((Number(n) || 0) * 100) / 100).toLocaleString("en-IN")}`;
 
 /*
 | Open / close the BUSINESS day (cash-up / Z-report).
@@ -177,7 +180,9 @@ async function openDay(restaurantId, userId, today) {
     const latest = await getLatest(restaurantId);
     if (latest && latest.status === "closed" && ymd(latest.business_date) === today) {
         await db.query("UPDATE day_closures SET status = 'open', closed_at = NULL WHERE id = ?", [latest.id]);
-        return getRowById(restaurantId, latest.id);
+        const row = await getRowById(restaurantId, latest.id);
+        await announceOpen(restaurantId, row);
+        return row;
     }
 
     await db.query(
@@ -185,7 +190,22 @@ async function openDay(restaurantId, userId, today) {
          VALUES (?, ?, 'open', ?, NOW())`,
         [restaurantId, today, userId || null]
     );
-    return getOpenDay(restaurantId);
+    const row = await getOpenDay(restaurantId);
+    await announceOpen(restaurantId, row);
+    return row;
+}
+
+// Tell the owner the shop opened. Keyed on the day row so a re-open of the same
+// day (or a retry) doesn't ping twice.
+async function announceOpen(restaurantId, row) {
+    if (!row) return;
+    await notify.notifySafe(restaurantId, {
+        type: notify.TYPES.SHOP_OPEN,
+        title: "Shop opened",
+        body: `The day was opened${row.opened_by_name ? ` by ${row.opened_by_name}` : ""}.`,
+        meta: { business_date: ymd(row.business_date), opened_at: row.opened_at },
+        dedup_key: `shop_open:${row.id}`,
+    });
 }
 
 // Close the active open day: snapshot its window totals and mark it closed.
@@ -213,7 +233,33 @@ async function closeDay(restaurantId, userId, opts = {}) {
     );
 
     const closure = await getRowById(restaurantId, open.id);
-    return { alreadyClosed: false, closure, summary: await summaryOf(restaurantId, closure) };
+    const summary = await summaryOf(restaurantId, closure);
+
+    // Two owner alerts on close: a plain "shop closed", and a detailed sales
+    // summary. Keyed on the day row so a retry can't double-ping.
+    await notify.notifySafe(restaurantId, {
+        type: notify.TYPES.SHOP_CLOSE,
+        title: "Shop closed",
+        body: `The day was closed${closure.closed_by_name ? ` by ${closure.closed_by_name}` : ""}.`,
+        meta: { business_date: ymd(closure.business_date), closed_at: closure.closed_at },
+        dedup_key: `shop_close:${open.id}`,
+    });
+    const tender = [
+        s.cash_total ? `Cash ${rupee(s.cash_total)}` : null,
+        s.card_total ? `Card ${rupee(s.card_total)}` : null,
+        s.upi_total ? `UPI ${rupee(s.upi_total)}` : null,
+        s.other_total ? `Other ${rupee(s.other_total)}` : null,
+    ].filter(Boolean).join(" · ");
+    await notify.notifySafe(restaurantId, {
+        type: notify.TYPES.DAILY_SUMMARY,
+        title: `Day summary: ${rupee(s.collected_total)} collected`,
+        body: `${s.bill_count} bill${s.bill_count === 1 ? "" : "s"}, net sales ${rupee(s.net_sales)}.`
+            + (tender ? ` ${tender}.` : ""),
+        meta: { business_date: ymd(closure.business_date), ...s },
+        dedup_key: `daily_summary:${open.id}`,
+    });
+
+    return { alreadyClosed: false, closure, summary };
 }
 
 // State for the POS / dashboard.

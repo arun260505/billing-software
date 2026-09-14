@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const notify = require("./notificationModel");
 
 const dbp = db.promise();
 
@@ -186,7 +187,7 @@ exports.adjustStock = async (id, restaurantId, { movement_type, quantity, note }
         await conn.beginTransaction();
 
         const [[item]] = await conn.query(
-            `SELECT id, item_name, unit, quantity
+            `SELECT id, item_name, unit, quantity, min_quantity
              FROM inventory_items
              WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL
              FOR UPDATE`,
@@ -228,6 +229,11 @@ exports.adjustStock = async (id, restaurantId, { movement_type, quantity, note }
         );
 
         await conn.commit();
+
+        // Alert the owner if this move just took the item to/below its reorder
+        // level (fired once per crossing — see notificationModel).
+        await notify.lowStockIfCrossed(restaurantId, item, current, next);
+
         return { item: { id: item.id, quantity: next, change: delta } };
     } catch (e) {
         await conn.rollback();

@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const { totalsFromSubtotal, resolveCharges, resolveDiscount, money, ROLES } = require("../utils/billing");
 const { getAutoCharges } = require("../utils/billingCharges");
+const notify = require("./notificationModel");
 
 /*
 | Recomputing an order's totals needs three things: its remaining subtotal, the
@@ -290,17 +291,36 @@ const deductProductStock = (orderId, restaurantId, userId, callback) => {
         const next = () => {
             if (i >= rows.length) return callback(null);
             const { invId, qty } = rows[i++];
+            // Read the item first so we know the before/after quantity and can
+            // raise a low-stock alert if this sale crosses the reorder level.
             db.query(
-                "UPDATE inventory_items SET quantity = GREATEST(quantity - ?, 0) WHERE id = ? AND restaurant_id = ?",
-                [qty, invId, restaurantId],
-                (e) => {
-                    if (e) return callback(e);
+                "SELECT id, item_name, unit, quantity, min_quantity FROM inventory_items WHERE id = ? AND restaurant_id = ?",
+                [invId, restaurantId],
+                (eSel, itemRows) => {
+                    if (eSel) return callback(eSel);
+                    const item = itemRows && itemRows[0];
+                    if (!item) return next(); // item removed — skip
+                    const before = Number(item.quantity);
+                    const after = Math.max(before - Number(qty), 0);
+
                     db.query(
-                        `INSERT INTO inventory_movements
-                            (restaurant_id, inventory_item_id, movement_type, quantity, balance_after, note, created_by)
-                         SELECT ?, ?, 'Out', ?, quantity, 'Sold on bill', ? FROM inventory_items WHERE id = ?`,
-                        [restaurantId, invId, qty, userId || null, invId],
-                        (e2) => { if (e2) return callback(e2); next(); }
+                        "UPDATE inventory_items SET quantity = ? WHERE id = ? AND restaurant_id = ?",
+                        [after, invId, restaurantId],
+                        (e) => {
+                            if (e) return callback(e);
+                            db.query(
+                                `INSERT INTO inventory_movements
+                                    (restaurant_id, inventory_item_id, movement_type, quantity, balance_after, note, created_by)
+                                 VALUES (?, ?, 'Out', ?, ?, 'Sold on bill', ?)`,
+                                [restaurantId, invId, qty, after, userId || null],
+                                (e2) => {
+                                    if (e2) return callback(e2);
+                                    // Fire-and-forget: never blocks or fails the sale.
+                                    notify.lowStockIfCrossed(restaurantId, item, before, after);
+                                    next();
+                                }
+                            );
+                        }
                     );
                 }
             );

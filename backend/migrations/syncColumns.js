@@ -35,7 +35,9 @@ const SYNC_TABLES = {
     roles:           { up: false },
     settings:        { up: false },
     inventory_items:     { up: false },
-    inventory_movements: { up: false }
+    inventory_movements: { up: false },
+    // Owner alerts raised at the till, pushed up to the cloud for the phone app.
+    notifications:       { up: true }
 };
 
 async function tableExists(table) {

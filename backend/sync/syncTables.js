@@ -46,7 +46,10 @@ const SYNC_ORDER = [
     // Day close / cash-up snapshots: written at the till, pushed up for reports.
     { table: "day_closures",    direction: "up",   fks: { restaurant_id: "restaurants", opened_by: "users", closed_by: "users" } },
     // Stock movements last (down): reference inventory_items (pulled above).
-    { table: "inventory_movements", direction: "down", fks: { restaurant_id: "restaurants", inventory_item_id: "inventory_items", created_by: "users" } }
+    { table: "inventory_movements", direction: "down", fks: { restaurant_id: "restaurants", inventory_item_id: "inventory_items", created_by: "users" } },
+    // Owner alerts (up): raised at the till, pulled into the cloud for the owner's
+    // phone app. Only a restaurant FK, so they never wait on another table.
+    { table: "notifications", direction: "up", fks: { restaurant_id: "restaurants" } }
 ];
 
 const BY_TABLE = Object.fromEntries(SYNC_ORDER.map((t) => [t.table, t]));
