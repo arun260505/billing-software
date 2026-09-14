@@ -1,4 +1,5 @@
 const paymentModel = require("../models/paymentModel");
+const orderModel = require("../models/orderModel");
 const generatePaymentNumber = require("../utils/paymentNumber");
 const { success, error } = require("../utils/response");
 
@@ -99,6 +100,14 @@ exports.createPayment = (req, res) => {
                                 (err) => {
 
                                     if (err) return error(res, err.message, 500);
+
+                                    // Sale confirmed: reduce stock for any inventory
+                                    // PRODUCTS on this bill (once, here — not at order
+                                    // create, which the salon may cancel/recreate).
+                                    // Best-effort — never block the payment.
+                                    orderModel.deductProductStock(orderId, restaurantId, req.user.id, (stockErr) => {
+                                        if (stockErr) console.error("Product stock deduction failed:", stockErr.message);
+                                    });
 
                                     if (!order.table_id) {
                                         return finish("Payment completed successfully.");
