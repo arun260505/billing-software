@@ -196,6 +196,19 @@ async function runSyncSchema() {
         if (firstRun) await backfillTaxCharges();
     }
 
+    // 022: sellable inventory products. A stock item can be put on bills — it
+    // gets a selling price, a category (the salon's own, so it slots into the POS
+    // tabs) and a flag. Its mirror menu_item carries inventory_item_id so a sale
+    // can be traced back and its stock reduced.
+    if (await tableExists("inventory_items")) {
+        await ensureColumn("inventory_items", "category_id", "INT NULL DEFAULT NULL");
+        await ensureColumn("inventory_items", "sell_on_bills", "TINYINT(1) NOT NULL DEFAULT 0");
+        await ensureColumn("inventory_items", "sell_price", "DECIMAL(10,2) NOT NULL DEFAULT 0");
+    }
+    if (await tableExists("menu_items")) {
+        await ensureColumn("menu_items", "inventory_item_id", "INT NULL DEFAULT NULL");
+    }
+
     console.log("Sync schema columns ready.");
 }
 

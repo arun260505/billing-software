@@ -33,7 +33,11 @@ const SYNC_ORDER = [
     // re-activating a till, wiped the till's saved printers). The mode and the
     // waiter toggle still come from the cloud.
     { table: "printer_settings", direction: "down", fks: { restaurant_id: "restaurants" }, keepLocal: ["cashier_printer", "kitchen_printer"] },
-    { table: "menu_items",      direction: "down", fks: { restaurant_id: "restaurants", category_id: "categories" } },
+    // Salon stock, kept by the owner like the menu, so it flows cloud -> till.
+    // Pulled BEFORE menu_items so a sellable item's mirror menu_item can point
+    // back at it (menu_items.inventory_item_id).
+    { table: "inventory_items",     direction: "down", fks: { restaurant_id: "restaurants", category_id: "categories" } },
+    { table: "menu_items",      direction: "down", fks: { restaurant_id: "restaurants", category_id: "categories", inventory_item_id: "inventory_items" } },
     { table: "users",           direction: "down", fks: { restaurant_id: "restaurants", created_by: "users" } },
     // stylist_id (014) points at users, which a till already has from the pull.
     { table: "orders",          direction: "up",   fks: { restaurant_id: "restaurants", customer_id: "customers", table_id: "dining_tables", stylist_id: "users" } },
@@ -41,11 +45,7 @@ const SYNC_ORDER = [
     { table: "payments",        direction: "up",   fks: { restaurant_id: "restaurants", order_id: "orders" } },
     // Day close / cash-up snapshots: written at the till, pushed up for reports.
     { table: "day_closures",    direction: "up",   fks: { restaurant_id: "restaurants", opened_by: "users", closed_by: "users" } },
-    // Salon stock, kept by the owner like the menu, so it flows cloud -> till.
-    // Deliberately last: a pull stops at the first table that fails, so a till
-    // on this code talking to a cloud that doesn't have these tables yet still
-    // pulls everything above them.
-    { table: "inventory_items",     direction: "down", fks: { restaurant_id: "restaurants" } },
+    // Stock movements last (down): reference inventory_items (pulled above).
     { table: "inventory_movements", direction: "down", fks: { restaurant_id: "restaurants", inventory_item_id: "inventory_items", created_by: "users" } }
 ];
 

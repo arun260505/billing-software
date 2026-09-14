@@ -43,7 +43,7 @@ function stockState(item) {
     return { label: "In stock", cls: "sl-badge-ok" };
 }
 
-function ItemModal({ item, categories, onClose, onSaved }) {
+function ItemModal({ item, categories, salonCats = [], onClose, onSaved }) {
 
     const [saving, setSaving] = useState(false);
     useEscapeClose(onClose, !saving);
@@ -53,13 +53,23 @@ function ItemModal({ item, categories, onClose, onSaved }) {
     const [form, setForm] = useState(() => ({
         item_name: item?.item_name || "",
         category: item?.category || "",
+        category_id: item?.category_id ? String(item.category_id) : "",
         sku: item?.sku || "",
         unit: item?.unit || "pcs",
         quantity: "",
         min_quantity: item ? String(Number(item.min_quantity)) : "",
         cost_price: item ? String(Number(item.cost_price)) : "",
-        status: item?.status || "Active"
+        status: item?.status || "Active",
+        sell_on_bills: item ? Number(item.sell_on_bills) === 1 : false,
+        sell_price: item && Number(item.sell_price) ? String(Number(item.sell_price)) : ""
     }));
+
+    // Picking a category sets both its id (for the product mirror) and its name.
+    const onCategory = (e) => {
+        const id = e.target.value;
+        const found = salonCats.find((c) => String(c.id) === String(id));
+        setForm((f) => ({ ...f, category_id: id, category: found ? found.category_name : "" }));
+    };
     const [problem, setProblem] = useState("");
 
     const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -74,6 +84,10 @@ function ItemModal({ item, categories, onClose, onSaved }) {
         for (const [field, label] of [["quantity", "Opening stock"], ["min_quantity", "Reorder level"], ["cost_price", "Cost price"]]) {
             if (field === "quantity" && isEdit) continue;
             if (form[field] !== "" && !(Number(form[field]) >= 0)) return setProblem(`${label} must be 0 or more.`);
+        }
+        if (form.sell_on_bills) {
+            if (!form.category_id) return setProblem("Choose a category for a product sold on bills.");
+            if (!(Number(form.sell_price) > 0)) return setProblem("Set a selling price for a product sold on bills.");
         }
 
         setSaving(true);
@@ -108,12 +122,9 @@ function ItemModal({ item, categories, onClose, onSaved }) {
 
                         <div className="sl-field">
                             <label htmlFor="inv-cat">Category</label>
-                            <select id="inv-cat" value={form.category} onChange={set("category")}>
+                            <select id="inv-cat" value={form.category_id} onChange={onCategory}>
                                 <option value="">— Select category —</option>
-                                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-                                {form.category && !categories.includes(form.category) && (
-                                    <option value={form.category}>{form.category}</option>
-                                )}
+                                {salonCats.map((c) => <option key={c.id} value={c.id}>{c.category_name}</option>)}
                             </select>
                         </div>
 
@@ -160,6 +171,26 @@ function ItemModal({ item, categories, onClose, onSaved }) {
                                 <option value="Inactive">Inactive — no longer stocked</option>
                             </select>
                         </div>
+
+                        <div className="sl-field sl-field-full">
+                            <label className="sl-check">
+                                <input
+                                    type="checkbox"
+                                    checked={form.sell_on_bills}
+                                    onChange={(e) => setForm((f) => ({ ...f, sell_on_bills: e.target.checked }))}
+                                />
+                                <span>Sell this on bills — shows in the POS under its category, and its stock drops when sold.</span>
+                            </label>
+                        </div>
+
+                        {form.sell_on_bills && (
+                            <div className="sl-field">
+                                <label htmlFor="inv-sell">Selling price (₹)</label>
+                                <input id="inv-sell" type="number" min="0" step="0.01" inputMode="decimal"
+                                    value={form.sell_price} onChange={set("sell_price")} placeholder="0.00" />
+                                <span className="sl-hint">What the customer pays for one {form.unit || "unit"}.</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -400,7 +431,7 @@ function Inventory() {
             setItems(itemsRes.data.data || []);
             setSummary(summaryRes.data.data || {});
             const cats = catsRes.data?.data || catsRes.data || [];
-            setSalonCats(cats.map((c) => c.category_name).filter(Boolean));
+            setSalonCats(cats.filter((c) => c && c.category_name));
             setLoadError(false);
         } catch (err) {
             console.error("Inventory load error:", err);
@@ -426,16 +457,17 @@ function Inventory() {
         if (tab === "log") loadMovements();
     }, [tab, loadMovements]);
 
-    // The salon's own categories, plus any category already saved on a stock item
-    // that isn't in that list (so older data isn't lost).
+    // Category NAMES for the filter/list: the salon's own categories plus any
+    // category already saved on a stock item that isn't in that list.
+    const salonCatNames = useMemo(() => salonCats.map((c) => c.category_name), [salonCats]);
     const categories = useMemo(
         () => [
-            ...salonCats,
+            ...salonCatNames,
             ...[...new Set(items.map((i) => i.category).filter(Boolean))]
-                .filter((c) => !salonCats.includes(c))
+                .filter((c) => !salonCatNames.includes(c))
                 .sort((a, b) => a.localeCompare(b))
         ],
-        [items, salonCats]
+        [items, salonCatNames]
     );
 
     const filtered = useMemo(() => {
@@ -604,7 +636,7 @@ function Inventory() {
             </div>
 
             {modal?.kind === "item" && (
-                <ItemModal item={modal.item} categories={categories} onClose={() => setModal(null)} onSaved={afterChange} />
+                <ItemModal item={modal.item} categories={categories} salonCats={salonCats} onClose={() => setModal(null)} onSaved={afterChange} />
             )}
             {modal?.kind === "stock" && (
                 <StockModal item={modal.item} onClose={() => setModal(null)} onSaved={afterChange} />

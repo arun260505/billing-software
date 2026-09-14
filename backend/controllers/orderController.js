@@ -164,6 +164,12 @@ function placeOrder(req, res, restaurantId, items) {
 
                     if (err) return error(res, err.message, 500);
 
+                    // Reduce stock for any inventory PRODUCTS sold on this bill.
+                    // Best-effort — never block the sale on a stock hiccup.
+                    orderModel.deductProductStock(orderId, restaurantId, req.user.id, (stockErr) => {
+                        if (stockErr) console.error("Product stock deduction failed:", stockErr.message);
+                    });
+
                     const respond = () => success(
                         res,
                         "Order created successfully.",

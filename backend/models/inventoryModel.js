@@ -53,6 +53,42 @@ exports.summary = async (restaurantId) => {
 
 // Create an item. Opening stock is recorded as its first movement, so the log
 // starts from the same number the item does.
+// Mirror a sellable stock item as a menu_item so it shows in the POS under its
+// category and goes on bills like a service. The mirror carries inventory_item_id
+// so a sale can trace back and reduce this item's stock. When the item is no
+// longer sellable (or has no price/category), the mirror is retired.
+async function syncProductMirror(conn, restaurantId, inventoryItemId, item) {
+    const sellable = Number(item.sell_on_bills) === 1
+        && Number(item.sell_price) > 0
+        && item.category_id
+        && String(item.status) !== "Inactive";
+
+    const [[mirror]] = await conn.query(
+        "SELECT id FROM menu_items WHERE restaurant_id = ? AND inventory_item_id = ? AND deleted_at IS NULL LIMIT 1",
+        [restaurantId, inventoryItemId]
+    );
+
+    if (!sellable) {
+        if (mirror) {
+            await conn.query("UPDATE menu_items SET available = 0, deleted_at = NOW() WHERE id = ?", [mirror.id]);
+        }
+        return;
+    }
+
+    if (mirror) {
+        await conn.query(
+            "UPDATE menu_items SET item_name = ?, price = ?, category_id = ?, available = 1, deleted_at = NULL WHERE id = ?",
+            [item.item_name, item.sell_price, item.category_id, mirror.id]
+        );
+    } else {
+        await conn.query(
+            `INSERT INTO menu_items (restaurant_id, category_id, item_name, price, available, inventory_item_id)
+             VALUES (?, ?, ?, ?, 1, ?)`,
+            [restaurantId, item.category_id, item.item_name, item.sell_price, inventoryItemId]
+        );
+    }
+}
+
 exports.create = async (restaurantId, item, userId) => {
     const conn = await dbp.getConnection();
     try {
@@ -60,11 +96,12 @@ exports.create = async (restaurantId, item, userId) => {
 
         const [result] = await conn.query(
             `INSERT INTO inventory_items
-                (restaurant_id, item_name, sku, category, unit, quantity, min_quantity, cost_price, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                (restaurant_id, item_name, sku, category, category_id, unit, quantity, min_quantity, cost_price, status, sell_on_bills, sell_price)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                restaurantId, item.item_name, item.sku, item.category, item.unit,
-                item.quantity, item.min_quantity, item.cost_price, item.status
+                restaurantId, item.item_name, item.sku, item.category, item.category_id || null, item.unit,
+                item.quantity, item.min_quantity, item.cost_price, item.status,
+                Number(item.sell_on_bills) === 1 ? 1 : 0, item.sell_price || 0
             ]
         );
 
@@ -76,6 +113,8 @@ exports.create = async (restaurantId, item, userId) => {
                 [restaurantId, result.insertId, item.quantity, item.quantity, userId || null]
             );
         }
+
+        await syncProductMirror(conn, restaurantId, result.insertId, item);
 
         await conn.commit();
         return result.insertId;
@@ -90,26 +129,44 @@ exports.create = async (restaurantId, item, userId) => {
 // Edit an item's details. Quantity is deliberately not editable here — it only
 // moves through adjustStock(), so every change is on the log.
 exports.update = async (id, restaurantId, item) => {
-    const [result] = await dbp.query(
-        `UPDATE inventory_items
-            SET item_name = ?, sku = ?, category = ?, unit = ?,
-                min_quantity = ?, cost_price = ?, status = ?
-          WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL`,
-        [
-            item.item_name, item.sku, item.category, item.unit,
-            item.min_quantity, item.cost_price, item.status,
-            id, restaurantId
-        ]
-    );
-    return result.affectedRows;
+    const conn = await dbp.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [result] = await conn.query(
+            `UPDATE inventory_items
+                SET item_name = ?, sku = ?, category = ?, category_id = ?, unit = ?,
+                    min_quantity = ?, cost_price = ?, status = ?, sell_on_bills = ?, sell_price = ?
+              WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL`,
+            [
+                item.item_name, item.sku, item.category, item.category_id || null, item.unit,
+                item.min_quantity, item.cost_price, item.status,
+                Number(item.sell_on_bills) === 1 ? 1 : 0, item.sell_price || 0,
+                id, restaurantId
+            ]
+        );
+        await syncProductMirror(conn, restaurantId, id, item);
+        await conn.commit();
+        return result.affectedRows;
+    } catch (e) {
+        await conn.rollback();
+        throw e;
+    } finally {
+        conn.release();
+    }
 };
 
-// Soft delete so the removal syncs to the till.
+// Soft delete so the removal syncs to the till. Also retires its sellable mirror.
 exports.remove = async (id, restaurantId) => {
     const [result] = await dbp.query(
         "UPDATE inventory_items SET deleted_at = NOW() WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL",
         [id, restaurantId]
     );
+    if (result.affectedRows) {
+        await dbp.query(
+            "UPDATE menu_items SET available = 0, deleted_at = NOW() WHERE restaurant_id = ? AND inventory_item_id = ? AND deleted_at IS NULL",
+            [restaurantId, id]
+        );
+    }
     return result.affectedRows;
 };
 

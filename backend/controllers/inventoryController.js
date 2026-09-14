@@ -34,14 +34,26 @@ function readItem(body, { withQuantity }) {
     const costPrice = nonNegative(body.cost_price);
     if (costPrice === null) return { problem: "Cost price must be 0 or more." };
 
+    // Sellable-on-bills product fields.
+    const sellOnBills = body.sell_on_bills === true || body.sell_on_bills === 1 || body.sell_on_bills === "1" ? 1 : 0;
+    const sellPrice = nonNegative(body.sell_price);
+    if (sellPrice === null) return { problem: "Selling price must be 0 or more." };
+    const categoryId = body.category_id === "" || body.category_id == null ? null : Number(body.category_id);
+    if (categoryId !== null && !Number.isInteger(categoryId)) return { problem: "Pick a valid category." };
+    if (sellOnBills && !categoryId) return { problem: "Choose a category for a product sold on bills." };
+    if (sellOnBills && !(sellPrice > 0)) return { problem: "Set a selling price for a product sold on bills." };
+
     const item = {
         item_name: name,
         sku: sku || null,
         category: category || null,
+        category_id: categoryId,
         unit,
         min_quantity: minQuantity,
         cost_price: costPrice,
-        status: body.status === "Inactive" ? "Inactive" : "Active"
+        status: body.status === "Inactive" ? "Inactive" : "Active",
+        sell_on_bills: sellOnBills,
+        sell_price: sellPrice
     };
 
     if (withQuantity) {

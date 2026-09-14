@@ -273,6 +273,42 @@ const createOrderItems = (items, orderId, callback) => {
 
 };
 
+// Reduce stock for any sold PRODUCTS on an order — order_items whose menu_item is
+// a mirror of an inventory item (menu_items.inventory_item_id set). Each records
+// an "Out" movement so it's on the stock log. Best-effort: a stock hiccup must
+// never fail the sale, so the caller ignores errors here.
+const deductProductStock = (orderId, restaurantId, userId, callback) => {
+    const findSql = `
+        SELECT mi.inventory_item_id AS invId, SUM(oi.quantity) AS qty
+        FROM order_items oi
+        JOIN menu_items mi ON mi.id = oi.menu_item_id
+        WHERE oi.order_id = ? AND mi.inventory_item_id IS NOT NULL
+        GROUP BY mi.inventory_item_id`;
+    db.query(findSql, [orderId], (err, rows) => {
+        if (err || !rows || rows.length === 0) return callback(err || null);
+        let i = 0;
+        const next = () => {
+            if (i >= rows.length) return callback(null);
+            const { invId, qty } = rows[i++];
+            db.query(
+                "UPDATE inventory_items SET quantity = GREATEST(quantity - ?, 0) WHERE id = ? AND restaurant_id = ?",
+                [qty, invId, restaurantId],
+                (e) => {
+                    if (e) return callback(e);
+                    db.query(
+                        `INSERT INTO inventory_movements
+                            (restaurant_id, inventory_item_id, movement_type, quantity, balance_after, note, created_by)
+                         SELECT ?, ?, 'Out', ?, quantity, 'Sold on bill', ? FROM inventory_items WHERE id = ?`,
+                        [restaurantId, invId, qty, userId || null, invId],
+                        (e2) => { if (e2) return callback(e2); next(); }
+                    );
+                }
+            );
+        };
+        next();
+    });
+};
+
 // Update a table's status (tenant-scoped)
 const updateTableStatus = (tableId, restaurantId, status, callback) => {
 
@@ -1293,6 +1329,7 @@ module.exports = {
     priceCartItems,
     createOrder,
     createOrderItems,
+    deductProductStock,
     deleteOrder,
     getInvoiceByOrderId,
     getInvoiceItems,
