@@ -267,8 +267,13 @@ try { $desktopDirs += [Environment]::GetFolderPath("CommonDesktopDirectory") } c
 try { $desktopDirs += [Environment]::GetFolderPath("Desktop") } catch {}
 foreach ($dk in ($desktopDirs | Select-Object -Unique)) {
     if ($dk -and (Test-Path $dk)) {
-        Get-ChildItem -Path $dk -Filter "InWallz Till*.lnk" -ErrorAction SilentlyContinue |
+        # Remove the current name and the old "InWallz Till" name it replaced.
+        Get-ChildItem -Path $dk -Include "InWallz Billing*.lnk","InWallz Till*.lnk" -ErrorAction SilentlyContinue |
             Remove-Item -Force -ErrorAction SilentlyContinue
+        foreach ($nm in @("InWallz Billing","InWallz Till")) {
+            Get-ChildItem -Path $dk -Filter "$nm*.lnk" -ErrorAction SilentlyContinue |
+                Remove-Item -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
@@ -278,7 +283,7 @@ try {
     $dest = $null
     try { $dest = [Environment]::GetFolderPath("CommonDesktopDirectory") } catch {}
     if (-not ($dest -and (Test-Path $dest))) { $dest = [Environment]::GetFolderPath("Desktop") }
-    $lnk = Join-Path $dest "InWallz Till.lnk"
+    $lnk = Join-Path $dest "InWallz Billing.lnk"
 
     $ws = New-Object -ComObject WScript.Shell
     $sc = $ws.CreateShortcut($lnk)
@@ -286,7 +291,7 @@ try {
     $sc.Arguments = "http://localhost:$Port/"
     $sc.IconLocation = "$till,0"
     $sc.WorkingDirectory = (Split-Path $till)
-    $sc.Description = "InWallz Till"
+    $sc.Description = "InWallz Billing"
     $sc.Save()
     Say "Desktop shortcut created: $lnk"
 } catch {

@@ -72,7 +72,7 @@ namespace InWallzTill
         public MainForm(string url)
         {
             _url = url;
-            Text = "InWallz Till";
+            Text = "InWallz Billing";
             StartPosition = FormStartPosition.CenterScreen;
             Width = 1280;
             Height = 800;
@@ -137,7 +137,7 @@ namespace InWallzTill
                 MessageBox.Show(
                     "Could not start the till view.\r\n\r\n" + ex.Message +
                     "\r\n\r\nIf this keeps happening, the WebView2 runtime may be missing.",
-                    "InWallz Till", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    "InWallz Billing", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

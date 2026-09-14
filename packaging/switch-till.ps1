@@ -66,15 +66,17 @@ try {
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
     $icon = Join-Path $InstallDir "app\build\favicon.ico"
     $dest = [Environment]::GetFolderPath("Desktop")
-    Get-ChildItem -Path $dest -Filter "InWallz Till*.lnk" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
-    $lnk = Join-Path $dest "InWallz Till.lnk"
+    foreach ($nm in @("InWallz Billing","InWallz Till")) {
+        Get-ChildItem -Path $dest -Filter "$nm*.lnk" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+    }
+    $lnk = Join-Path $dest "InWallz Billing.lnk"
     $ws = New-Object -ComObject WScript.Shell
     $sc = $ws.CreateShortcut($lnk)
     $sc.TargetPath = if ($edge) { $edge } else { "msedge.exe" }
     $sc.Arguments = "--app=http://localhost:$port/"
     if (Test-Path $icon) { $sc.IconLocation = "$icon,0" }
     if ($edge) { $sc.WorkingDirectory = (Split-Path $edge) }
-    $sc.Description = "InWallz Till"
+    $sc.Description = "InWallz Billing"
     $sc.Save()
     Say "Shortcut created: $lnk"
 } catch { Say "Could not create the shortcut: $($_.Exception.Message)" }
