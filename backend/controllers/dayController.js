@@ -45,7 +45,7 @@ exports.getSummary = async (req, res) => {
         const rid = req.user.restaurant_id;
         const date = pickDate(req.query.date);
         const summary = await dayModel.getDaySummary(rid, date);
-        const closure = await dayModel.getClosure(rid, date);
+        const closure = await dayModel.getRow(rid, date);
         return success(res, "Day summary.", { summary, closure });
     } catch (e) {
         return error(res, e.message, 500);

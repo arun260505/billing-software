@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaArrowRight, FaBoxOpen, FaCut } from "react-icons/fa";
 
 import AdminLayout from "../../layouts/AdminLayout";
-import { DayProvider, DayButton } from "../../components/DayControl";
+import { DayProvider } from "../../components/DayControl";
 import DashboardCard from "../../components/Admin/DashboardCard";
 import SalesChart from "../../components/Admin/SalesChart";
 import PaymentSummary from "../../components/Admin/PaymentSummary";
@@ -334,7 +334,6 @@ function SalonDashboard() {
             <h1>Welcome back</h1>
             <p>Here&rsquo;s what&rsquo;s happening at {salonName} today.</p>
           </div>
-          <DayButton className="ad-dayclose" />
         </div>
 
         {error ? (

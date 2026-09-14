@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import AdminLayout from "../../layouts/AdminLayout";
-import { DayProvider, DayButton } from "../../components/DayControl";
+import { DayProvider } from "../../components/DayControl";
 import DashboardCard from "../../components/Admin/DashboardCard";
 import SalesChart from "../../components/Admin/SalesChart";
 import PaymentSummary from "../../components/Admin/PaymentSummary";
@@ -193,7 +193,6 @@ function Dashboard() {
             <h1>Welcome back, Admin</h1>
             <p>Here&rsquo;s what&rsquo;s happening at {restaurantName} today.</p>
           </div>
-          <DayButton className="ad-dayclose" />
         </div>
 
         {error ? (

@@ -49,6 +49,25 @@
     gap:16px;
 }
 
+/* Open / Close Day — sits just before Logout in the top bar. */
+.header-dayclose{
+    height:36px;
+    padding:0 16px;
+    border:none;
+    border-radius:8px;
+    background:linear-gradient(135deg,#2563eb,#1d4ed8);
+    color:#fff;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:filter 0.15s;
+}
+.header-dayclose:hover{ filter:brightness(1.05); }
+.header-dayclose:disabled{ opacity:.6; cursor:default; }
+/* "Open Day" (day is closed) reads as a go-action, not a stop-action. */
+.header-dayclose.is-open-action{ background:linear-gradient(135deg,#16a34a,#15803d); }
+
 .logout-btn{
     display:flex;
     align-items:center;
