@@ -15,12 +15,23 @@ const mysql = require("mysql2");
 | work unchanged. Transactions must use db.getConnection() (see orderNumber.js).
 */
 
+// Timestamps are stored as local (IST) wall-clock: the till runs in IST and
+// writes NOW()/local times, and those rows sync up to the cloud verbatim. The
+// till's MySQL driver reads them back correctly because the till machine IS on
+// IST. The cloud server runs on UTC, so its driver would read the same
+// wall-clock values as UTC and every displayed time (recent bills, reports)
+// would be off by +5:30. Setting DB_TIMEZONE on the cloud (e.g. "+05:30") makes
+// its driver interpret the stored DATETIMEs in that zone, so times display
+// correctly. Left unset on the till, where the machine's own zone already fits.
+const dbTimezone = process.env.DB_TIMEZONE;
+
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
+    ...(dbTimezone ? { timezone: dbTimezone } : {}),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
