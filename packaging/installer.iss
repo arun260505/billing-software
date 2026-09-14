@@ -36,14 +36,13 @@ WizardStyle=modern
 [Files]
 Source: "staging\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
-[Icons]
-; Till shortcut: opens as a STANDALONE app window (no tabs/address bar), so it
-; looks and behaves like a native app and can be pinned to the taskbar.
-; (For a locked-down production kiosk, swap --app for:
-;  --kiosk http://localhost:5000 --edge-kiosk-type=fullscreen)
-Name: "{commondesktop}\InWallz Till"; Filename: "{cmd}"; \
-  Parameters: "/c start msedge --app=http://localhost:5050"; \
-  IconFilename: "{app}\app\build\favicon.ico"
+; No [Icons] here on purpose. A cmd/"start msedge --app" shortcut launches a
+; plain Edge window that Windows treats as a SEPARATE taskbar button from the
+; pinned shortcut (two icons, generic icon). Instead we let Edge install the till
+; as a real PWA (WebAppInstallForceList in install-services.ps1, with
+; create_desktop_shortcut) and open it once at the end of setup so that shortcut
+; is created. That shortcut launches the PWA, groups correctly when pinned, and
+; carries the logo from the web manifest.
 
 [Code]
 var

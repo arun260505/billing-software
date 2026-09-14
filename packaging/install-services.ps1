@@ -222,6 +222,18 @@ try {
     Say "Printer warm-up skipped: $($_.Exception.Message)"
 }
 
+# 9) Open the till once so Edge installs it as a PWA (WebAppInstallForceList,
+# step 7) and creates its desktop shortcut. That shortcut launches the app as a
+# real PWA - it groups under one taskbar icon when pinned and shows the logo
+# from the web manifest, unlike a plain "msedge --app" window which opens as a
+# separate, generically-iconned taskbar button.
+Say "Opening the till once to register the app"
+try {
+    Start-Process "cmd.exe" -ArgumentList "/c start msedge --app=http://localhost:$Port"
+} catch {
+    Say "Could not open the till automatically: $($_.Exception.Message)"
+}
+
 Start-Sleep -Seconds 3
 Say "Service status"
 Get-Service InWallzMySQL, InWallzServer -ErrorAction SilentlyContinue |
