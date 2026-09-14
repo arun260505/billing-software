@@ -27,9 +27,21 @@ namespace InWallzTill
     {
         static Mutex _mutex;
 
+        [DllImport("user32.dll")]
+        private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+        [DllImport("user32.dll")]
+        private static extern bool SetProcessDPIAware();
+        // PER_MONITOR_AWARE_V2 — so the WebView2 content renders at the real screen
+        // DPI (crisp) instead of being bitmap-stretched from 100% (blurry).
+        static readonly IntPtr PER_MONITOR_AWARE_V2 = new IntPtr(-4);
+
         [STAThread]
         static void Main(string[] args)
         {
+            // Must run before any window is created.
+            try { if (!SetProcessDpiAwarenessContext(PER_MONITOR_AWARE_V2)) SetProcessDPIAware(); }
+            catch { try { SetProcessDPIAware(); } catch { } }
+
             // Single instance: if the till is already open, just exit quietly.
             bool created;
             _mutex = new Mutex(true, "InWallzTill_SingleInstance", out created);
