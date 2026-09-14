@@ -1154,12 +1154,6 @@ function buildWorkbook(d) {
             header: ["Stylist", "Customers", "Bills", "Sales", "Avg Bill"],
             rows: d.staff.map((s) => [s.name, s.customers, s.orders, s.sales, s.avg])
         });
-
-        wb.push({
-            title: "Services Not Booked",
-            header: ["Service", "Category", "Price"],
-            rows: d.low_items.map((i) => [i.item_name, i.category_name, i.price])
-        });
     } else {
         wb.push({
             title: "Staff",
