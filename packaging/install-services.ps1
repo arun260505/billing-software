@@ -202,13 +202,6 @@ if (-not $isUpdate) {
     & $mysql -u inwallz "--password=$dbPass" -h 127.0.0.1 "--port=$DbPort" inwallz_billing -e "UPDATE activation SET restaurant_uuid=NULL, sync_key=NULL, activated_at=NULL WHERE id=1; DELETE FROM sync_state;" 2>$null | Out-Null
 } else {
     Say "Keeping existing .env and activation (update)"
-    # Clear the pull cursor so this update re-pulls the shop's admin-owned data
-    # (restaurants, menu, users, settings, charges …) with the NEW schema. That
-    # way a column added in this version — e.g. business_type — is populated on
-    # the next sync instead of staying blank because the row wasn't re-fetched.
-    # Cheap for a POS dataset; upserts by uuid so nothing is duplicated.
-    Say "Forcing a fresh re-sync so new fields populate"
-    & $mysql -u inwallz "--password=$dbPass" -h 127.0.0.1 "--port=$DbPort" inwallz_billing -e "DELETE FROM sync_state;" 2>$null | Out-Null
 }
 
 # 5) Register the backend service (depends on MySQL).
