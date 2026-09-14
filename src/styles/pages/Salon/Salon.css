@@ -292,13 +292,9 @@ button.sl-badge { cursor: pointer; }
     height: 28px; border: 1px solid #cbd5e1; border-radius: 7px; padding: 0 6px;
     font-size: 12px; background: #fff; font-family: inherit;
 }
-/* Tucked-away Web/App switch: a quiet link until someone needs to change it. */
-.cashier-app .sl-wa-switch {
-    background: none; border: none; padding: 0; cursor: pointer;
-    font-size: 12px; color: #64748b; font-family: inherit; text-decoration: underline;
-    text-underline-offset: 2px;
-}
-.cashier-app .sl-wa-switch:hover { color: #1d4ed8; }
+/* The Web/App choice now lives on the Printer screen; the toast only states
+   where bills open and points there. */
+.cashier-app .sl-wa-note { font-size: 12px; color: #64748b; }
 .cashier-app .bills-wa {
     padding: 7px 12px; margin-right: 6px; border-radius: 9px; border: 1.5px solid #1d4ed8;
     background: #fff; color: #1d4ed8; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;

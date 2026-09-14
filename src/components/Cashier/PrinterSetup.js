@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import printerSettingService from "../../services/printerSettingService";
+import settingsService from "../../services/settingsService";
 import { getPrinters } from "../../services/systemService";
 import { printTestNow } from "../../utils/printDispatch";
 import {
@@ -8,6 +9,7 @@ import {
     requiredPrinters,
     PRINTER_MODE_OPTIONS
 } from "../../utils/printerMode";
+import { getWhatsAppOverride, setWhatsAppOverride } from "../../utils/whatsappBill";
 import "../../styles/Cashier/PrinterSetup.css";
 
 /**
@@ -50,6 +52,12 @@ function PrinterSetup({ salon = false }) {
     const [flash, setFlash] = useState("");
     const [loadError, setLoadError] = useState("");
 
+    // WhatsApp: the owner's default (Web/App, synced from admin) + THIS till's
+    // own override. The override is a property of this PC (its WhatsApp setup),
+    // so it lives in the browser, not the synced settings. "" = follow default.
+    const [waDefault, setWaDefault] = useState("web");
+    const [waOverride, setWaOverride] = useState(getWhatsAppOverride);
+
     const slots = salon ? SALON_SLOTS : requiredPrinters(mode);
 
     const loadSetting = useCallback(async () => {
@@ -90,10 +98,29 @@ function PrinterSetup({ salon = false }) {
         }
     }, []);
 
+    // The owner's Web/App default (Settings → Bills & WhatsApp, synced here).
+    const loadWaDefault = useCallback(async () => {
+        try {
+            const res = await settingsService.getRestaurant();
+            const v = res.data?.data?.whatsapp_via;
+            setWaDefault(v === "app" ? "app" : "web");
+        } catch (e) { /* keep the safe default (web) */ }
+    }, []);
+
     useEffect(() => {
         loadSetting();
         loadPrinters();
-    }, [loadSetting, loadPrinters]);
+        loadWaDefault();
+    }, [loadSetting, loadPrinters, loadWaDefault]);
+
+    const changeWaOverride = (value) => {
+        const v = value === "web" || value === "app" ? value : null;
+        setWaOverride(v);
+        setWhatsAppOverride(v);
+        setFlash(v ? `WhatsApp will open in ${v === "app" ? "the WhatsApp app" : "WhatsApp Web"} on this till.`
+                   : "WhatsApp now follows the owner's default on this till.");
+        setTimeout(() => setFlash(""), 3000);
+    };
 
     const setValue = (key, value) => {
         setValues((prev) => ({ ...prev, [key]: value }));
@@ -321,6 +348,42 @@ function PrinterSetup({ salon = false }) {
                     make that automatic.
                 </p>
 
+            </div>
+
+            {/* WhatsApp: where bills open on THIS till. The owner sets the default
+                (Admin → Settings → Bills & WhatsApp); a single till can override
+                it here — a property of this PC, so it stays on this machine. */}
+            <div className="prn-card">
+                <h2 className="prn-title">💬 WhatsApp bills</h2>
+                <p className="prn-sub">
+                    Choose where bills open when you send them on WhatsApp from this till.
+                    Leave it on the owner's default unless this PC needs a different one.
+                </p>
+
+                <div className="prn-slot">
+                    <div className="prn-slot-head">
+                        <div className="prn-slot-title">
+                            <strong>Open WhatsApp in</strong>
+                            <span className="prn-slot-role">This till only</span>
+                        </div>
+                    </div>
+                    <div className="prn-entry">
+                        <select
+                            className="prn-select"
+                            value={waOverride || ""}
+                            onChange={(e) => changeWaOverride(e.target.value)}
+                        >
+                            <option value="">Owner's default ({waDefault === "app" ? "WhatsApp app" : "WhatsApp Web"})</option>
+                            <option value="web">WhatsApp Web (browser)</option>
+                            <option value="app">WhatsApp app (desktop)</option>
+                        </select>
+                    </div>
+                    <div className="prn-hint">
+                        {waOverride
+                            ? `This till opens ${waOverride === "app" ? "the WhatsApp desktop app" : "WhatsApp Web"}, overriding the owner's default.`
+                            : `Following the owner's default (${waDefault === "app" ? "WhatsApp app" : "WhatsApp Web"}).`}
+                    </div>
+                </div>
             </div>
         </div>
     );

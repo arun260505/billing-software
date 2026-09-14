@@ -42,7 +42,6 @@ import {
     whatsappUrl,
     openWhatsApp,
     getWhatsAppOverride,
-    setWhatsAppOverride,
     effectiveVia
 } from "../../utils/whatsappBill";
 import usePersistentCart from "../../hooks/usePersistentCart";
@@ -105,12 +104,9 @@ function SalonPos() {
     // waBill: the last paid bill, ready to send — { number, customer, phone, text,
     // opened, blocked }. Preferences belong to this PC (utils/whatsappBill.js).
     const [waBill, setWaBill] = useState(null);
-    // This till's override ("web" | "app" | null). null = follow the salon
-    // default (settings.whatsapp_via, in `desk` below).
-    const [waOverride, setWaOverride] = useState(getWhatsAppOverride);
-    // The Web/App switch stays tucked behind a "Change" link so it isn't in the
-    // way on every bill, but is one tap away when a till needs to switch.
-    const [showWaSwitch, setShowWaSwitch] = useState(false);
+    // The till's Web/App override lives in this PC (localStorage) and is set on
+    // the Printer screen (Settings → 🖨 Printer). Read live at send time so a
+    // change there takes effect without a reload. null = follow the salon default.
     // The owner's choices (Settings → Bills & WhatsApp) and the shop number given
     // when the salon was created — polled with the discount rule.
     const [desk, setDesk] = useState({ bill_delivery: "printer_optional", whatsapp_template: "", shop_mobile: "", whatsapp_via: "web" });
@@ -628,16 +624,10 @@ function SalonPos() {
         mobile: desk.shop_mobile || salonInfo?.mobile
     });
 
-    // What this till actually opens WhatsApp in: its own override, else the
-    // salon-wide default (desk.whatsapp_via, set by the owner in Settings).
-    const waVia = effectiveVia(waOverride, desk.whatsapp_via);
-
-    // "" clears the override (follow the salon default); "web"/"app" set it.
-    const updateWaOverride = (value) => {
-        const v = value === "web" || value === "app" ? value : null;
-        setWaOverride(v);
-        setWhatsAppOverride(v);
-    };
+    // What this till actually opens WhatsApp in: its own override (set on the
+    // Printer screen, read live from this PC), else the salon-wide default
+    // (desk.whatsapp_via, set by the owner in Settings).
+    const waVia = effectiveVia(getWhatsAppOverride(), desk.whatsapp_via);
 
     const sendOnWhatsApp = (entry) => {
         const opened = openWhatsApp(whatsappUrl(entry.phone, entry.text, waVia), waVia);
@@ -724,8 +714,26 @@ function SalonPos() {
     const handleBillAdd = (menuItem) =>
         withBillBusy(() => addItemToOrder(editingBill.id, menuItem.id, 1), "Could not add the service.");
 
-    // Save the corrected totals (bringing the recorded payment into line) and reprint.
-    const handleBillReprint = async (method, totals) => {
+    // Send an already-saved bill on WhatsApp — reuses the order (same number),
+    // never creates a new one. Prompts for the number if the bill has none.
+    const sendReeditedBillOnWhatsApp = (header) => {
+        let phone = whatsappNumber(header.customer_mobile || editingBill?.customer_mobile);
+        if (!phone) {
+            const typed = window.prompt("Customer's WhatsApp number (with country code or 10 digits):", "");
+            if (typed === null) return;   // cancelled
+            phone = whatsappNumber(typed);
+            if (!phone) { alert("That doesn't look like a valid mobile number."); return; }
+        }
+        const text = buildBillMessage(billFromSaved(header, editingBillItems), shopForMessage(), desk.whatsapp_template);
+        if (!openWhatsApp(whatsappUrl(phone, text, waVia), waVia)) {
+            alert("The browser blocked the WhatsApp window. Allow pop-ups for this page, then try again.");
+        }
+    };
+
+    // Save the corrected totals (bringing the recorded payment into line), then
+    // hand the bill over: print, WhatsApp, or both. Always the SAME order number
+    // (rebill reuses the order) — it never creates a new bill.
+    const deliverCorrectedBill = async (method, totals, { print = true, whatsapp = false } = {}) => {
         setBillEditBusy(true);
         try {
             const res = await rebillOrder(editingBill.id, method);
@@ -738,25 +746,28 @@ function SalonPos() {
                 console.error("Bill header reload failed, printing from screen:", e);
             }
 
-            const opened = printCorrectedBill({
-                title: header.restaurant_name || salonInfo?.restaurant_name || "InWallz",
-                billNumber: header.order_number,
-                place: [
-                    header.customer_name || editingBill.customer_name,
-                    (header.stylist_name || editingBill.stylist_name) && `Stylist: ${header.stylist_name || editingBill.stylist_name}`
-                ].filter(Boolean).join(" · ") || "Walk-in",
-                items: editingBillItems,
-                subtotal: totals.subtotal,
-                discount: totals.discount,
-                discountLabel: totals.discountLabel,
-                taxLines: totals.taxLines,
-                charges: totals.charges,
-                total: totals.total,
-                method,
-                isReprint: true
-            });
+            if (print) {
+                const opened = printCorrectedBill({
+                    title: header.restaurant_name || salonInfo?.restaurant_name || "InWallz",
+                    billNumber: header.order_number,
+                    place: [
+                        header.customer_name || editingBill.customer_name,
+                        (header.stylist_name || editingBill.stylist_name) && `Stylist: ${header.stylist_name || editingBill.stylist_name}`
+                    ].filter(Boolean).join(" · ") || "Walk-in",
+                    items: editingBillItems,
+                    subtotal: totals.subtotal,
+                    discount: totals.discount,
+                    discountLabel: totals.discountLabel,
+                    taxLines: totals.taxLines,
+                    charges: totals.charges,
+                    total: totals.total,
+                    method,
+                    isReprint: true
+                });
+                if (!opened) alert("Bill saved, but the print window was blocked. Allow pop-ups to print.");
+            }
 
-            if (!opened) alert("Bill saved, but the print window was blocked. Allow pop-ups to print.");
+            if (whatsapp) sendReeditedBillOnWhatsApp(header);
 
             const diff = Number(result.difference || 0);
             if (Math.abs(diff) >= 0.01) {
@@ -776,6 +787,10 @@ function SalonPos() {
             setBillEditBusy(false);
         }
     };
+
+    const handleBillReprint = (method, totals) => deliverCorrectedBill(method, totals, { print: true, whatsapp: false });
+    const handleBillWhatsApp = (method, totals, opts = {}) =>
+        deliverCorrectedBill(method, totals, { print: !!opts.print, whatsapp: true });
 
     const handleLogout = () => {
         authService.logout();
@@ -1075,29 +1090,9 @@ function SalonPos() {
                                         {waBill.blocked ? "Send bill on WhatsApp" : "Open WhatsApp again"}
                                     </button>
                                     <div className="sl-wa-prefs">
-                                        {showWaSwitch ? (
-                                            <>
-                                                <span>Open bills in</span>
-                                                <select
-                                                    value={waOverride || ""}
-                                                    onChange={(e) => { updateWaOverride(e.target.value); setShowWaSwitch(false); }}
-                                                    aria-label="Open bills in"
-                                                    autoFocus
-                                                >
-                                                    <option value="">Salon default ({desk.whatsapp_via === "app" ? "app" : "Web"})</option>
-                                                    <option value="web">WhatsApp Web</option>
-                                                    <option value="app">WhatsApp app</option>
-                                                </select>
-                                            </>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                className="sl-wa-switch"
-                                                onClick={() => setShowWaSwitch(true)}
-                                            >
-                                                Opens in {waVia === "app" ? "WhatsApp app" : "WhatsApp Web"}{waOverride ? "" : " (salon default)"} · Change
-                                            </button>
-                                        )}
+                                        <span className="sl-wa-note">
+                                            Opens in {waVia === "app" ? "WhatsApp app" : "WhatsApp Web"}. Change this under 🖨 Printer.
+                                        </span>
                                     </div>
                                 </div>
                             )}
@@ -1132,6 +1127,7 @@ function SalonPos() {
                     onRemoveGroup={handleBillRemove}
                     onAddItem={handleBillAdd}
                     onReprint={handleBillReprint}
+                    onWhatsApp={handleBillWhatsApp}
                     onClose={closeBillEdit}
                 />
             )}

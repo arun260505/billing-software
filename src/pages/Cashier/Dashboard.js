@@ -104,10 +104,9 @@ function Dashboard() {
     const [restaurantInfo, setRestaurantInfo] = useState(null);
     // WhatsApp: the shop's message template + shop number + the owner's default
     // Web/App choice (Settings → Bills & WhatsApp). Bills → correct & reprint can
-    // send the same bill on WhatsApp. `waOverride` is this till's own Web/App
-    // choice (per-PC, in localStorage); null = follow the restaurant default.
+    // send the same bill on WhatsApp. This till's own Web/App override is set on
+    // the Printer screen and stored per-PC (read live via getWhatsAppOverride).
     const [waSettings, setWaSettings] = useState({ whatsapp_template: "", shop_mobile: "", whatsapp_via: "web" });
-    const [waOverride] = useState(getWhatsAppOverride);
     // Everything billed on top of the goods — GST, service charge, packing —
     // lives in Admin → Charges. A restaurant with none configured bills neither
     // tax nor service, which is the point of them being rows and not settings.
@@ -893,7 +892,9 @@ function Dashboard() {
 
     // What this till opens WhatsApp in: its own override, else the restaurant
     // default (Settings → Bills & WhatsApp).
-    const waVia = effectiveVia(waOverride, waSettings.whatsapp_via);
+    // Read the override live (set on the Printer screen, stored on this PC) so a
+    // change there applies without a reload.
+    const waVia = effectiveVia(getWhatsAppOverride(), waSettings.whatsapp_via);
 
     // Send an already-saved bill on WhatsApp — reuses the order (same number),
     // never creates a new one. Prompts for the number if the bill has none.
