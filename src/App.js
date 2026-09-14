@@ -3,7 +3,7 @@ import NetworkGate from "./components/NetworkGate";
 import WifiGuard from "./components/WifiGuard";
 import ServerConfig from "./components/ServerConfig";
 import AppNotify, { installAlertBridge } from "./components/AppNotify";
-import OwnerApp from "./ownerApp/OwnerApp";
+import OwnerNotificationDaemon from "./ownerApp/OwnerNotificationDaemon";
 import { isNativeApp, getStoredServer, hasBakedApiUrl, isManualMode, isOwnerApp } from "./services/serverConfig";
 
 // Every window.alert() in the app now shows as a tidy in-app popup (AppNotify)
@@ -19,10 +19,16 @@ function App() {
     let inner;
     if (isNativeApp() && isOwnerApp()) {
 
-        // Salon-owner alerts app: cloud-connected, works on ANY network, so it
-        // skips the LAN discovery and same-WiFi gates entirely. Self-contained
-        // login + dashboard + alert polling.
-        inner = <OwnerApp />;
+        // Salon-owner app: the FULL admin panel (all owner options), cloud-
+        // connected so it works on ANY network — no LAN discovery or same-WiFi
+        // gate. OwnerNotificationDaemon polls the alerts feed in the background
+        // and raises phone notifications while the owner uses the admin screens.
+        inner = (
+            <>
+                <AppRoutes />
+                <OwnerNotificationDaemon />
+            </>
+        );
     } else if (isNativeApp()) {
 
         // Cloud APK (URL baked in): connects to the cloud but must be on the

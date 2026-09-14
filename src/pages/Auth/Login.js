@@ -3,13 +3,17 @@ import "../../styles/pages/Auth/Login.css";
 import { FaUserAlt, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import logo from "../../assets/inwallz-logo.png";
 import authService from "../../services/authService";
-import { isNativeApp } from "../../services/serverConfig";
+import { isNativeApp, isOwnerApp } from "../../services/serverConfig";
 import { homeFor } from "../../utils/businessType";
 
 // The roles the Android waiter APK is allowed to sign in. Kitchen is included
 // because a kitchen display on a spare tablet is a reasonable use of the same
 // build; the cashier till and the admin/super-admin back office are not.
 const APK_ROLES = ["waiter", "kitchen"];
+
+// The owner APK is the salon owner's back office on their phone, so it signs in
+// the admin (owner) role instead — the full admin panel, over any network.
+const nativeAllowedRoles = () => (isOwnerApp() ? ["admin"] : APK_ROLES);
 
 function Login() {
 
@@ -64,10 +68,12 @@ function Login() {
                 // flow — none of which fits or belongs on a waiter's phone, and
                 // signing the till in here would let anyone take money from a
                 // handset. Refuse the login rather than store the session.
-                if (isNativeApp() && !APK_ROLES.includes(user.role)) {
+                if (isNativeApp() && !nativeAllowedRoles().includes(user.role)) {
                     alert(
-                        "This app is for waiters. Please use the cashier till on " +
-                        "the counter PC to sign in as " + user.role + "."
+                        isOwnerApp()
+                            ? "This app is for the salon owner. Sign in with the owner account."
+                            : "This app is for waiters. Please use the cashier till on " +
+                              "the counter PC to sign in as " + user.role + "."
                     );
                     return;
                 }
