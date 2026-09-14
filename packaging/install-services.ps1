@@ -204,6 +204,19 @@ if (-not $isUpdate) {
     Say "Keeping existing .env and activation (update)"
 }
 
+# 4c) Keep the till logged in (trusted on-premise device) — no 8h re-login. Set
+# a long token life in the .env on every install, including updates from an old
+# 8h build.
+try {
+    $envKeep = Get-Content $envFile -Raw
+    if ($envKeep -match "(?m)^JWT_EXPIRES_IN=") {
+        $envKeep = $envKeep -replace "(?m)^JWT_EXPIRES_IN=.*", "JWT_EXPIRES_IN=3650d"
+    } else {
+        $envKeep = $envKeep.TrimEnd() + "`r`nJWT_EXPIRES_IN=3650d`r`n"
+    }
+    $envKeep | Out-File $envFile -Encoding ascii
+} catch { Say "Could not set token life: $($_.Exception.Message)" }
+
 # 5) Register the backend service (depends on MySQL).
 Say "Registering InWallzServer service"
 $backendShort = $fso.GetFolder($backend).ShortPath

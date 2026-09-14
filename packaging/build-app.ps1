@@ -64,7 +64,8 @@ DB_PASSWORD=__DB_PASSWORD__
 DB_NAME=inwallz_billing
 DB_PORT=3306
 JWT_SECRET=__JWT_SECRET__
-JWT_EXPIRES_IN=8h
+# A till is a trusted on-premise device — keep it logged in (no 8h re-login).
+JWT_EXPIRES_IN=3650d
 
 # Local-first sync (the installer sets these):
 SYNC_ROLE=local
