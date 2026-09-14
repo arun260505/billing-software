@@ -29,7 +29,7 @@ function SummaryRows({ s }) {
             <div className="dayctl-row"><span>Bills</span><b>{s.bill_count}</b></div>
             <div className="dayctl-row"><span>Gross sales</span><b>{rupee(s.gross_sales)}</b></div>
             {Number(s.discount_total) > 0 && <div className="dayctl-row"><span>Discount</span><b>-{rupee(s.discount_total)}</b></div>}
-            <div className="dayctl-row"><span>Tax / charges</span><b>{rupee(s.tax_total)}</b></div>
+            {Number(s.tax_total) > 0 && <div className="dayctl-row"><span>Tax / charges</span><b>{rupee(s.tax_total)}</b></div>}
             <div className="dayctl-row dayctl-row-strong"><span>Net sales</span><b>{rupee(s.net_sales)}</b></div>
             <div className="dayctl-split">
                 <div className="dayctl-tender"><span>Cash</span><b>{rupee(s.cash_total)}</b></div>
