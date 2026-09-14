@@ -222,11 +222,23 @@ try {
     Say "Printer warm-up skipped: $($_.Exception.Message)"
 }
 
-# 9) Open the till once so Edge installs it as a PWA (WebAppInstallForceList,
-# step 7) and creates its desktop shortcut. That shortcut launches the app as a
-# real PWA - it groups under one taskbar icon when pinned and shows the logo
-# from the web manifest, unlike a plain "msedge --app" window which opens as a
-# separate, generically-iconned taskbar button.
+# 9) Clean up old till desktop shortcuts, then open the till once so Edge
+# installs it as a PWA (WebAppInstallForceList, step 7) and recreates a single
+# desktop shortcut. Edge makes a fresh shortcut on every install, so without the
+# cleanup an update piles up "InWallz Till (1)", "(2)", ... Deleting them first
+# leaves exactly one. The PWA shortcut launches the app as a real PWA - it groups
+# under one taskbar icon when pinned and carries the logo from the manifest.
+Say "Removing old till desktop shortcuts"
+$desktopDirs = @()
+try { $desktopDirs += [Environment]::GetFolderPath("CommonDesktopDirectory") } catch {}
+try { $desktopDirs += [Environment]::GetFolderPath("Desktop") } catch {}
+foreach ($dk in ($desktopDirs | Select-Object -Unique)) {
+    if ($dk -and (Test-Path $dk)) {
+        Get-ChildItem -Path $dk -Filter "InWallz Till*.lnk" -ErrorAction SilentlyContinue |
+            Remove-Item -Force -ErrorAction SilentlyContinue
+    }
+}
+
 Say "Opening the till once to register the app"
 try {
     Start-Process "cmd.exe" -ArgumentList "/c start msedge --app=http://localhost:$Port"
