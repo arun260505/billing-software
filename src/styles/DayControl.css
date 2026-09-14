@@ -121,22 +121,38 @@
     border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-bottom: 10px;
 }
 
-/* The Close Day button — a quiet fixed pill, bottom-left, out of the way. */
-.dayctl-close-btn {
-    position: fixed;
-    left: 16px;
-    bottom: 16px;
-    z-index: 9000;
-    height: 40px;
+.dayctl-loading { color: #64748b; font-size: 13px; padding: 8px 0 12px; }
+
+/* Close Day — a header button that sits next to Logout. */
+.pos-dayclose {
+    height: 38px;
     padding: 0 16px;
-    border: 1px solid #cbd5e1;
-    border-radius: 999px;
-    background: #ffffff;
-    color: #1d4ed8;
-    font-size: 13px;
+    margin-right: 10px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    font-size: 14px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 6px 18px rgba(15, 23, 42, .14);
     font-family: inherit;
+    white-space: nowrap;
 }
-.dayctl-close-btn:hover { background: #eff6ff; border-color: #2563eb; }
+.pos-dayclose:hover { filter: brightness(1.05); }
+
+/* Close Day in the owner's dashboard heading. */
+.ad-dayclose {
+    height: 40px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    align-self: center;
+}
+.ad-dayclose:hover { filter: brightness(1.05); }

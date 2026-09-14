@@ -14,7 +14,7 @@ import MenuCard from "../../components/Waiter/MenuCard";
 import CartItem from "../../components/Waiter/CartItem";
 import BillModal from "../../components/Cashier/BillModal";
 import TableBillModal from "../../components/Cashier/TableBillModal";
-import DayControl from "../../components/DayControl";
+import { DayProvider, DayButton } from "../../components/DayControl";
 import MenuAvailability from "../../components/Cashier/MenuAvailability";
 import BillsHistory from "../../components/Cashier/BillsHistory";
 import PrinterSetup from "../../components/Cashier/PrinterSetup";
@@ -1000,11 +1000,8 @@ function Dashboard() {
 
     // ── Render (desktop POS) ────────────────────────────────────────
     return (
+        <DayProvider>
         <div className="cashier-app pos">
-
-            {/* Open/close the business day (cash-up). Blocks billing until the
-                day is opened; pops the previous day's close if it was forgotten. */}
-            <DayControl />
 
             {/* ══ LEFT SIDEBAR (drawer) ══ */}
             {sidebarOpen && <div className="pos-scrim" onClick={() => setSidebarOpen(false)} />}
@@ -1066,6 +1063,7 @@ function Dashboard() {
                         <div className="pos-avatar">{cashierName.charAt(0)}</div>
                         <div className="pos-user-info"><span className="pos-user-name">{cashierName}</span><span className="pos-user-id">{cashierId}</span></div>
                     </div>
+                    <DayButton />
                     <button className="pos-logout" onClick={handleLogout}>Logout</button>
                 </div>
             </header>
@@ -1265,6 +1263,7 @@ function Dashboard() {
                 />
             )}
         </div>
+        </DayProvider>
     );
 }
 

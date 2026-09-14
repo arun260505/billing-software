@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import DayControl from "../../components/DayControl";
+import { DayProvider, DayButton } from "../../components/DayControl";
 import authService from "../../services/authService";
 import { getCategories, getItemsByCategory, getAllItems } from "../../services/menuService";
 import {
@@ -786,10 +786,8 @@ function SalonPos() {
 
     // ── Render ──────────────────────────────────────────────────────
     return (
+        <DayProvider>
         <div className="cashier-app pos sl-pos">
-
-            {/* Open/close the salon day (cash-up) + forgot-to-close pop-up. */}
-            <DayControl />
 
             {sidebarOpen && <div className="pos-scrim" onClick={() => setSidebarOpen(false)} />}
             <aside className={`pos-drawer${sidebarOpen ? " open" : ""}`}>
@@ -833,6 +831,7 @@ function SalonPos() {
                             <span className="pos-user-id">Receptionist</span>
                         </div>
                     </div>
+                    <DayButton />
                     <button className="pos-logout" onClick={handleLogout}>Logout</button>
                 </div>
             </header>
@@ -1137,6 +1136,7 @@ function SalonPos() {
                 />
             )}
         </div>
+        </DayProvider>
     );
 }
 

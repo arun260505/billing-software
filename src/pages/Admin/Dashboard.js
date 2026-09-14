@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import AdminLayout from "../../layouts/AdminLayout";
-import DayControl from "../../components/DayControl";
+import { DayProvider, DayButton } from "../../components/DayControl";
 import DashboardCard from "../../components/Admin/DashboardCard";
 import SalesChart from "../../components/Admin/SalesChart";
 import PaymentSummary from "../../components/Admin/PaymentSummary";
@@ -182,11 +182,10 @@ function Dashboard() {
 
   return (
     <AdminLayout>
+      {/* Owner can close the business day (or a day the cashier forgot). No
+          gating here — the panel isn't a billing screen. */}
+      <DayProvider gate={false}>
       <div className="dashboard-content ad-dashboard">
-
-        {/* Owner can close the business day (or a day the cashier forgot). No
-            gating here — the panel isn't a billing screen. */}
-        <DayControl gate={false} />
 
         {/* Page title */}
         <div className="ad-heading">
@@ -194,6 +193,7 @@ function Dashboard() {
             <h1>Welcome back, Admin</h1>
             <p>Here&rsquo;s what&rsquo;s happening at {restaurantName} today.</p>
           </div>
+          <DayButton className="ad-dayclose" />
         </div>
 
         {error ? (
@@ -302,6 +302,7 @@ function Dashboard() {
         )}
 
       </div>
+      </DayProvider>
     </AdminLayout>
   );
 }
