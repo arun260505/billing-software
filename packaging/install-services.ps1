@@ -55,6 +55,8 @@ Start-Sleep -Seconds 2
 # install (no .env / no data) generates secrets and needs the activation key.
 $envFile = Join-Path $backend ".env"
 $isUpdate = $false
+$keySwitch = $false
+$existingKey = ""
 $dbPass = $null
 $jwt = $null
 if ((Test-Path $envFile) -and (Test-Path (Join-Path $dataDir "mysql"))) {
@@ -68,10 +70,24 @@ if ((Test-Path $envFile) -and (Test-Path (Join-Path $dataDir "mysql"))) {
         if ($mPort.Success) { $Port = [int]$mPort.Groups[1].Value }
         $mDbPort = [regex]::Match($existingEnv, "(?m)^DB_PORT=(\d+)")
         if ($mDbPort.Success) { $DbPort = [int]$mDbPort.Groups[1].Value }
+        $mKey = [regex]::Match($existingEnv, "(?m)^ACTIVATION_KEY=(.*)$")
+        if ($mKey.Success) { $existingKey = $mKey.Groups[1].Value.Trim() }
     }
 }
 
-if ($isUpdate) {
+# A DIFFERENT activation key on an existing install means "repurpose this till"
+# (e.g. a restaurant machine now running a salon). Keep the database engine and
+# secrets, but repoint .env to the new key and clear the activation + sync cursor
+# so the server re-activates and pulls the NEW business's data. Without this the
+# update path would silently keep the old key, and the new owner's logins - which
+# don't exist in the old business's data - would all read "invalid credentials".
+if ($isUpdate -and $ActivationKey -and $ActivationKey.Trim() -ne "" -and $ActivationKey.Trim() -ne $existingKey) {
+    $keySwitch = $true
+}
+
+if ($keySwitch) {
+    Say "Existing install found - SWITCHING activation to the new key (keeping DB engine, re-syncing the new business)"
+} elseif ($isUpdate) {
     Say "Existing install found - UPDATE mode (keeping database, .env and activation)"
 } else {
     Say "Fresh install - generating per-machine secrets"
@@ -171,6 +187,19 @@ if (-not $isUpdate) {
     # Clear it so the server re-activates with the entered key. Skipped on an
     # update, where the existing activation must be preserved.
     & $mysql -u inwallz "--password=$dbPass" -h 127.0.0.1 "--port=$DbPort" inwallz_billing -e "UPDATE activation SET restaurant_uuid=NULL, sync_key=NULL, activated_at=NULL WHERE id=1;" 2>$null | Out-Null
+} elseif ($keySwitch) {
+    Say "Repointing .env to the new activation key and clearing the old activation"
+    # Swap ONLY the activation key line; keep DB password, JWT and ports.
+    $envText = Get-Content $envFile -Raw
+    if ($envText -match "(?m)^ACTIVATION_KEY=") {
+        $envText = $envText -replace "(?m)^ACTIVATION_KEY=.*", ("ACTIVATION_KEY=" + $ActivationKey.Trim())
+    } else {
+        $envText = $envText.TrimEnd() + "`r`nACTIVATION_KEY=" + $ActivationKey.Trim() + "`r`n"
+    }
+    $envText | Out-File $envFile -Encoding ascii
+    # Clear the stored activation AND the sync cursor so the server re-activates
+    # with the new key and re-pulls the new business's data from the start.
+    & $mysql -u inwallz "--password=$dbPass" -h 127.0.0.1 "--port=$DbPort" inwallz_billing -e "UPDATE activation SET restaurant_uuid=NULL, sync_key=NULL, activated_at=NULL WHERE id=1; DELETE FROM sync_state;" 2>$null | Out-Null
 } else {
     Say "Keeping existing .env and activation (update)"
 }
@@ -237,6 +266,43 @@ foreach ($dk in ($desktopDirs | Select-Object -Unique)) {
         Get-ChildItem -Path $dk -Filter "InWallz Till*.lnk" -ErrorAction SilentlyContinue |
             Remove-Item -Force -ErrorAction SilentlyContinue
     }
+}
+
+# Create the desktop shortcut OURSELVES, directly. Relying on Edge's
+# WebAppInstallForceList policy to make the shortcut is unreliable - it is
+# asynchronous and often never fires, which left machines with the app running
+# but no icon on the desktop. A real .lnk to Edge in app-mode, with the InWallz
+# favicon, always appears. (The PWA policy above still gives it a proper taskbar
+# identity when the user pins it.)
+Say "Creating the till desktop shortcut"
+try {
+    $edge = @(
+        "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
+        "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    $icon = Join-Path $InstallDir "app\build\favicon.ico"
+    $target = if ($edge) { $edge } else { "msedge.exe" }
+    $workdir = if ($edge) { Split-Path $edge } else { $InstallDir }
+
+    # All-users desktop so every account on the till sees it; fall back to this
+    # user's desktop if that isn't writable.
+    $dest = $null
+    try { $dest = [Environment]::GetFolderPath("CommonDesktopDirectory") } catch {}
+    if (-not ($dest -and (Test-Path $dest))) { $dest = [Environment]::GetFolderPath("Desktop") }
+    $lnk = Join-Path $dest "InWallz Till.lnk"
+
+    $ws = New-Object -ComObject WScript.Shell
+    $sc = $ws.CreateShortcut($lnk)
+    $sc.TargetPath = $target
+    $sc.Arguments = "--app=http://localhost:$Port/"
+    if (Test-Path $icon) { $sc.IconLocation = "$icon,0" }
+    $sc.WorkingDirectory = $workdir
+    $sc.Description = "InWallz Till"
+    $sc.Save()
+    Say "Desktop shortcut created: $lnk"
+} catch {
+    Say "Could not create the desktop shortcut: $($_.Exception.Message)"
 }
 
 Say "Opening the till once to register the app"
