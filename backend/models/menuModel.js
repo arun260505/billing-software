@@ -233,6 +233,7 @@ exports.getMenuCategories = (restaurantId, callback) => {
 
     const sql = `
         SELECT c.id, c.category_name, c.status
+             , c.display_order
              , c.start_time
              , c.end_time
              , (${timingAvailabilitySql}) AS is_currently_available
@@ -240,7 +241,7 @@ exports.getMenuCategories = (restaurantId, callback) => {
         WHERE c.restaurant_id = ?
           AND c.status = 'Active'
           AND c.deleted_at IS NULL
-        ORDER BY c.category_name ASC
+        ORDER BY c.display_order ASC, c.category_name ASC
     `;
 
     db.query(sql, [restaurantId], callback);
