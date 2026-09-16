@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FaSignOutAlt } from "react-icons/fa";
 import { isSalon } from "../../utils/businessType";
-import { HeaderDayButton } from "../DayControl";
+import { DayStatus } from "../DayControl";
 import "../../styles/Admin/Header.css";
 
 function Header() {
@@ -48,7 +48,7 @@ function Header() {
             </div>
 
             <div className="header-right">
-                <HeaderDayButton />
+                <DayStatus />
 
                 <button className="logout-btn" onClick={handleLogout}>
                     <FaSignOutAlt />

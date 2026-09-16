@@ -250,9 +250,41 @@ export function DayButton({ className = "pos-dayclose" }) {
     );
 }
 
+// Read-only day status for the owner/admin top bar. The owner does NOT open or
+// close the day — that's the cashier's / receptionist's job at the counter. The
+// owner just sees whether the shop is Open or Closed. Refreshes like useDay so
+// it flips shortly after the counter opens/closes the day.
+export function DayStatus({ className = "header-daystatus" }) {
+    const [state, setState] = useState(null);
+
+    const refresh = useCallback(async () => {
+        try { const res = await getDayState(); setState(res.data?.data || null); }
+        catch (e) { setState({ error: true }); }
+    }, []);
+
+    useEffect(() => {
+        refresh();
+        const t = setInterval(refresh, 60000);
+        const onFocus = () => refresh();
+        window.addEventListener("focus", onFocus);
+        return () => { clearInterval(t); window.removeEventListener("focus", onFocus); };
+    }, [refresh]);
+
+    if (!state || state.error) return null;
+    const open = state.is_open;
+    return (
+        <span className={`${className} ${open ? "is-open" : "is-closed"}`} title="Set by the counter">
+            <i className="daystatus-dot" aria-hidden="true" />
+            {open ? "Shop open" : "Shop closed"}
+        </span>
+    );
+}
+
 // Self-contained Open/Close for the owner top bar (next to Logout): "Close Day"
 // while open, "Open Day" once closed — plus its own forgot-to-close notice and
 // cash-up modal. Renders nothing until the state is known.
+// NOTE: no longer used in the admin header (replaced by the read-only DayStatus);
+// kept for any counter/other placement that still wants a self-contained control.
 export function HeaderDayButton({ className = "header-dayclose" }) {
     const day = useDay();
     const { state, busy, openCloseModal, doOpen } = day;

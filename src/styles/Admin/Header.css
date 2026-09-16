@@ -68,6 +68,29 @@
 /* "Open Day" (day is closed) reads as a go-action, not a stop-action. */
 .header-dayclose.is-open-action{ background:linear-gradient(135deg,#16a34a,#15803d); }
 
+/* Read-only day status for the owner/admin (the counter controls open/close). */
+.header-daystatus{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    height:36px;
+    padding:0 14px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:700;
+    white-space:nowrap;
+}
+.header-daystatus .daystatus-dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    display:inline-block;
+}
+.header-daystatus.is-open{ background:#dcfce7; color:#15803d; }
+.header-daystatus.is-open .daystatus-dot{ background:#16a34a; }
+.header-daystatus.is-closed{ background:#e5e7eb; color:#4b5563; }
+.header-daystatus.is-closed .daystatus-dot{ background:#9ca3af; }
+
 .logout-btn{
     display:flex;
     align-items:center;
