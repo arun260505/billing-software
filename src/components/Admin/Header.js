@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { FaSignOutAlt } from "react-icons/fa";
+import { FaSignOutAlt, FaBars } from "react-icons/fa";
 import { isSalon } from "../../utils/businessType";
 import { DayStatus } from "../DayControl";
 import "../../styles/Admin/Header.css";
 
-function Header() {
+function Header({ onToggleSidebar }) {
 
     const salon = isSalon();
 
@@ -38,8 +38,15 @@ function Header() {
     return (
         <header className="admin-header">
             <div className="header-left">
-                <h2>{salon ? "Salon Dashboard" : "Admin Dashboard"}</h2>
-                <p>Welcome back!</p>
+                {onToggleSidebar && (
+                    <button className="sidebar-toggle header-sidebar-toggle" onClick={onToggleSidebar}>
+                        <FaBars />
+                    </button>
+                )}
+                <div>
+                    <h2>{salon ? "Salon Dashboard" : "Admin Dashboard"}</h2>
+                    <p>Welcome back!</p>
+                </div>
             </div>
 
             <div className="header-clock">
@@ -58,11 +65,6 @@ function Header() {
                 <div className="admin-profile">
                     <div className="profile-image">
                         {salon ? "O" : "A"}
-                    </div>
-
-                    <div className="profile-info">
-                        <h4>{salon ? "Owner" : "Admin"}</h4>
-                        <span>{salon ? "Salon Owner" : "Restaurant Admin"}</span>
                     </div>
                 </div>
             </div>

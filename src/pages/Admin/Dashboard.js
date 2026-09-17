@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 import AdminLayout from "../../layouts/AdminLayout";
 import DashboardCard from "../../components/Admin/DashboardCard";
@@ -10,7 +11,6 @@ import RestaurantStatus from "../../components/Admin/RestaurantStatus";
 import QuickActions from "../../components/Admin/QuickActions";
 import NotificationPanel from "../../components/Admin/NotificationPanel";
 import PrinterStatus from "../../components/Admin/PrinterStatus";
-import ConnectionStatus from "../../components/Admin/ConnectionStatus";
 
 import {
   getDashboardSummary,
@@ -21,33 +21,12 @@ import {
 } from "../../services/dashboardService";
 
 import authService from "../../services/authService";
-import { getSyncStatus } from "../../services/systemService";
 import { buildChartSeries } from "../../utils/salesChartSeries";
 
 import "../../styles/Admin/Dashboard.css";
 import "../../styles/Admin/DashboardCard.css";
 
 const money = (v) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
-
-// True when the current time falls inside the restaurant's configured
-// open/close window (or the restaurant is otherwise recorded as Active).
-const isCurrentlyOpen = (summary) => {
-  if (!summary || summary.restaurant_status === "Inactive") return false;
-  const open = summary.opening_time;
-  const close = summary.closing_time;
-  if (!open || !close) return true;
-  const now = new Date();
-  const mins = now.getHours() * 60 + now.getMinutes();
-  const toMins = (t) => {
-    const [h, m] = String(t).split(":").map(Number);
-    return h * 60 + (m || 0);
-  };
-  const oMins = toMins(open);
-  const cMins = toMins(close);
-  if (oMins === cMins) return true;
-  if (oMins < cMins) return mins >= oMins && mins <= cMins;
-  return mins >= oMins || mins <= cMins; // spans midnight
-};
 
 function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -57,8 +36,8 @@ function Dashboard() {
   const [topItems, setTopItems] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [health, setHealth] = useState(null);
-  // Real cloud-sync time reported by the backend (null = no local node syncing).
-  const [syncAt, setSyncAt] = useState(null);
+
+  const [hideValues, setHideValues] = useState(false);
 
   const [period, setPeriod] = useState("today");
   const [chartData, setChartData] = useState([]);
@@ -130,52 +109,54 @@ function Dashboard() {
     };
   }, [loadCore]);
 
-  // Poll the real cloud-sync time for the "Last Sync" badge.
-  useEffect(() => {
-    let active = true;
-    const load = () =>
-      getSyncStatus()
-        .then((res) => { if (active && res.data?.success) setSyncAt(res.data.last_sync_at); })
-        .catch(() => {});
-    load();
-    const t = setInterval(load, 30000);
-    return () => { active = false; clearInterval(t); };
-  }, []);
-
   useEffect(() => {
     loadChart(period);
   }, [period, loadChart]);
 
-  const open = isCurrentlyOpen(summary);
-
   const cardData = [
     {
       title: "Today's Sales",
-      value: money(summary.total_sales),
+      value: hideValues ? "₹••••••" : money(summary.total_sales),
       sub: "Paid orders today",
       icon: "FaRupeeSign",
       accent: "#2563EB"
     },
     {
       title: "Today's Orders",
-      value: Number(summary.total_orders || 0),
+      value: hideValues ? "••" : Number(summary.total_orders || 0),
       sub: "Orders created today",
       icon: "FaClipboardList",
       accent: "#16A34A"
     },
     {
       title: "Payment Collection",
-      value: money(summary.total_collection),
+      value: hideValues ? "₹••••••" : money(summary.total_collection),
       sub: "Collected via all methods",
       icon: "FaMoneyBillWave",
       accent: "#8B5CF6"
     },
     {
       title: "Tables",
-      value: `${Number(summary.occupied_tables || 0)} / ${Number(summary.total_tables || 0)}`,
+      value: hideValues
+        ? "•• / ••"
+        : `${Number(summary.occupied_tables || 0)} / ${Number(summary.total_tables || 0)}`,
       sub: "Tables occupied",
       icon: "FaUtensils",
       accent: "#F59E0B"
+    },
+    {
+      title: "This Week's Sales",
+      value: hideValues ? "₹••••••" : money(summary.week_sales),
+      sub: "Paid orders this week",
+      icon: "FaChartLine",
+      accent: "#0EA5E9"
+    },
+    {
+      title: "This Month's Sales",
+      value: hideValues ? "₹••••••" : money(summary.month_sales),
+      sub: "Paid orders this month",
+      icon: "FaChartPie",
+      accent: "#EC4899"
     }
   ];
 
@@ -186,9 +167,19 @@ function Dashboard() {
         {/* Page title */}
         <div className="ad-heading">
           <div>
-            <h1>Welcome back, Admin</h1>
+            <h1>Welcome back, {user?.full_name || user?.username?.split('@')[0] || "Admin"}</h1>
             <p>Here&rsquo;s what&rsquo;s happening at {restaurantName} today.</p>
           </div>
+
+          <button
+            type="button"
+            className={`ad-hide-toggle${hideValues ? " ad-hide-toggle-active" : ""}`}
+            onClick={() => setHideValues(!hideValues)}
+            title={hideValues ? "Show dashboard figures" : "Hide dashboard figures"}
+          >
+            {hideValues ? <FaEyeSlash /> : <FaEye />}
+            <span>{hideValues ? "Show figures" : "Hide figures"}</span>
+          </button>
         </div>
 
         {error ? (
@@ -239,7 +230,7 @@ function Dashboard() {
               </div>
 
               <div className="ad-col ad-col-4">
-                <PaymentSummary summary={summary} loading={loading} />
+                <QuickActions />
               </div>
             </div>
 
@@ -252,8 +243,6 @@ function Dashboard() {
               <div className="ad-col ad-col-4">
                 <RestaurantStatus
                   summary={summary}
-                  restaurantName={restaurantName}
-                  isOpen={open}
                   loading={loading}
                 />
               </div>
@@ -274,22 +263,13 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Quick actions + system status */}
+            {/* Payment Summary + system status */}
             <div className="ad-grid ad-grid-bottom">
-              <div className="ad-col ad-col-4">
-                <QuickActions />
+              <div className="ad-col ad-col-6">
+                <PaymentSummary summary={summary} loading={loading} />
               </div>
 
-              <div className="ad-col ad-col-4">
-                <ConnectionStatus
-                  health={health}
-                  loading={loading}
-                  syncAt={syncAt}
-                  onRetry={loadCore}
-                />
-              </div>
-
-              <div className="ad-col ad-col-4">
+              <div className="ad-col ad-col-6">
                 <PrinterStatus />
               </div>
             </div>

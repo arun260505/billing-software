@@ -70,24 +70,7 @@
 ========================================== */
 
 .sidebar.collapsed {
-    width: 80px;
-}
-
-.sidebar.collapsed .logo h2 {
-    display: none;
-}
-
-.sidebar.collapsed .logo {
-    padding: 20px 10px;
-}
-
-/* Hide menu text when collapsed */
-.sidebar.collapsed .menu-list li a {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 0;
-    padding: 14px;
+    transform: translateX(-100%);
 }
 /* ============================================================================
    Reachability + drawer behaviour
@@ -104,14 +87,7 @@
     z-index: 1000;
 }
 
-/* The collapsed rail hides labels with font-size:0 but there are no icons to
-   fall back on, so it rendered as a column of blank buttons. Show the first
-   letter instead until real icons exist. */
-.sidebar.collapsed .menu-list li a::before {
-    content: attr(data-initial);
-    font-size: 15px;
-    font-weight: 700;
-}
+
 
 @media (max-width: 1024px) {
 
@@ -124,18 +100,6 @@
     }
 
     .admin-layout.sidebar-open .sidebar { transform: translateX(0); }
-
-    /* The desktop "collapsed rail" makes no sense in drawer mode — a drawer is
-       either open at full width or not there at all. */
-    .sidebar.collapsed { width: 260px; }
-    .sidebar.collapsed .logo h2 { display: block; }
-    .sidebar.collapsed .menu-list li a {
-        display: block;
-        font-size: 15px;
-        padding: 12px 18px;
-        justify-content: flex-start;
-    }
-    .sidebar.collapsed .menu-list li a::before { content: none; }
 
     /* Comfortable tap targets in the drawer. */
     .menu-list li a { padding: 14px 18px; }

@@ -15,6 +15,14 @@ const getSummary = (restaurantId, callback) => {
              WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
              AND payment_status='Paid') AS total_sales,
 
+            (SELECT IFNULL(SUM(grand_total),0) FROM orders
+             WHERE restaurant_id = ? AND YEARWEEK(created_at, 1) = YEARWEEK(CURDATE(), 1)
+             AND payment_status='Paid') AS week_sales,
+
+            (SELECT IFNULL(SUM(grand_total),0) FROM orders
+             WHERE restaurant_id = ? AND MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())
+             AND payment_status='Paid') AS month_sales,
+
             (SELECT COUNT(*) FROM dining_tables
              WHERE restaurant_id = ? AND status='Occupied') AS occupied_tables,
 
@@ -65,14 +73,18 @@ const getSummary = (restaurantId, callback) => {
              WHERE restaurant_id = ? AND deleted_at IS NULL
                AND status = 'Active' AND quantity <= min_quantity) AS low_stock_items,
 
+            (
+                (SELECT COUNT(*) FROM orders WHERE restaurant_id = ? AND (synced_at IS NULL OR updated_at > synced_at)) +
+                (SELECT COUNT(*) FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ?) AND (synced_at IS NULL OR updated_at > synced_at)) +
+                (SELECT COUNT(*) FROM payments WHERE restaurant_id = ? AND (synced_at IS NULL OR updated_at > synced_at)) +
+                (SELECT COUNT(*) FROM customers WHERE restaurant_id = ? AND (synced_at IS NULL OR updated_at > synced_at))
+            ) AS pending_sync,
+
             (SELECT restaurant_name FROM restaurants WHERE id=?) AS restaurant_name,
 
-            -- Opening hours and the open/closed switch live in BOTH tables, and
-            -- Admin > Settings writes to the settings table while this read used
-            -- the restaurants table. So changing the hours had no effect on the
-            -- dashboard Open/Closed badge, and because restaurants.opening_time
-            -- is normally NULL the badge fell through to "always Open".
-            -- Prefer what Settings actually saves, fall back to the restaurant row.
+            -- True business day status (opened at the counter)
+            (SELECT COUNT(*) > 0 FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL) AS day_is_open,
+
             COALESCE(
                 (SELECT restaurant_status FROM settings WHERE restaurant_id=?),
                 (SELECT status FROM restaurants WHERE id=?)

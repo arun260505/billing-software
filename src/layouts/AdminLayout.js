@@ -45,16 +45,9 @@ function AdminLayout({ children }) {
                 className={`admin-main ${sidebarOpen ? "" : "expanded"}`}
             >
 
-                <Header />
+                <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
 
                 <div className="page-content">
-
-                    <button
-                        className="sidebar-toggle"
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                    >
-                        <FaBars />
-                    </button>
 
                     {children}
 

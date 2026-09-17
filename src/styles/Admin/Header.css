@@ -9,6 +9,12 @@
     box-shadow:0 2px 8px rgba(0,0,0,.05);
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
 .header-left h2{
     margin:0;
     color:#0F172A;
@@ -19,6 +25,10 @@
     margin-top:5px;
     color:#64748B;
     font-size:14px;
+}
+
+.header-sidebar-toggle {
+    margin-bottom: 0 !important;
 }
 
 .header-clock{
@@ -126,17 +136,6 @@
     justify-content:center;
     align-items:center;
     font-weight:bold;
-    margin-right:12px;
-}
-
-.profile-info h4{
-    margin:0;
-    color:#0F172A;
-}
-
-.profile-info span{
-    font-size:13px;
-    color:#64748B;
 }
 
 /* The header was a fixed 80px row with a 30px gutter and no breakpoint, so on a
@@ -154,6 +153,5 @@
     .header-right{ gap:8px; flex-shrink:0; }
     .logout-btn{ padding:8px 10px; }
     .logout-btn span{ display:none; }
-    .profile-info{ display:none; }
-    .profile-image{ width:38px; height:38px; margin-right:0; }
+    .profile-image{ width:38px; height:38px; }
 }

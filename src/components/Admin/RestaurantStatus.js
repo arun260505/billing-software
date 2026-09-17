@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  FaStore,
   FaChair,
   FaFire,
   FaReceipt,
@@ -8,7 +7,7 @@ import {
 } from "react-icons/fa";
 import "../../styles/Admin/RestaurantStatus.css";
 
-function RestaurantStatus({ summary = {}, restaurantName = "Restaurant", isOpen = false, loading = false }) {
+function RestaurantStatus({ summary = {}, loading = false }) {
 
   if (loading) {
     return (
@@ -35,13 +34,6 @@ function RestaurantStatus({ summary = {}, restaurantName = "Restaurant", isOpen 
 
   const rows = [
     {
-      icon: <FaStore />,
-      label: restaurantName,
-      value: null,
-      pill: isOpen ? "Open" : "Closed",
-      pillClass: `ad-pill ad-pill-${isOpen ? "success" : "danger"}`
-    },
-    {
       icon: <FaChair />,
       label: "Tables",
       value: `${occupied} / ${totalTables} occupied`,
@@ -62,8 +54,8 @@ function RestaurantStatus({ summary = {}, restaurantName = "Restaurant", isOpen 
     {
       icon: <FaSyncAlt />,
       label: "Pending Sync",
-      value: 0,
-      tone: "good"
+      value: Number(summary.pending_sync || 0),
+      tone: Number(summary.pending_sync || 0) > 0 ? "warn" : "good"
     }
   ];
 
