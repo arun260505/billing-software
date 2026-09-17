@@ -40,6 +40,7 @@ import { DEFAULT_KITCHEN_FORMAT } from "../../utils/kitchenPrinter";
 // Prints straight to the configured printer; falls back to the browser dialog
 // only when the till cannot print directly.
 import { printBillNow, printKotNow } from "../../utils/printDispatch";
+import { isSalon } from "../../utils/businessType";
 import {
     DEFAULT_PRINTER_MODE,
     normalizePrinterMode,
@@ -1174,7 +1175,7 @@ function Dashboard() {
             </header>
 
             {activeView === "menu" ? <MenuAvailability /> :
-             activeView === "bills" ? <BillsHistory onOpenBill={openBillForEdit} onWhatsApp={sendSavedBillOnWhatsApp} /> :
+             activeView === "bills" ? <BillsHistory onOpenBill={openBillForEdit} onWhatsApp={isSalon() ? sendSavedBillOnWhatsApp : undefined} /> :
              activeView === "printer" ? <PrinterSetup /> : (
             <>
             {/* ══ TABLE BAR ══ */}
@@ -1364,7 +1365,7 @@ function Dashboard() {
                     onRemoveGroup={handleBillRemove}
                     onAddItem={handleBillAdd}
                     onReprint={handleBillReprint}
-                    onWhatsApp={handleBillWhatsApp}
+                    onWhatsApp={isSalon() ? handleBillWhatsApp : undefined}
                     onClose={closeBillEdit}
                 />
             )}
