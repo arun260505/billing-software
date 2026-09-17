@@ -35,3 +35,6 @@ InWallz-Waiter-AUTO.apk
 *.apk
 backend/scripts/RawPrinter.dll
 backend/scripts/*.dll
+
+# icon source for @capacitor/assets (generated icons live under android/)
+/assets/

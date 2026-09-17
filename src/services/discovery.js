@@ -27,8 +27,12 @@ const probe = axios.create({ timeout: PROBE_TIMEOUT_MS, validateStatus: () => tr
 // Common private /24 prefixes seen on Indian home/restaurant routers and phone
 // hotspots. Scanned only when WebRTC could not reveal the real subnet.
 const FALLBACK_PREFIXES = [
+    // Most common first (first match wins, so ordering matters for speed).
     "192.168.1", "192.168.0", "192.168.29", "192.168.31",
-    "192.168.2", "192.168.43", "10.0.0", "172.20.10"
+    "192.168.2", "192.168.3", "192.168.4", "192.168.8",
+    "192.168.10", "192.168.20", "192.168.50", "192.168.100",
+    "192.168.101", "192.168.43", "10.0.0", "10.0.1",
+    "10.1.1", "172.20.10"
 ];
 
 // Ask a single host whether it is the till. Returns the port it answered on
