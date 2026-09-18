@@ -55,9 +55,9 @@ $rawExe = Join-Path $backendOut "scripts\RawPrint.exe"
 if ((Test-Path $csc) -and (Test-Path $rawCs)) {
     & $csc /nologo /target:exe /platform:x64 ("/out:" + $rawExe) $rawCs | Out-Null
     if (Test-Path $rawExe) { Write-Host "  RawPrint.exe compiled (fast print helper)." -ForegroundColor DarkGray }
-    else { Write-Host "  RawPrint.exe compile failed — printing will use the PowerShell fallback." -ForegroundColor Yellow }
+    else { Write-Host "  RawPrint.exe compile failed - printing will use the PowerShell fallback." -ForegroundColor Yellow }
 } else {
-    Write-Host "  csc.exe or RawPrint.cs missing — printing will use the PowerShell fallback." -ForegroundColor Yellow
+    Write-Host "  csc.exe or RawPrint.cs missing - printing will use the PowerShell fallback." -ForegroundColor Yellow
 }
 
 # 3) Production backend dependencies (pure JS now that bcrypt -> bcryptjs).
