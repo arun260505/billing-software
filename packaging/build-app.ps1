@@ -46,6 +46,20 @@ Copy-Item "$Root\build" (Join-Path $appDir "build") -Recurse
 $backendOut = Join-Path $appDir "backend"
 robocopy "$Root\backend" $backendOut /E /XD node_modules /XF .env *.log | Out-Null
 
+# Compile the fast native print helper (RawPrint.exe) into the payload's scripts
+# folder. Cashier bill printing calls this (~100ms) instead of cold-starting
+# PowerShell (~1-2s); directPrint.js falls back to the .ps1 if this is absent.
+$csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+$rawCs  = Join-Path $backendOut "scripts\RawPrint.cs"
+$rawExe = Join-Path $backendOut "scripts\RawPrint.exe"
+if ((Test-Path $csc) -and (Test-Path $rawCs)) {
+    & $csc /nologo /target:exe /platform:x64 ("/out:" + $rawExe) $rawCs | Out-Null
+    if (Test-Path $rawExe) { Write-Host "  RawPrint.exe compiled (fast print helper)." -ForegroundColor DarkGray }
+    else { Write-Host "  RawPrint.exe compile failed — printing will use the PowerShell fallback." -ForegroundColor Yellow }
+} else {
+    Write-Host "  csc.exe or RawPrint.cs missing — printing will use the PowerShell fallback." -ForegroundColor Yellow
+}
+
 # 3) Production backend dependencies (pure JS now that bcrypt -> bcryptjs).
 Write-Host "`n[3/4] Installing production backend deps..." -ForegroundColor Yellow
 Push-Location $backendOut

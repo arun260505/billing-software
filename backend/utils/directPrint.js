@@ -77,16 +77,30 @@ function printText(printerName, text, callback) {
 
         const cleanup = () => fs.unlink(file, () => {});
 
-        execFile(
-            "powershell.exe",
-            [
+        // Fast path: a tiny compiled helper that spools the RAW bytes and exits
+        // in ~100ms. Falls back to the PowerShell script (which cold-starts in
+        // ~1-2s) only if the exe was not shipped/compiled. Both take the same
+        // (printer, file) and use the same exit codes, so the handling below is
+        // identical for either.
+        const rawExe = path.join(__dirname, "..", "scripts", "RawPrint.exe");
+        let useExe = false;
+        try { useExe = fs.existsSync(rawExe); } catch (_) { useExe = false; }
+
+        const cmd = useExe ? rawExe : "powershell.exe";
+        const cmdArgs = useExe
+            ? [name, file]
+            : [
                 "-NoProfile",
                 "-NonInteractive",
                 "-ExecutionPolicy", "Bypass",
                 "-File", SCRIPT,
                 "-Path", file,
                 "-PrinterName", name
-            ],
+            ];
+
+        execFile(
+            cmd,
+            cmdArgs,
             { timeout: 25000, windowsHide: true, maxBuffer: 1024 * 512 },
             (err, stdout, stderr) => {
                 cleanup();
