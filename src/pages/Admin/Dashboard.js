@@ -35,7 +35,7 @@ function Dashboard() {
   const [summary, setSummary] = useState({});
   const [topItems, setTopItems] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
-  const [health, setHealth] = useState(null);
+  const [, setHealth] = useState(null);
 
   const [hideValues, setHideValues] = useState(false);
 

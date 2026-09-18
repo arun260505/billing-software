@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { FaBars } from "react-icons/fa";
 
 import Sidebar from "../components/Admin/Sidebar";
 import Header from "../components/Admin/Header";
