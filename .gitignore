@@ -38,3 +38,6 @@ backend/scripts/*.dll
 
 # icon source for @capacitor/assets (generated icons live under android/)
 /assets/
+
+# stray dev scratch files
+/scratch*.js
