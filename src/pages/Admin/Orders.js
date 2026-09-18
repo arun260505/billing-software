@@ -459,8 +459,8 @@ function Orders() {
                                     return (
                                         <tr key={order.id} className={menuOrderId === order.id ? "menu-open" : ""}>
                                             <td>
-                                                <span className="orders-id" title={order.order_number}>
-                                                    #{order.id}
+                                                <span className="orders-id" title={`#${order.id}`}>
+                                                    {order.order_number || `#${order.id}`}
                                                 </span>
                                             </td>
                                             <td title={new Date(order.created_at).toLocaleString()}>
