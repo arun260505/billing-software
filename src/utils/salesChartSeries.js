@@ -28,9 +28,11 @@ export function buildChartSeries(rows, period) {
   const points = [];
 
   if (period === "week") {
-    const mon = new Date(today);
-    mon.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-    for (let d = new Date(mon); d <= today; d.setDate(d.getDate() + 1)) {
+    // Week runs Sunday..Saturday. getDay(): 0=Sun..6=Sat, so subtract getDay()
+    // to land on this week's Sunday.
+    const sun = new Date(today);
+    sun.setDate(today.getDate() - today.getDay());
+    for (let d = new Date(sun); d <= today; d.setDate(d.getDate() + 1)) {
       points.push(new Date(d));
     }
   } else {

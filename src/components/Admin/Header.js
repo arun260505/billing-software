@@ -4,7 +4,7 @@ import { isSalon } from "../../utils/businessType";
 import { DayStatus } from "../DayControl";
 import "../../styles/Admin/Header.css";
 
-function Header({ onToggleSidebar }) {
+function Header({ onToggleSidebar, sidebarOpen }) {
 
     const salon = isSalon();
 
@@ -38,15 +38,11 @@ function Header({ onToggleSidebar }) {
     return (
         <header className="admin-header">
             <div className="header-left">
-                {onToggleSidebar && (
-                    <button className="sidebar-toggle header-sidebar-toggle" onClick={onToggleSidebar}>
+                {onToggleSidebar && !sidebarOpen && (
+                    <button className="sidebar-toggle header-sidebar-toggle" onClick={onToggleSidebar} aria-label="Open menu">
                         <FaBars />
                     </button>
                 )}
-                <div>
-                    <h2>{salon ? "Salon Dashboard" : "Admin Dashboard"}</h2>
-                    <p>Welcome back!</p>
-                </div>
             </div>
 
             <div className="header-clock">

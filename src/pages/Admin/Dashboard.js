@@ -37,7 +37,7 @@ function Dashboard() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [, setHealth] = useState(null);
 
-  const [hideValues, setHideValues] = useState(false);
+  const [hideValues, setHideValues] = useState(true);
 
   const [period, setPeriod] = useState("today");
   const [chartData, setChartData] = useState([]);
@@ -48,8 +48,10 @@ function Dashboard() {
   const restaurantName =
     summary.restaurant_name || user?.restaurant_name || "Restaurant";
 
-  const loadCore = useCallback(async () => {
-    setLoading(true);
+  // background = a silent 15s refresh: DON'T flip `loading`, or every poll
+  // flashes the whole dashboard back to skeletons (the "blinking every ~10s").
+  const loadCore = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
     setError(false);
     try {
       const [summaryRes, healthRes, itemsRes, ordersRes] = await Promise.all([
@@ -96,10 +98,10 @@ function Dashboard() {
   useEffect(() => {
     loadCore();
 
-    const timer = setInterval(loadCore, 15000);
+    const timer = setInterval(() => loadCore(true), 15000);
 
     const refreshOnReturn = () => {
-      if (document.visibilityState === "visible") loadCore();
+      if (document.visibilityState === "visible") loadCore(true);
     };
     document.addEventListener("visibilitychange", refreshOnReturn);
 
@@ -167,7 +169,7 @@ function Dashboard() {
         {/* Page title */}
         <div className="ad-heading">
           <div>
-            <h1>Welcome back, {user?.full_name || user?.username?.split('@')[0] || "Admin"}</h1>
+            <h1>Welcome back, {restaurantName} Owner</h1>
             <p>Here&rsquo;s what&rsquo;s happening at {restaurantName} today.</p>
           </div>
 

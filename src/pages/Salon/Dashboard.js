@@ -328,7 +328,7 @@ function SalonDashboard() {
 
         <div className="ad-heading">
           <div>
-            <h1>Welcome back</h1>
+            <h1>Welcome back, {salonName} Owner</h1>
             <p>Here&rsquo;s what&rsquo;s happening at {salonName} today.</p>
           </div>
         </div>

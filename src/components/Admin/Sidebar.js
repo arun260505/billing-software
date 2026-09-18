@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import { FaBars } from "react-icons/fa";
 import { isSalon } from "../../utils/businessType";
 import logo from "../../assets/inwallz-logo.png";
 import "../../styles/Admin/Sidebar.css";
@@ -36,7 +37,7 @@ const SALON_MENUS = [
   { name: "Settings", path: "/admin/settings" }
 ];
 
-function Sidebar({ isOpen }) {
+function Sidebar({ isOpen, onToggle }) {
   const location = useLocation();
 
   const menus = isSalon() ? SALON_MENUS : RESTAURANT_MENUS;
@@ -46,6 +47,16 @@ function Sidebar({ isOpen }) {
       <div className="logo">
         <img src={logo} alt="InWallz" className="sidebar-logo" />
         <h2>InWallz POS</h2>
+        {onToggle && (
+          <button
+            type="button"
+            className="sidebar-collapse"
+            onClick={onToggle}
+            aria-label="Toggle menu"
+          >
+            <FaBars />
+          </button>
+        )}
       </div>
 
       <ul className="menu-list">

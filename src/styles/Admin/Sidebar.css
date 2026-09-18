@@ -19,6 +19,26 @@
     border-bottom: 1px solid #1E293B;
 }
 
+/* The menu toggle now lives INSIDE the sidebar (top-right of the logo row),
+   not floating in the page header. */
+.sidebar-collapse {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: #cbd5e1;
+    font-size: 18px;
+    line-height: 1;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.sidebar-collapse:hover { background: rgba(255,255,255,.10); color: #fff; }
+/* Collapsed desktop rail: keep the toggle centered with the initials. */
+.sidebar.collapsed .sidebar-collapse { margin-left: 0; }
+
 .sidebar-logo {
     width: 34px;
     height: 34px;

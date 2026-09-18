@@ -86,7 +86,11 @@ function Orders() {
 
     // ── Filters ─────────────────────────────────────────────────────
     const [search, setSearch] = useState("");
-    const [date, setDate] = useState("");
+    // Period preset: today | week | month | range | all. Defaults to today so the
+    // page opens on the current day's bills rather than the whole history.
+    const [period, setPeriod] = useState("today");
+    const [rangeFrom, setRangeFrom] = useState("");
+    const [rangeTo, setRangeTo] = useState("");
     const [orderType, setOrderType] = useState("");
     const [paymentFilter, setPaymentFilter] = useState("");
     const [activeTab, setActiveTab] = useState("all");
@@ -139,7 +143,7 @@ function Orders() {
     // Any filter change brings the user back to the first page.
     useEffect(() => {
         setPage(1);
-    }, [search, date, orderType, paymentFilter, activeTab]);
+    }, [search, period, rangeFrom, rangeTo, orderType, paymentFilter, activeTab]);
 
     // ── Summary counts (real data, never hardcoded) ─────────────────
     const summary = useMemo(() => {
@@ -157,16 +161,32 @@ function Orders() {
         };
     }, [orders]);
 
-    // ── Combined filtering (search + date + type + payment + status) ─
+    // ── Combined filtering (search + period + type + payment + status) ─
     const filtered = useMemo(() => {
 
         const term = search.trim().toLowerCase().replace(/^#/, "");
 
-        return orders.filter((o) => {
+        // Period window as a YYYY-MM-DD range on the order date (local).
+        const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        let from = "", to = "";
+        if (period === "today") { from = to = ymd(today); }
+        else if (period === "week") {
+            const sun = new Date(today); sun.setDate(today.getDate() - today.getDay()); // Sunday..
+            from = ymd(sun); to = ymd(today);
+        }
+        else if (period === "month") { from = ymd(new Date(now.getFullYear(), now.getMonth(), 1)); to = ymd(today); }
+        else if (period === "range") { from = rangeFrom; to = rangeTo; }
+        // "all" leaves from/to empty (no date filter).
+
+        const rows = orders.filter((o) => {
 
             if (activeTab !== "all" && o.order_status !== activeTab) return false;
 
-            if (date && String(o.created_at).slice(0, 10) !== date) return false;
+            const day = String(o.created_at).slice(0, 10);
+            if (from && day < from) return false;
+            if (to && day > to) return false;
 
             if (orderType && o.order_type !== orderType) return false;
 
@@ -185,7 +205,17 @@ function Orders() {
 
         });
 
-    }, [orders, search, date, orderType, paymentFilter, activeTab]);
+        // Active orders (still being prepared / unpaid) float to the top; within
+        // each group, newest first — so the latest and the ones needing action
+        // are always at the top.
+        const rank = (s) => (["Pending", "Preparing", "Ready"].includes(s) ? 0 : 1);
+        return rows.sort((a, b) => {
+            const r = rank(a.order_status) - rank(b.order_status);
+            if (r !== 0) return r;
+            return new Date(b.created_at) - new Date(a.created_at);
+        });
+
+    }, [orders, search, period, rangeFrom, rangeTo, orderType, paymentFilter, activeTab]);
 
     // ── Pagination ──────────────────────────────────────────────────
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -319,13 +349,39 @@ function Orders() {
                         />
                     </div>
 
-                    <input
-                        type="date"
+                    <select
                         className="orders-date-input"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        title="Filter by order date"
-                    />
+                        value={period}
+                        onChange={(e) => setPeriod(e.target.value)}
+                        title="Period"
+                    >
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="range">Date Range</option>
+                        <option value="all">All Time</option>
+                    </select>
+
+                    {period === "range" && (
+                        <>
+                            <input
+                                type="date"
+                                className="orders-date-input"
+                                value={rangeFrom}
+                                max={rangeTo || undefined}
+                                onChange={(e) => setRangeFrom(e.target.value)}
+                                title="From date"
+                            />
+                            <input
+                                type="date"
+                                className="orders-date-input"
+                                value={rangeTo}
+                                min={rangeFrom || undefined}
+                                onChange={(e) => setRangeTo(e.target.value)}
+                                title="To date"
+                            />
+                        </>
+                    )}
 
                     {!salon && (
                         <select value={orderType} onChange={(e) => setOrderType(e.target.value)} title="Order Type">

@@ -15,8 +15,9 @@ const getSummary = (restaurantId, callback) => {
              WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
              AND payment_status='Paid') AS total_sales,
 
+            -- Week runs Sunday..Saturday (YEARWEEK mode 0 = week starts Sunday).
             (SELECT IFNULL(SUM(grand_total),0) FROM orders
-             WHERE restaurant_id = ? AND YEARWEEK(created_at, 1) = YEARWEEK(CURDATE(), 1)
+             WHERE restaurant_id = ? AND YEARWEEK(created_at, 0) = YEARWEEK(CURDATE(), 0)
              AND payment_status='Paid') AS week_sales,
 
             (SELECT IFNULL(SUM(grand_total),0) FROM orders
@@ -228,7 +229,7 @@ const getSalesChart = (period, restaurantId, callback) => {
                 SUM(grand_total) AS sales
             FROM orders
             WHERE restaurant_id = ?
-              AND YEARWEEK(created_at,1)=YEARWEEK(CURDATE(),1)
+              AND YEARWEEK(created_at,0)=YEARWEEK(CURDATE(),0)
               AND payment_status='Paid'
             GROUP BY DATE(created_at)
             ORDER BY DATE(created_at)

@@ -26,6 +26,7 @@ function AdminLayout({ children }) {
 
             <Sidebar
                 isOpen={sidebarOpen}
+                onToggle={() => setSidebarOpen((v) => !v)}
             />
 
             {/* Tapping the page behind an open drawer closes it, the way every
@@ -44,7 +45,10 @@ function AdminLayout({ children }) {
                 className={`admin-main ${sidebarOpen ? "" : "expanded"}`}
             >
 
-                <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+                <Header
+                    onToggleSidebar={() => setSidebarOpen((v) => !v)}
+                    sidebarOpen={sidebarOpen}
+                />
 
                 <div className="page-content">
 
