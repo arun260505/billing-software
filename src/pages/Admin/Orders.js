@@ -145,24 +145,10 @@ function Orders() {
         setPage(1);
     }, [search, period, rangeFrom, rangeTo, orderType, paymentFilter, activeTab]);
 
-    // ── Summary counts (real data, never hardcoded) ─────────────────
-    const summary = useMemo(() => {
-        const byStatus = orders.reduce((acc, o) => {
-            acc[o.order_status] = (acc[o.order_status] || 0) + 1;
-            return acc;
-        }, {});
-        return {
-            total: orders.length,
-            new: byStatus.Pending || 0,
-            preparing: byStatus.Preparing || 0,
-            ready: byStatus.Ready || 0,
-            completed: byStatus.Completed || 0,
-            cancelled: byStatus.Cancelled || 0
-        };
-    }, [orders]);
-
-    // ── Combined filtering (search + period + type + payment + status) ─
-    const filtered = useMemo(() => {
+    // ── Period window + shared filters (everything EXCEPT the status tab) ─
+    // The summary cards AND the table both read from this list, so switching
+    // Today / This Week / This Month changes the totals too — not just the rows.
+    const scoped = useMemo(() => {
 
         const term = search.trim().toLowerCase().replace(/^#/, "");
 
@@ -180,9 +166,7 @@ function Orders() {
         else if (period === "range") { from = rangeFrom; to = rangeTo; }
         // "all" leaves from/to empty (no date filter).
 
-        const rows = orders.filter((o) => {
-
-            if (activeTab !== "all" && o.order_status !== activeTab) return false;
+        return orders.filter((o) => {
 
             const day = String(o.created_at).slice(0, 10);
             if (from && day < from) return false;
@@ -205,17 +189,42 @@ function Orders() {
 
         });
 
+    }, [orders, search, period, rangeFrom, rangeTo, orderType, paymentFilter]);
+
+    // ── Summary counts for the selected period (real data, never hardcoded) ─
+    const summary = useMemo(() => {
+        const byStatus = scoped.reduce((acc, o) => {
+            acc[o.order_status] = (acc[o.order_status] || 0) + 1;
+            return acc;
+        }, {});
+        return {
+            total: scoped.length,
+            new: byStatus.Pending || 0,
+            preparing: byStatus.Preparing || 0,
+            ready: byStatus.Ready || 0,
+            completed: byStatus.Completed || 0,
+            cancelled: byStatus.Cancelled || 0
+        };
+    }, [scoped]);
+
+    // ── The table: apply the status tab, then sort ─────────────────────
+    const filtered = useMemo(() => {
+
+        const rows = activeTab === "all"
+            ? scoped
+            : scoped.filter((o) => o.order_status === activeTab);
+
         // Active orders (still being prepared / unpaid) float to the top; within
         // each group, newest first — so the latest and the ones needing action
         // are always at the top.
         const rank = (s) => (["Pending", "Preparing", "Ready"].includes(s) ? 0 : 1);
-        return rows.sort((a, b) => {
+        return [...rows].sort((a, b) => {
             const r = rank(a.order_status) - rank(b.order_status);
             if (r !== 0) return r;
             return new Date(b.created_at) - new Date(a.created_at);
         });
 
-    }, [orders, search, period, rangeFrom, rangeTo, orderType, paymentFilter, activeTab]);
+    }, [scoped, activeTab]);
 
     // ── Pagination ──────────────────────────────────────────────────
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
