@@ -262,12 +262,21 @@ export function DayStatus({ className = "header-daystatus" }) {
         catch (e) { setState({ error: true }); }
     }, []);
 
+    // Poll often (every 20s) and also whenever the app returns to the foreground,
+    // so the owner sees the shop flip to Closed shortly after the counter closes
+    // the day. `focus` doesn't fire reliably inside the APK's webview, so listen
+    // for visibilitychange too.
     useEffect(() => {
         refresh();
-        const t = setInterval(refresh, 60000);
-        const onFocus = () => refresh();
-        window.addEventListener("focus", onFocus);
-        return () => { clearInterval(t); window.removeEventListener("focus", onFocus); };
+        const t = setInterval(refresh, 20000);
+        const onWake = () => { if (!document.hidden) refresh(); };
+        window.addEventListener("focus", onWake);
+        document.addEventListener("visibilitychange", onWake);
+        return () => {
+            clearInterval(t);
+            window.removeEventListener("focus", onWake);
+            document.removeEventListener("visibilitychange", onWake);
+        };
     }, [refresh]);
 
     if (!state || state.error) return null;

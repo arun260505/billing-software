@@ -31,6 +31,27 @@ function ymd(d) {
 // start of the running day, so its window covers all the day's bills) and retire
 // the rest, so there is always exactly one open day.
 async function consolidateOpens(restaurantId) {
+    // Self-heal orphaned open days first. Business days are sequential and
+    // disjoint, so an OPEN day cannot be OLDER than one that is already CLOSED —
+    // you can't close a later day while an earlier one is still running. That
+    // only happens when opens/closes from more than one till or database sync up
+    // and collide on the cloud (e.g. one machine closed today while another left
+    // an earlier day open). Such an open row is a stale orphan: retire it so the
+    // shop's real state comes from the latest day, and the owner doesn't see
+    // "Shop open" after the counter has closed the current day.
+    await db.query(
+        `UPDATE day_closures o
+         JOIN (
+             SELECT MAX(business_date) AS d
+             FROM day_closures
+             WHERE restaurant_id = ? AND status = 'closed' AND deleted_at IS NULL
+         ) c
+         SET o.status = 'closed', o.closed_at = COALESCE(o.closed_at, NOW())
+         WHERE o.restaurant_id = ? AND o.status = 'open' AND o.deleted_at IS NULL
+           AND c.d IS NOT NULL AND o.business_date < c.d`,
+        [restaurantId, restaurantId]
+    );
+
     const [opens] = await db.query(
         `SELECT id FROM day_closures
          WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL
