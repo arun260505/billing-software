@@ -20,8 +20,11 @@ export const DEFAULT_BILL_FORMAT = {
     show_time: 1,
     show_table_name: 1,
     show_customer_name: 0,
-    show_waiter_name: 0,
-    show_cashier_name: 0,
+    // On by default so every bill names who served it: the waiter on a dine-in
+    // order, the cashier on a counter order. The builder only prints the line it
+    // actually has a name for, so a bill never shows an empty "Waiter:".
+    show_waiter_name: 1,
+    show_cashier_name: 1,
     show_payment_method: 1,
     show_item_qty: 1,
     show_item_price: 1,

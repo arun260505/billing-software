@@ -34,6 +34,11 @@ const SYNC_TABLES = {
     users:           { up: false },
     roles:           { up: false },
     settings:        { up: false },
+    // The order-number FORMAT is owner config (set in the cloud admin) and syncs
+    // DOWN to the till. Its running counter columns (current_sequence /
+    // sequence_reset_key) are kept LOCAL by syncTables so each till advances its
+    // own sequence — see the keepLocal there.
+    order_number_settings: { up: false },
     inventory_items:     { up: false },
     inventory_movements: { up: false },
     // Owner alerts raised at the till, pushed up to the cloud for the phone app.

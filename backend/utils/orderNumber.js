@@ -90,16 +90,56 @@ const generateOrderNumber = (restaurantId, callback) => {
                 const mode = RESET_MODES.includes(cfg.reset_mode) ? cfg.reset_mode : "never";
                 const start = Math.max(1, Number(cfg.starting_number) || 1);
                 const digits = normalizeDigits(cfg.digits);
-                const sequence = nextSequence(cfg, mode, start);
 
+                // "never" never restarts, so it doesn't need the business day.
+                if (mode === "never") {
+                    const sequence = nextSequence(cfg, mode, start);
+                    return conn.query(
+                        `UPDATE order_number_settings
+                         SET current_sequence = ?, sequence_reset_key = ?
+                         WHERE restaurant_id = ?`,
+                        [sequence, resetKeyFor(mode), restaurantId],
+                        (updErr) => {
+                            if (updErr) return fail(updErr);
+                            finish(formatOrderNumber({ prefix: sanitizePrefix(cfg.prefix), sequence, digits }));
+                        }
+                    );
+                }
+
+                // daily / monthly: restart the sequence when a NEW BUSINESS DAY
+                // is opened at the counter, not at calendar midnight. So the
+                // bucket key is the open day's business_date (its month for
+                // "monthly"). A shop that keeps billing past midnight stays on
+                // one day — and one continuous run of numbers — until it closes
+                // and opens the next day, when numbering restarts at the start.
+                // If somehow no day is open, fall back to the calendar bucket.
                 conn.query(
-                    `UPDATE order_number_settings
-                     SET current_sequence = ?, sequence_reset_key = ?
-                     WHERE restaurant_id = ?`,
-                    [sequence, resetKeyFor(mode), restaurantId],
-                    (updErr) => {
-                        if (updErr) return fail(updErr);
-                        finish(formatOrderNumber({ prefix: sanitizePrefix(cfg.prefix), sequence, digits }));
+                    `SELECT DATE_FORMAT(business_date, '%Y-%m-%d') AS bd
+                     FROM day_closures
+                     WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL
+                     ORDER BY opened_at ASC, id ASC
+                     LIMIT 1`,
+                    [restaurantId],
+                    (dayErr, dayRows) => {
+                        if (dayErr) return fail(dayErr);
+
+                        const bd = dayRows.length ? String(dayRows[0].bd) : null;
+                        const bucketKey = bd
+                            ? (mode === "monthly" ? bd.slice(0, 7) : bd)
+                            : resetKeyFor(mode);
+
+                        const sequence = nextSequence(cfg, mode, start, bucketKey);
+
+                        conn.query(
+                            `UPDATE order_number_settings
+                             SET current_sequence = ?, sequence_reset_key = ?
+                             WHERE restaurant_id = ?`,
+                            [sequence, bucketKey, restaurantId],
+                            (updErr) => {
+                                if (updErr) return fail(updErr);
+                                finish(formatOrderNumber({ prefix: sanitizePrefix(cfg.prefix), sequence, digits }));
+                            }
+                        );
                     }
                 );
 

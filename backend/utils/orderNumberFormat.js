@@ -31,7 +31,13 @@ const formatOrderNumber = ({ prefix, sequence, digits }) =>
 
 // The next number to issue, given stored state. Pure so it can be unit tested
 // and reused by the settings screen's own preview.
-const nextSequence = (state, mode, startOverride) => {
+//
+// `bucketKey` overrides which bucket "daily"/"monthly" compare against. The
+// generator passes the OPEN BUSINESS DAY's date here so numbering restarts when
+// the counter opens a new day — not at calendar midnight — which is what keeps a
+// shop that bills past midnight on one continuous sequence until it closes. When
+// omitted (the settings-screen preview), it falls back to the calendar bucket.
+const nextSequence = (state, mode, startOverride, bucketKey) => {
     const start = startOverride == null ? Math.max(1, Number(state.starting_number) || 1) : startOverride;
     const current = Number(state.current_sequence) || 0;
     const key = state.sequence_reset_key == null ? null : String(state.sequence_reset_key);
@@ -44,7 +50,8 @@ const nextSequence = (state, mode, startOverride) => {
 
     // daily / monthly: continue while still in the same bucket, otherwise
     // (new day, new month, or a freshly saved format) restart.
-    return key === resetKeyFor(mode) ? current + 1 : start;
+    const target = bucketKey == null ? resetKeyFor(mode) : String(bucketKey);
+    return key === target ? current + 1 : start;
 };
 
 // What a stored (or just-saved) config will hand the NEXT order — for the

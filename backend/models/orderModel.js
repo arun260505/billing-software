@@ -358,6 +358,8 @@ const getRunningOrders = (restaurantId, employeeId, callback) => {
             o.id,
             o.order_number,
             o.employee_id,
+            u.full_name AS employee_name,
+            u.role      AS employee_role,
             o.table_id,
             dt.table_name,
             (SELECT COALESCE(SUM(oi.quantity), 0)
@@ -368,6 +370,7 @@ const getRunningOrders = (restaurantId, employeeId, callback) => {
             o.created_at
         FROM orders o
         LEFT JOIN dining_tables dt ON o.table_id = dt.id
+        LEFT JOIN users u ON u.id = o.employee_id
         WHERE o.restaurant_id = ?
           AND o.order_status IN ('Pending','Preparing','Ready')
           ${waiterFilter}

@@ -33,6 +33,11 @@ const SYNC_ORDER = [
     // re-activating a till, wiped the till's saved printers). The mode and the
     // waiter toggle still come from the cloud.
     { table: "printer_settings", direction: "down", fks: { restaurant_id: "restaurants" }, keepLocal: ["cashier_printer", "kitchen_printer"] },
+    // Order-number FORMAT flows cloud -> till (owner config). keepLocal on the
+    // running counter, so a pull carries prefix/start/digits/reset_mode but never
+    // overwrites the till's own current_sequence — each till advances its own run
+    // of numbers, and the cloud's copy stays whatever it last issued.
+    { table: "order_number_settings", direction: "down", fks: { restaurant_id: "restaurants" }, keepLocal: ["current_sequence", "sequence_reset_key"] },
     // Salon stock, kept by the owner like the menu, so it flows cloud -> till.
     // Pulled BEFORE menu_items so a sellable item's mirror menu_item can point
     // back at it (menu_items.inventory_item_id).

@@ -723,6 +723,12 @@ function Dashboard() {
             // print what this restaurant actually charges rather than "GST 5%".
             taxLines: [...cartTotals.tax_lines, ...cartTotals.service_lines],
             total: cartTotals.grand_total,
+            // A counter / parcel bill the cashier rings up — name them on it. If a
+            // waiter had opened this order, show that waiter instead.
+            waiter_name: editingOrder && editingOrder.employee_role === "waiter"
+                ? editingOrder.employee_name : undefined,
+            cashier_name: (editingOrder && editingOrder.employee_role === "waiter")
+                ? undefined : cashierName,
         });
         setShowBill(true);
     };
@@ -1059,6 +1065,17 @@ function Dashboard() {
             const billNumber = settled?.data?.data?.order_number
                 || `Table ${table.table_number}`;
 
+            // Who took this order — so the bill names the waiter who served it
+            // (a dine-in order the waiter sent), and falls back to the cashier at
+            // the counter for a walk-in the cashier rang up directly.
+            const tableOrder = runningOrders.find((o) => Number(o.table_id) === Number(table.id));
+            const billedByWaiter = tableOrder && tableOrder.employee_role === "waiter"
+                ? tableOrder.employee_name
+                : null;
+            const billedByCashier = billedByWaiter
+                ? null
+                : (tableOrder && tableOrder.employee_name) || cashierName;
+
             // Sale is recorded — now print. A print failure from here on cannot
             // lose the sale, which is the whole point of the ordering.
             printBillNow({
@@ -1074,7 +1091,9 @@ function Dashboard() {
                     grand_total: total,
                     payment_method: primaryMethod,
                     payments: paymentList,
-                    cashier_name: cashierName,
+                    // The waiter who served, else the cashier at the counter.
+                    waiter_name: billedByWaiter || undefined,
+                    cashier_name: billedByCashier || undefined,
                     date: currentDate,
                     time: currentTime
                 },

@@ -332,13 +332,18 @@ export function buildKotText({ order = {}, format = {} }) {
     )));
     out.push(repeat("=", W));
 
-    // Parcel keeps a token number to match the packed order at pickup; dine-in
-    // reads the table banner above, so it carries no number.
-    if (isParcel && orderNumber) out.push(bold(lr("Token:", `#${orderNumber}`, W)));
+    // The order number on every ticket: a parcel calls it a Token (to match the
+    // packed order at pickup), a dine-in calls it the Bill No. — so the kitchen
+    // can call an order by the same number that's on the customer's bill.
+    if (orderNumber) out.push(bold(lr(isParcel ? "Token:" : "Bill No.:", `#${orderNumber}`, W)));
 
-    // Waiter (bold) on the left, time on the right — one line.
+    // Who took the order (bold) on the left, time on the right — one line. A
+    // waiter's dine-in order names the waiter; a counter order the cashier rang
+    // up names the cashier.
     const waiter = order.waiter_name || order.waiter;
-    out.push(bold(lr(waiter ? `Waiter: ${waiter}` : "", timeStr, W)));
+    const cashier = order.cashier_name || order.cashier;
+    const takenBy = waiter ? `Waiter: ${waiter}` : (cashier ? `${order.cashier_label || "Cashier"}: ${cashier}` : "");
+    out.push(bold(lr(takenBy, timeStr, W)));
 
     out.push(repeat("-", W));
     out.push(bold("QTY  ITEM"));   // label the columns so the qty is unmistakable
