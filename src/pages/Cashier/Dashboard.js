@@ -544,6 +544,12 @@ function Dashboard() {
             order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
             items: mergeCartItems(cart),
         };
+        // Was this table's order already sent to the kitchen (the waiter placed it
+        // and the kitchen is on it), and we're only editing/re-saving it here?
+        // Then it must NOT go to the kitchen again — re-firing a whole order the
+        // kitchen has already made is the bug the counter kept hitting. A brand
+        // new order (below) is the only thing that prints a KOT.
+        const isUpdate = Boolean(editingOrder);
         try {
             let assignedOrderNumber = null;
             if (editingOrder) {
@@ -569,10 +575,11 @@ function Dashboard() {
                 }
             }
 
-            // Print the KOT to the kitchen printer — only the two-printer setup has
-            // one. The other setups use the Kitchen Display or print the kitchen
-            // copy behind the bill instead (see utils/printerMode.js).
-            if (shouldPrintKotOnSend(printerMode)) {
+            // Print the KOT to the kitchen printer — only for a NEW order, and only
+            // on the two-printer setup (the other setups use the Kitchen Display or
+            // print the kitchen copy behind the bill; see utils/printerMode.js).
+            // Editing an existing order never re-sends it to the kitchen.
+            if (!isUpdate && shouldPrintKotOnSend(printerMode)) {
                 printKotNow({
                     order: {
                         order_number: assignedOrderNumber,
