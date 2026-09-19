@@ -97,6 +97,8 @@ function SalonPos() {
     const [cart, setCart] = usePersistentCart("inwallz_cart_salon");
     const [charges, setCharges] = useState([]);
     const [billFormat, setBillFormat] = useState(DEFAULT_BILL_FORMAT);
+    // Pre-selected payment method (Settings → Payments), e.g. a UPI-first desk.
+    const [paymentDefault, setPaymentDefault] = useState("Cash");
     const [salonInfo, setSalonInfo] = useState(null);
     const [busy, setBusy] = useState(false);
     const [billData, setBillData] = useState(null);
@@ -190,6 +192,18 @@ function SalonPos() {
         }
     };
 
+    // The pre-selected payment method (Settings → Payments, synced from admin).
+    const loadPaymentDefault = async () => {
+        try {
+            const res = await settingsService.getPayments();
+            const m = res.data?.data?.default_method;
+            if (m) setPaymentDefault(m);
+        } catch (e) {
+            // Not fatal — the bill screen falls back to Cash.
+            console.error("Failed to load payment default in salon POS:", e);
+        }
+    };
+
     // The owner's discount rule (Settings → Discounts), synced to this till.
     const loadDiscountPolicy = async () => {
         try {
@@ -245,6 +259,7 @@ function SalonPos() {
         loadStylists();
         loadDiscountPolicy();
         loadBillingFormat();
+        loadPaymentDefault();
 
         // Pick up services, prices and charges the owner changes (and the cloud
         // syncs down) without a refresh.
@@ -1093,6 +1108,7 @@ function SalonPos() {
                     restaurant={salonInfo}
                     format={salonBillFormat(billFormat)}
                     charges={charges}
+                    defaultMethod={paymentDefault}
                     onClose={() => setBillData(null)}
                     onSuccess={handlePaymentSuccess}
                     delivery={desk.bill_delivery}
