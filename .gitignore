@@ -45,3 +45,6 @@ backend/scripts/*.dll
 # compiled print helpers (built by build-app.ps1 / at install)
 backend/scripts/*.exe
 backend/scripts/*.dll
+
+# Stray menu source images/PDFs (not part of the app)
+9x9__2 Album_Crystal Cuts.pdf
