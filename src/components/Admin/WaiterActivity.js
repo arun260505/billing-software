@@ -7,8 +7,11 @@ const money = (v) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
 const timeOf = (v) =>
   v ? new Date(v).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—";
 
-// Today, per waiter: orders, items, bills and sales (paid orders), refreshed on
-// the dashboard's own cadence. The top earner so far is highlighted.
+// Today, per staff member who takes orders (waiters + cashiers): orders, items,
+// bills and sales (paid orders), refreshed on the dashboard's own cadence. The
+// top earner so far is highlighted.
+const roleLabel = (r) => (r === "cashier" ? "Cashier" : r === "waiter" ? "Waiter" : (r || "Staff"));
+
 function WaiterActivity({ waiters = [], loading = false, error = false, updatedAt = null, onRetry }) {
   const top = waiters.find((w) => Number(w.orders) > 0);
 
@@ -16,8 +19,8 @@ function WaiterActivity({ waiters = [], loading = false, error = false, updatedA
     <div className="ad-card ad-wa">
       <div className="ad-card-head">
         <div>
-          <h3>Waiter Activity</h3>
-          <span className="ad-card-sub">Today&rsquo;s orders and sales handled by each waiter</span>
+          <h3>Staff Activity</h3>
+          <span className="ad-card-sub">Today&rsquo;s orders and sales handled by each waiter &amp; cashier</span>
         </div>
         <span className={`ad-wa-live${error ? " ad-wa-stale" : ""}`} title="Refreshes automatically">
           <i />
@@ -48,14 +51,15 @@ function WaiterActivity({ waiters = [], loading = false, error = false, updatedA
           <div className="ad-state-icon">
             <FaUserTie />
           </div>
-          <p>No waiter activity today.</p>
+          <p>No staff activity today.</p>
         </div>
       ) : (
         <div className="ad-wa-scroll">
           <table className="ad-wa-table">
             <thead>
               <tr>
-                <th>Waiter</th>
+                <th>Name</th>
+                <th>Role</th>
                 <th className="num">Orders</th>
                 <th className="num">Items</th>
                 <th className="num">Bills</th>
@@ -72,6 +76,7 @@ function WaiterActivity({ waiters = [], loading = false, error = false, updatedA
                       <span className="ad-wa-name">{w.full_name}</span>
                       {isTop && <span className="ad-wa-top">Top today</span>}
                     </td>
+                    <td><span className="ad-wa-role">{roleLabel(w.role)}</span></td>
                     <td className="num">{Number(w.orders || 0)}</td>
                     <td className="num">
                       {Number(w.items || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}

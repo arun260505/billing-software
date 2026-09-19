@@ -298,19 +298,21 @@ const getStylistBoard = (restaurantId, callback) => {
 
 };
 
-// Restaurant: each waiter's day so far (tenant-scoped). Orders, items, bills
-// and sales count every order created today that isn't cancelled; bills and
-// sales additionally require the order to be paid (the same rule the summary
-// cards use). Every active waiter is listed, including those with no orders
-// yet, so the owner sees who is idle; an inactive one appears only if they
-// took an order today. Items are counted through the order's order_items rows,
-// so "items" is the quantity of menu items handled, not the bill count.
+// Restaurant: each order-taker's day so far (tenant-scoped) — waiters AND
+// cashiers, so a counter-only shop (no waiters) still sees who billed. Orders,
+// items, bills and sales count every order created today that isn't cancelled;
+// bills and sales additionally require the order to be paid (the same rule the
+// summary cards use). Every active staff member is listed, including those with
+// no orders yet, so the owner sees who is idle; an inactive one appears only if
+// they took an order today. Items are counted through the order's order_items
+// rows, so "items" is the quantity of menu items handled, not the bill count.
 const getWaiterBoard = (restaurantId, callback) => {
 
     const sql = `
         SELECT
             u.id,
             u.full_name,
+            u.role,
             COALESCE(SUM(o.order_status <> 'Cancelled'), 0) AS orders,
             COALESCE(SUM(it.items_qty), 0) AS items,
             COALESCE(SUM(o.order_status <> 'Cancelled' AND o.payment_status = 'Paid'), 0) AS bills,
@@ -338,9 +340,9 @@ const getWaiterBoard = (restaurantId, callback) => {
                 GROUP BY o2.id
             ) it ON it.order_id = o.id
         WHERE u.restaurant_id = ?
-          AND u.role = 'waiter'
+          AND u.role IN ('waiter', 'cashier')
           AND u.deleted_at IS NULL
-        GROUP BY u.id, u.full_name, u.status
+        GROUP BY u.id, u.full_name, u.role, u.status
         HAVING u.status = 'Active' OR orders > 0
         ORDER BY orders DESC, sales DESC, u.full_name ASC
     `;

@@ -101,6 +101,17 @@
     box-shadow:0 0 0 3px rgba(239,68,68,.15);
 }
 
+/* Role badge (Waiter / Cashier) in the staff activity table. */
+.ad-wa-role{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:600;
+    background:#EEF2FF;
+    color:#3730A3;
+}
+
 @media (max-width:640px){
     .ad-wa-table th,
     .ad-wa-table td{
