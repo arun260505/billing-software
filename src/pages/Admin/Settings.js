@@ -277,6 +277,36 @@ function TabPayments() {
                 </div>
             ) : null}
 
+            {/* Which method is pre-selected on the bill screen. Only enabled
+                methods are offered; if none are enabled it falls back to Cash. */}
+            {(() => {
+                const enabledMethods = [
+                    { value: "Cash", on: data?.cash_enabled },
+                    { value: "UPI", on: data?.upi_enabled },
+                    { value: "Card", on: data?.card_enabled },
+                    { value: "Wallet", on: data?.other_enabled, label: "Other" }
+                ].filter((m) => m.on);
+                if (enabledMethods.length === 0) return null;
+                const current = enabledMethods.some((m) => m.value === data?.default_method)
+                    ? data.default_method
+                    : enabledMethods[0].value;
+                return (
+                    <div className="set-field" style={{ marginTop: 16 }}>
+                        <label>Default payment method</label>
+                        <select
+                            value={current}
+                            onChange={(e) => { setData((p) => ({ ...p, default_method: e.target.value })); setNotice(""); }}
+                            disabled={saving}
+                        >
+                            {enabledMethods.map((m) => (
+                                <option key={m.value} value={m.value}>{m.label || m.value}</option>
+                            ))}
+                        </select>
+                        <span className="set-field-hint">Pre-selected when the cashier opens a bill. All enabled methods still appear.</span>
+                    </div>
+                );
+            })()}
+
             <div className="set-section-footer">
                 <button className="set-save-btn" onClick={handleSave} disabled={saving || !dirty}>
                     {saving ? "Saving..." : dirty ? "Save Changes" : "Saved"}
