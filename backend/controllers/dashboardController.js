@@ -88,6 +88,19 @@ exports.getStylistBoard = (req, res) => {
 
 };
 
+// GET /api/dashboard/waiters — today's waiter activity for the restaurant.
+exports.getWaiterBoard = (req, res) => {
+
+    dashboardModel.getWaiterBoard(req.user.restaurant_id, (err, result) => {
+
+        if (err) return error(res, err.message, 500);
+
+        return success(res, "Waiter activity fetched.", result);
+
+    });
+
+};
+
 // Heartbeat for the Connection Status widget: verifies backend + database.
 exports.getHealth = (req, res) => {
 

@@ -298,6 +298,57 @@ const getStylistBoard = (restaurantId, callback) => {
 
 };
 
+// Restaurant: each waiter's day so far (tenant-scoped). Orders, items, bills
+// and sales count every order created today that isn't cancelled; bills and
+// sales additionally require the order to be paid (the same rule the summary
+// cards use). Every active waiter is listed, including those with no orders
+// yet, so the owner sees who is idle; an inactive one appears only if they
+// took an order today. Items are counted through the order's order_items rows,
+// so "items" is the quantity of menu items handled, not the bill count.
+const getWaiterBoard = (restaurantId, callback) => {
+
+    const sql = `
+        SELECT
+            u.id,
+            u.full_name,
+            COALESCE(SUM(o.order_status <> 'Cancelled'), 0) AS orders,
+            COALESCE(SUM(it.items_qty), 0) AS items,
+            COALESCE(SUM(o.order_status <> 'Cancelled' AND o.payment_status = 'Paid'), 0) AS bills,
+            COALESCE(SUM(CASE
+                WHEN o.order_status <> 'Cancelled' AND o.payment_status = 'Paid'
+                THEN o.grand_total END), 0) AS sales,
+            MAX(CASE WHEN o.order_status <> 'Cancelled' THEN o.created_at END) AS last_order_at
+        FROM users u
+        LEFT JOIN orders o
+               ON o.employee_id = u.id
+              AND o.restaurant_id = u.restaurant_id
+              AND o.order_status <> 'Cancelled'
+              AND o.deleted_at IS NULL
+              AND DATE(o.created_at) = CURDATE()
+        LEFT JOIN (
+                -- Item quantity per order, only for today's live orders.
+                SELECT o2.id AS order_id,
+                       COALESCE(SUM(oi.quantity), 0) AS items_qty
+                FROM orders o2
+                INNER JOIN order_items oi ON oi.order_id = o2.id
+                WHERE o2.restaurant_id = ?
+                  AND o2.deleted_at IS NULL
+                  AND o2.order_status <> 'Cancelled'
+                  AND DATE(o2.created_at) = CURDATE()
+                GROUP BY o2.id
+            ) it ON it.order_id = o.id
+        WHERE u.restaurant_id = ?
+          AND u.role = 'waiter'
+          AND u.deleted_at IS NULL
+        GROUP BY u.id, u.full_name, u.status
+        HAVING u.status = 'Active' OR orders > 0
+        ORDER BY orders DESC, sales DESC, u.full_name ASC
+    `;
+
+    db.query(sql, [restaurantId, restaurantId], callback);
+
+};
+
 // Trivial heartbeat used by the Connection Status widget — verifies the
 // database connection is alive (tenant-agnostic).
 const ping = (callback) => {
@@ -312,5 +363,6 @@ module.exports = {
     getTableStatus,
     getSalesChart,
     getStylistBoard,
+    getWaiterBoard,
     ping
 };

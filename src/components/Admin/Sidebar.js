@@ -7,7 +7,6 @@ import "../../styles/Admin/Sidebar.css";
 
 const RESTAURANT_MENUS = [
   { name: "Dashboard", path: "/admin/dashboard" },
-  { name: "Restaurant", path: "/admin/restaurant" },
   { name: "Employees", path: "/admin/employees" },
   { name: "Menu", path: "/admin/menu" },
   { name: "Categories", path: "/admin/categories" },

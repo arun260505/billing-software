@@ -92,6 +92,7 @@ body{
     margin-bottom:20px;
 }
 
+.ad-col-12{ grid-column:span 12; }
 .ad-col-8{ grid-column:span 8; }
 .ad-col-6{ grid-column:span 6; }
 .ad-col-4{ grid-column:span 4; }

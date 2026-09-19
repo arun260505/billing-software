@@ -11,13 +11,15 @@ import RestaurantStatus from "../../components/Admin/RestaurantStatus";
 import QuickActions from "../../components/Admin/QuickActions";
 import NotificationPanel from "../../components/Admin/NotificationPanel";
 import PrinterStatus from "../../components/Admin/PrinterStatus";
+import WaiterActivity from "../../components/Admin/WaiterActivity";
 
 import {
   getDashboardSummary,
   getDashboardHealth,
   getTopItems,
   getRecentOrders,
-  getSalesChart
+  getSalesChart,
+  getWaiterActivity
 } from "../../services/dashboardService";
 
 import authService from "../../services/authService";
@@ -43,6 +45,11 @@ function Dashboard() {
   const [chartData, setChartData] = useState([]);
   const [chartLoading, setChartLoading] = useState(true);
   const [chartError, setChartError] = useState(false);
+
+  const [waiters, setWaiters] = useState([]);
+  const [waiterLoading, setWaiterLoading] = useState(true);
+  const [waiterError, setWaiterError] = useState(false);
+  const [waiterAt, setWaiterAt] = useState(null);
 
   const user = authService.getUser();
   const restaurantName =
@@ -90,6 +97,26 @@ function Dashboard() {
     }
   }, []);
 
+  // The waiter board is the live part of this page, so it refreshes on its own,
+  // aligned with the dashboard cadence, and again when the tab returns to view.
+  // A failure here only affects this section, never the rest of the dashboard.
+  const loadWaiters = useCallback(async (background = false) => {
+    if (!background) setWaiterLoading(true);
+    setWaiterError(false);
+    try {
+      const res = await getWaiterActivity();
+      if (res.data.success) {
+        setWaiters(res.data.data || []);
+        setWaiterAt(new Date());
+      }
+    } catch (err) {
+      console.error("Waiter activity error:", err);
+      setWaiterError(true);
+    } finally {
+      setWaiterLoading(false);
+    }
+  }, []);
+
   // The dashboard loaded once on mount and then never again, so the table-status
   // widget, the recent-orders list and the sales figures all froze at whatever
   // was true when the page opened — an admin watching the floor saw nothing
@@ -114,6 +141,22 @@ function Dashboard() {
   useEffect(() => {
     loadChart(period);
   }, [period, loadChart]);
+
+  useEffect(() => {
+    loadWaiters();
+
+    const timer = setInterval(() => loadWaiters(true), 15000);
+
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible") loadWaiters(true);
+    };
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+    };
+  }, [loadWaiters]);
 
   const cardData = [
     {
@@ -216,6 +259,19 @@ function Dashboard() {
                       accent={c.accent}
                     />
                   ))}
+            </div>
+
+            {/* Waiter activity */}
+            <div className="ad-grid">
+              <div className="ad-col ad-col-12">
+                <WaiterActivity
+                  waiters={waiters}
+                  loading={waiterLoading}
+                  error={waiterError}
+                  updatedAt={waiterAt}
+                  onRetry={loadWaiters}
+                />
+              </div>
             </div>
 
             {/* Analytics row */}

@@ -8,3 +8,4 @@ export const getTopItems = () => api.get(`${API}/top-items`);
 export const getTableStatus = () => api.get(`${API}/tables`);
 export const getSalesChart = (period) => api.get(`${API}/sales-chart?period=${period}`);
 export const getDashboardHealth = () => api.get(`${API}/health`);
+export const getWaiterActivity = () => api.get(`${API}/waiters`);
