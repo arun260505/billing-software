@@ -102,6 +102,9 @@ function Dashboard() {
     // Which printer setup the admin chose (Admin → Settings). It decides whether a
     // kitchen ticket prints when the order is sent, follows the bill, or never prints.
     const [printerMode, setPrinterMode] = useState(DEFAULT_PRINTER_MODE);
+    // Which payment method is pre-selected on the bill screen (per restaurant,
+    // Settings → Payments). Cash unless the owner set another default.
+    const [paymentDefault, setPaymentDefault] = useState("Cash");
     const [restaurantInfo, setRestaurantInfo] = useState(null);
     // WhatsApp: the shop's message template + shop number + the owner's default
     // Web/App choice (Settings → Bills & WhatsApp). Bills → correct & reprint can
@@ -183,6 +186,18 @@ function Dashboard() {
         }
     };
 
+    // The pre-selected payment method (Settings → Payments, synced from admin).
+    const loadPaymentDefault = async () => {
+        try {
+            const res = await settingsService.getPayments();
+            const m = res.data?.data?.default_method;
+            if (m) setPaymentDefault(m);
+        } catch (e) {
+            // Not fatal — the bill screen falls back to Cash.
+            console.error("Failed to load payment default in cashier:", e);
+        }
+    };
+
     useEffect(() => {
         updateDateTime();
         loadTables();
@@ -193,6 +208,7 @@ function Dashboard() {
         loadBillingFormat();
         loadKitchenFormat();
         loadPrinterMode();
+        loadPaymentDefault();
         loadCharges();
         loadWhatsAppSettings();
 
@@ -1360,6 +1376,7 @@ function Dashboard() {
                     menuItems={allItems}
                     busy={tableBillBusy}
                     charges={charges}
+                    defaultMethod={paymentDefault}
                     onSetQty={handleTableBillSetQty}
                     onRemoveGroup={handleTableBillRemove}
                     onAddItem={handleTableBillAdd}
@@ -1374,6 +1391,7 @@ function Dashboard() {
                     restaurant={restaurantInfo}
                     format={billFormat}
                     charges={charges}
+                    defaultMethod={paymentDefault}
                     onClose={() => setShowBill(false)}
                     onSuccess={handlePaymentSuccess}
                     onPrinted={handleBillPrinted}

@@ -17,11 +17,12 @@ import useEscapeClose from "../../hooks/useEscapeClose";
 // WhatsApp) swaps the single confirm button for "Send on WhatsApp" and, unless
 // there is no printer, "Print" (which sends on WhatsApp too). `onWhatsApp` gets
 // the bill as paid. Without `delivery` (the restaurant counter) nothing changes.
-function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess, onPrinted, delivery, onWhatsApp }) {
+function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess, onPrinted, delivery, onWhatsApp, defaultMethod = "Cash" }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
-    const [paymentMethod, setPaymentMethod] = useState("Cash");
+    // Pre-selected method comes from Settings → Payments (e.g. UPI-first shops).
+    const [paymentMethod, setPaymentMethod] = useState(defaultMethod || "Cash");
     const [splitMode, setSplitMode] = useState(false);
     const [splitAmounts, setSplitAmounts] = useState({ Cash: "", Card: "", UPI: "", Wallet: "" });
     const [loading, setLoading] = useState(false);

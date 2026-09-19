@@ -6,12 +6,13 @@ import useEscapeClose from "../../hooks/useEscapeClose";
 // to apply automatically — GST, service charge, a standing fee — are on the bill
 // already; the rest are the chips the cashier can add. A restaurant with none
 // configured bills the goods and nothing else.
-function TableBillModal({ table, items, menuItems, busy, charges = [], onSetQty, onRemoveGroup, onAddItem, onServe, onGenerate, onClose }) {
+function TableBillModal({ table, items, menuItems, busy, charges = [], onSetQty, onRemoveGroup, onAddItem, onServe, onGenerate, onClose, defaultMethod = "Cash" }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
 
-    const [method, setMethod] = useState("Cash");
+    // Pre-selected method comes from Settings → Payments (e.g. UPI-first shops).
+    const [method, setMethod] = useState(defaultMethod || "Cash");
     // Split payment: when on, the cashier allocates the total across several
     // methods (e.g. Cash + UPI). When off, one method covers the whole total.
     const [splitMode, setSplitMode] = useState(false);

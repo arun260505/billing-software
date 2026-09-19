@@ -24,6 +24,8 @@ const SYNC_ORDER = [
     { table: "dining_tables",   direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "roles",           direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "settings",        direction: "down", fks: { restaurant_id: "restaurants" } },
+    // Enabled payment methods + the default method: owner config, flows cloud -> till.
+    { table: "payment_settings", direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "charges",         direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "bill_formats",    direction: "down", fks: { restaurant_id: "restaurants" } },
     { table: "kitchen_formats", direction: "down", fks: { restaurant_id: "restaurants" } },

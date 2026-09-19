@@ -34,6 +34,9 @@ const SYNC_TABLES = {
     users:           { up: false },
     roles:           { up: false },
     settings:        { up: false },
+    // Which payment methods are enabled + the default method: owner config, syncs
+    // DOWN to the till.
+    payment_settings: { up: false },
     // The order-number FORMAT is owner config (set in the cloud admin) and syncs
     // DOWN to the till. Its running counter columns (current_sequence /
     // sequence_reset_key) are kept LOCAL by syncTables so each till advances its
@@ -118,6 +121,12 @@ async function runSyncSchema() {
                 "TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
             );
         }
+    }
+
+    // The pre-selected payment method at billing (per restaurant). Older DBs
+    // predate it; add it idempotently. Default 'Cash' keeps existing tills as-is.
+    if (await tableExists("payment_settings")) {
+        await ensureColumn("payment_settings", "default_method", "VARCHAR(10) NOT NULL DEFAULT 'Cash'");
     }
 
     // Feature columns from later migrations (002 served, 003 service_charge).

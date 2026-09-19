@@ -36,8 +36,13 @@ const DEFAULT_PAYMENT = {
     upi_enabled: 1,
     card_enabled: 1,
     other_enabled: 0,
-    upi_id: null
+    upi_id: null,
+    // Which method is pre-selected at billing. Cash unless the owner changes it.
+    default_method: "Cash"
 };
+
+// The methods the cashier screen can pre-select.
+const PAYMENT_METHODS = ["Cash", "Card", "UPI", "Wallet"];
 
 const DEFAULT_SECURITY = {
     session_timeout_hours: 8,
@@ -182,16 +187,22 @@ const getPaymentSettings = (restaurantId, callback) => {
 };
 
 const savePaymentSettings = (restaurantId, data, callback) => {
+    // Only a method that's actually enabled can be the default; fall back to Cash.
+    const wanted = PAYMENT_METHODS.includes(data.default_method) ? data.default_method : "Cash";
+    const enabledOf = { Cash: data.cash_enabled, UPI: data.upi_enabled, Card: data.card_enabled, Wallet: data.other_enabled };
+    const defaultMethod = enabledOf[wanted] ? wanted : "Cash";
+
     const sql = `
         INSERT INTO payment_settings
-            (restaurant_id, cash_enabled, upi_enabled, card_enabled, other_enabled, upi_id)
-        VALUES (?, ?, ?, ?, ?, ?)
+            (restaurant_id, cash_enabled, upi_enabled, card_enabled, other_enabled, upi_id, default_method)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             cash_enabled = VALUES(cash_enabled),
             upi_enabled  = VALUES(upi_enabled),
             card_enabled = VALUES(card_enabled),
             other_enabled = VALUES(other_enabled),
-            upi_id       = VALUES(upi_id)
+            upi_id       = VALUES(upi_id),
+            default_method = VALUES(default_method)
     `;
     const values = [
         restaurantId,
@@ -199,7 +210,8 @@ const savePaymentSettings = (restaurantId, data, callback) => {
         data.upi_enabled ? 1 : 0,
         data.card_enabled ? 1 : 0,
         data.other_enabled ? 1 : 0,
-        (data.upi_id || "").slice(0, 120) || null
+        (data.upi_id || "").slice(0, 120) || null,
+        defaultMethod
     ];
     db.query(sql, values, callback);
 };
