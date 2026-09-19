@@ -711,3 +711,20 @@
 .set-toggle-text strong { font-size: 15px; color: #0f172a; }
 .set-toggle-sub { font-size: 12.5px; color: #64748b; line-height: 1.45; max-width: 560px; }
 .set-toggle-input { width: 22px; height: 22px; flex: 0 0 auto; cursor: pointer; accent-color: #1d4ed8; }
+
+/* Order Number Format tab */
+.set-hint { font-size: 12px; color: #64748b; line-height: 1.45; }
+.set-number-preview {
+    margin-top: 6px;
+    display: inline-block;
+    padding: 14px 22px;
+    border: 1px dashed #93C5FD;
+    border-radius: 12px;
+    background: #EFF6FF;
+    color: #1E40AF;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    word-break: break-all;
+}

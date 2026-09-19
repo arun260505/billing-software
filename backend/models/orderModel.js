@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const { totalsFromSubtotal, resolveCharges, resolveDiscount, money, ROLES } = require("../utils/billing");
 const { getAutoCharges } = require("../utils/billingCharges");
+const generateOrderNumber = require("../utils/orderNumber");
 const notify = require("./notificationModel");
 
 /*
@@ -1019,18 +1020,23 @@ const addBillItem = (tableId, restaurantId, menuItemId, quantity, employeeId, ca
                     if (orows.length) return insertItem(orows[0].id);
 
                     // No open order — create a served one (won't reach the kitchen).
-                    db.query(
-                        `INSERT INTO orders
-                         (restaurant_id, customer_id, table_id, employee_id, order_number,
-                          order_type, order_status, subtotal, discount, tax, grand_total,
-                          payment_status, notes)
-                         VALUES (?, NULL, ?, ?, ?, 'Dine-In', 'Served', 0, 0, 0, 0, 'Pending', NULL)`,
-                        [restaurantId, tableId, employeeId, `ORD-${Date.now()}`],
-                        (err, res) => {
-                            if (err) return callback(err);
-                            insertItem(res.insertId);
-                        }
-                    );
+                    // Its number comes from the restaurant's order-number format
+                    // generator, exactly like a normal order creation.
+                    generateOrderNumber(restaurantId, (err, orderNumber) => {
+                        if (err) return callback(err);
+                        db.query(
+                            `INSERT INTO orders
+                             (restaurant_id, customer_id, table_id, employee_id, order_number,
+                              order_type, order_status, subtotal, discount, tax, grand_total,
+                              payment_status, notes)
+                             VALUES (?, NULL, ?, ?, ?, 'Dine-In', 'Served', 0, 0, 0, 0, 'Pending', NULL)`,
+                            [restaurantId, tableId, employeeId, orderNumber],
+                            (err, res) => {
+                                if (err) return callback(err);
+                                insertItem(res.insertId);
+                            }
+                        );
+                    });
                 }
             );
         }

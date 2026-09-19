@@ -240,6 +240,78 @@ const saveSecuritySettings = (restaurantId, data, callback) => {
     db.query(sql, values, callback);
 };
 
+// ── 3b. Order Number Format ────────────────────────────────────
+// How NEW order numbers are built (utils/orderNumber.js). One row per
+// restaurant; current_sequence is the last issued number in the current bucket
+// and sequence_reset_key records which bucket that is (see migration 022).
+
+const DEFAULT_ORDER_NUMBER_FORMAT = {
+    prefix: "ORD",
+    starting_number: 1,
+    digits: 4,
+    reset_mode: "never",
+    current_sequence: 0,
+    sequence_reset_key: null
+};
+
+const ORDER_NUMBER_RESET_MODES = ["never", "daily", "monthly"];
+
+const getOrderNumberSettings = (restaurantId, callback) => {
+    db.query(
+        `SELECT prefix, starting_number, digits, reset_mode, current_sequence, sequence_reset_key
+         FROM order_number_settings WHERE restaurant_id = ?`,
+        [restaurantId],
+        (err, rows) => {
+            if (err) return callback(err);
+            const row = rows && rows.length > 0 ? rows[0] : null;
+            callback(null, row
+                ? { ...DEFAULT_ORDER_NUMBER_FORMAT, ...row }
+                : { ...DEFAULT_ORDER_NUMBER_FORMAT, restaurant_id: restaurantId });
+        }
+    );
+};
+
+const saveOrderNumberSettings = (restaurantId, data, callback) => {
+    const prefix = String(data.prefix || "ORD").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 20) || "ORD";
+    const starting = Math.max(1, Math.round(Number(data.starting_number)) || 1);
+    const digits = Math.max(1, Math.min(10, Math.round(Number(data.digits)) || 4));
+    const mode = ORDER_NUMBER_RESET_MODES.includes(data.reset_mode) ? data.reset_mode : "never";
+
+    // Changing the shape of the number (prefix, starting number, or width)
+    // starts the sequence over from the new starting number — ORD-0001 becomes
+    // INV-0001. Existing orders keep the numbers they were created with. A save
+    // that changes nothing (or only the reset mode) leaves the sequence alone.
+    db.query(
+        "SELECT prefix, starting_number, digits, current_sequence, sequence_reset_key FROM order_number_settings WHERE restaurant_id = ?",
+        [restaurantId],
+        (err, rows) => {
+            if (err) return callback(err);
+            const prev = rows && rows[0];
+            const formatChanged = !prev
+                || prev.prefix !== prefix
+                || Number(prev.starting_number) !== starting
+                || Number(prev.digits) !== digits;
+
+            const currentSequence = formatChanged ? starting - 1 : (prev ? Number(prev.current_sequence) || 0 : starting - 1);
+            const resetKey = formatChanged ? null : (prev ? prev.sequence_reset_key : null);
+
+            const sql = `
+                INSERT INTO order_number_settings
+                    (restaurant_id, prefix, starting_number, digits, reset_mode, current_sequence, sequence_reset_key)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    prefix             = VALUES(prefix),
+                    starting_number    = VALUES(starting_number),
+                    digits             = VALUES(digits),
+                    reset_mode         = VALUES(reset_mode),
+                    current_sequence   = VALUES(current_sequence),
+                    sequence_reset_key = VALUES(sequence_reset_key)
+            `;
+            db.query(sql, [restaurantId, prefix, starting, digits, mode, currentSequence, resetKey], callback);
+        }
+    );
+};
+
 // ── 4. Staff / Permissions ─────────────────────────────────────
 
 const getRoles = (restaurantId, callback) => {
@@ -299,6 +371,8 @@ module.exports = {
     savePaymentSettings,
     getSecuritySettings,
     saveSecuritySettings,
+    getOrderNumberSettings,
+    saveOrderNumberSettings,
     getRoles,
     getPermissions,
     getRolePermissions,

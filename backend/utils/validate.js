@@ -70,4 +70,32 @@ const validateSecurity = (data) => {
     return errors;
 };
 
-module.exports = { validateRestaurant, validatePayments, validateSecurity, KITCHEN_MODES, CONNECTION_TYPES };
+const ORDER_NUMBER_RESET_MODES = ["never", "daily", "monthly"];
+
+const validateOrderNumberFormat = (data) => {
+    const errors = [];
+    if (data.prefix !== undefined) {
+        const prefix = String(data.prefix || "");
+        if (!/^[A-Za-z0-9_-]{1,12}$/.test(prefix)) {
+            errors.push("prefix must be 1-12 letters, numbers, dashes or underscores.");
+        }
+    }
+    if (data.starting_number !== undefined) {
+        const v = Number(data.starting_number);
+        if (!Number.isInteger(v) || v < 1 || v > 99999999) {
+            errors.push("starting number must be a positive whole number.");
+        }
+    }
+    if (data.digits !== undefined) {
+        const v = Number(data.digits);
+        if (!Number.isInteger(v) || v < 1 || v > 10) {
+            errors.push("number of digits must be between 1 and 10.");
+        }
+    }
+    if (data.reset_mode !== undefined && !ORDER_NUMBER_RESET_MODES.includes(data.reset_mode)) {
+        errors.push("reset mode must be 'never', 'daily' or 'monthly'.");
+    }
+    return errors;
+};
+
+module.exports = { validateRestaurant, validatePayments, validateSecurity, validateOrderNumberFormat, KITCHEN_MODES, CONNECTION_TYPES };

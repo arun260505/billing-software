@@ -1,6 +1,7 @@
 const settingsModel = require("../models/settingsModel");
 const { success, error } = require("../utils/response");
-const { validateRestaurant, validatePayments, validateSecurity } = require("../utils/validate");
+const { validateRestaurant, validatePayments, validateSecurity, validateOrderNumberFormat } = require("../utils/validate");
+const generateOrderNumber = require("../utils/orderNumber");
 const bcrypt = require("bcryptjs");
 
 const SALT_ROUNDS = 10;
@@ -163,6 +164,43 @@ exports.saveSecurity = (req, res) => {
         settingsModel.getSecuritySettings(rid, (fetchErr, data) => {
             if (fetchErr) return error(res, fetchErr.message, 500);
             return success(res, "Security settings saved.", data);
+        });
+    });
+};
+
+// ── 3b. Order Number Format ────────────────────────────────────
+
+exports.getOrderNumberFormat = (req, res) => {
+    const rid = req.user.restaurant_id;
+    if (!rid) return error(res, "Restaurant context required.", 400);
+
+    settingsModel.getOrderNumberSettings(rid, (err, data) => {
+        if (err) return error(res, err.message, 500);
+        // What the NEXT order would be, for the Settings preview. Informational
+        // only — the real number is issued by utils/orderNumber.js at order
+        // creation, not here.
+        return success(res, "Order number settings retrieved.", {
+            ...data,
+            next_order_number: generateOrderNumber.previewNextOrderNumber(data)
+        });
+    });
+};
+
+exports.saveOrderNumberFormat = (req, res) => {
+    const rid = req.user.restaurant_id;
+    if (!rid) return error(res, "Restaurant context required.", 400);
+
+    const errors = validateOrderNumberFormat(req.body);
+    if (errors.length > 0) return error(res, errors.join(" "), 400);
+
+    settingsModel.saveOrderNumberSettings(rid, req.body, (err) => {
+        if (err) return error(res, err.message, 500);
+        settingsModel.getOrderNumberSettings(rid, (fetchErr, data) => {
+            if (fetchErr) return error(res, fetchErr.message, 500);
+            return success(res, "Order number settings saved.", {
+                ...data,
+                next_order_number: generateOrderNumber.previewNextOrderNumber(data)
+            });
         });
     });
 };

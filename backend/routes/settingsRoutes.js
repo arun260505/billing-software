@@ -24,6 +24,10 @@ router.put("/payments", roleMiddleware(["admin"]), settingsController.savePaymen
 router.get("/security", settingsController.getSecurity);
 router.put("/security", roleMiddleware(["admin"]), settingsController.saveSecurity);
 
+// ── 3b. Order Number Format ────────────────────────────────────
+router.get("/order-number-format", settingsController.getOrderNumberFormat);
+router.put("/order-number-format", roleMiddleware(["admin"]), settingsController.saveOrderNumberFormat);
+
 // ── 4. Staff & Permissions ─────────────────────────────────────
 router.get("/roles", settingsController.getRoles);
 router.get("/permissions", settingsController.getPermissions);

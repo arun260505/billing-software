@@ -19,6 +19,10 @@ const settingsService = {
     getSecurity: () => api.get("/settings/security"),
     saveSecurity: (data) => api.put("/settings/security", data),
 
+    // Order Number Format
+    getOrderNumberFormat: () => api.get("/settings/order-number-format"),
+    saveOrderNumberFormat: (data) => api.put("/settings/order-number-format", data),
+
     // Staff & Permissions
     getRoles: () => api.get("/settings/roles"),
     getPermissions: () => api.get("/settings/permissions"),

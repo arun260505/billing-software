@@ -637,6 +637,34 @@ db.query(`
     else console.log("Security settings table ready.");
 });
 
+// ── Order Number Format settings table ─────────────────────────
+// How new order numbers are built, per restaurant. See
+// migrations/022_order_number_format.sql. current_sequence is the last issued
+// number for the current sequence bucket (sequence_reset_key records which
+// bucket that is — a calendar day for "daily", a year-month for "monthly", and
+// an empty string meaning "never"). utils/orderNumber.js advances it inside a
+// transaction with SELECT ... FOR UPDATE so two tills issuing an order at the
+// same instant cannot hand out the same number.
+db.query(`
+    CREATE TABLE IF NOT EXISTS order_number_settings (
+        id                   INT AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id        INT NOT NULL UNIQUE,
+        prefix               VARCHAR(20) NOT NULL DEFAULT 'ORD',
+        starting_number      INT NOT NULL DEFAULT 1,
+        digits               INT NOT NULL DEFAULT 4,
+        reset_mode           VARCHAR(10) NOT NULL DEFAULT 'never',
+        current_sequence     INT NOT NULL DEFAULT 0,
+        sequence_reset_key   VARCHAR(10) DEFAULT NULL,
+        created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_order_number_settings_restaurant
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+    )
+`, (err) => {
+    if (err) console.error("Order number settings table migration error:", err.message);
+    else console.log("Order number settings table ready.");
+});
+
 // ── Seed default permissions if the table is empty ─────────────
 db.query("SELECT COUNT(*) AS cnt FROM permissions", (err, rows) => {
     if (err) return;

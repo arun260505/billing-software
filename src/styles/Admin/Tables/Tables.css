@@ -27,3 +27,21 @@
     color:#666;
 
 }
+
+.table-grid{
+
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:20px;
+    width:100%;
+    max-width:100%;
+    align-items:stretch;
+
+}
+
+.table-grid .table-card{
+
+    width:100%;
+    max-width:100%;
+
+}
