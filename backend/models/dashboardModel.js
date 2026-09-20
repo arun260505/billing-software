@@ -9,19 +9,23 @@ const getSummary = (restaurantId, callback) => {
         SELECT
             (SELECT COUNT(*) FROM orders
              WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
+               AND deleted_at IS NULL
                AND order_status <> 'Cancelled') AS total_orders,
 
             (SELECT IFNULL(SUM(grand_total),0) FROM orders
              WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
+             AND deleted_at IS NULL
              AND payment_status='Paid') AS total_sales,
 
             -- Week runs Sunday..Saturday (YEARWEEK mode 0 = week starts Sunday).
             (SELECT IFNULL(SUM(grand_total),0) FROM orders
              WHERE restaurant_id = ? AND YEARWEEK(created_at, 0) = YEARWEEK(CURDATE(), 0)
+             AND deleted_at IS NULL
              AND payment_status='Paid') AS week_sales,
 
             (SELECT IFNULL(SUM(grand_total),0) FROM orders
              WHERE restaurant_id = ? AND MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())
+             AND deleted_at IS NULL
              AND payment_status='Paid') AS month_sales,
 
             (SELECT COUNT(*) FROM dining_tables
@@ -32,41 +36,50 @@ const getSummary = (restaurantId, callback) => {
 
             (SELECT COUNT(*) FROM orders
              WHERE restaurant_id = ?
+             AND deleted_at IS NULL
              AND order_status IN ('Pending','Preparing','Ready')) AS kitchen_orders,
 
             (SELECT COUNT(*) FROM orders
              WHERE restaurant_id = ?
+             AND deleted_at IS NULL
              AND order_status <> 'Cancelled'
              AND payment_status IN ('Pending','Partial')) AS pending_bills,
 
             (SELECT IFNULL(SUM(amount),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
+             AND deleted_at IS NULL
              AND DATE(payment_date)=CURDATE()) AS total_collection,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='Cash' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
+             AND deleted_at IS NULL
              AND DATE(payment_date)=CURDATE()) AS cash_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='UPI' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
+             AND deleted_at IS NULL
              AND DATE(payment_date)=CURDATE()) AS upi_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='Card' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
+             AND deleted_at IS NULL
              AND DATE(payment_date)=CURDATE()) AS card_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='Wallet' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
+             AND deleted_at IS NULL
              AND DATE(payment_date)=CURDATE()) AS wallet_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method IN ('Bank Transfer','Split') THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
+             AND deleted_at IS NULL
              AND DATE(payment_date)=CURDATE()) AS other_amount,
 
             -- Salon dashboard: distinct customers billed today, and stock
             -- items at or below their reorder level.
             (SELECT COUNT(DISTINCT customer_id) FROM orders
              WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
+               AND deleted_at IS NULL
                AND customer_id IS NOT NULL
                AND order_status <> 'Cancelled') AS customers_today,
 
@@ -120,6 +133,7 @@ const getTodaysSales = (restaurantId, callback) => {
             created_at
         FROM orders
         WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
+          AND deleted_at IS NULL
         ORDER BY created_at DESC
     `, [restaurantId], callback);
 
@@ -146,6 +160,7 @@ const getRecentOrders = (restaurantId, callback) => {
              ORDER BY p.id DESC LIMIT 1) AS payment_method
         FROM orders o
         WHERE o.restaurant_id = ?
+          AND o.deleted_at IS NULL
         ORDER BY o.created_at DESC
         LIMIT 10
     `, [restaurantId], callback);
@@ -164,6 +179,7 @@ const getTopItems = (restaurantId, callback) => {
         INNER JOIN menu_items mi ON oi.menu_item_id = mi.id
         INNER JOIN orders o ON oi.order_id = o.id
         WHERE o.restaurant_id = ?
+          AND o.deleted_at IS NULL
           AND o.order_status <> 'Cancelled'
         GROUP BY oi.menu_item_id
         ORDER BY total_qty DESC
@@ -202,6 +218,7 @@ const getSalesChart = (period, restaurantId, callback) => {
             FROM orders
             WHERE restaurant_id = ?
               AND DATE(created_at) = CURDATE()
+              AND deleted_at IS NULL
               AND payment_status='Paid'
             GROUP BY HOUR(created_at)
             ORDER BY HOUR(created_at)
@@ -216,6 +233,7 @@ const getSalesChart = (period, restaurantId, callback) => {
             FROM orders
             WHERE restaurant_id = ?
               AND DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+              AND deleted_at IS NULL
               AND payment_status='Paid'
             GROUP BY HOUR(created_at)
             ORDER BY HOUR(created_at)
@@ -230,6 +248,7 @@ const getSalesChart = (period, restaurantId, callback) => {
             FROM orders
             WHERE restaurant_id = ?
               AND YEARWEEK(created_at,0)=YEARWEEK(CURDATE(),0)
+              AND deleted_at IS NULL
               AND payment_status='Paid'
             GROUP BY DATE(created_at)
             ORDER BY DATE(created_at)
@@ -245,6 +264,7 @@ const getSalesChart = (period, restaurantId, callback) => {
             WHERE restaurant_id = ?
               AND MONTH(created_at)=MONTH(CURDATE())
               AND YEAR(created_at)=YEAR(CURDATE())
+              AND deleted_at IS NULL
               AND payment_status='Paid'
             GROUP BY DATE(created_at)
             ORDER BY DATE(created_at)
