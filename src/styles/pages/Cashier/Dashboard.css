@@ -115,11 +115,21 @@
 /* ── Body: menu (fills) + docked bill (fixed width) ──────────────────── */
 .cashier-app .pos-body { flex: 1 1 auto; display: flex; min-height: 0; }
 
+/* Desktop counter: search across the top, a fixed VERTICAL category rail on the
+   left, and the item grid on the right — so the cashier sees every category at
+   once and never has to scroll a horizontal strip at peak time. Reverts to the
+   stacked horizontal layout on tablets/phones in the media query below. */
 .cashier-app .pos-menu {
-    flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0;
-    padding: 14px 16px; gap: 12px;
+    flex: 1 1 auto; min-width: 0; min-height: 0;
+    display: grid;
+    grid-template-columns: 176px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+        "top  top"
+        "cats grid";
+    padding: 14px 16px; gap: 12px 14px;
 }
-.cashier-app .pos-menu-top { display: flex; gap: 12px; }
+.cashier-app .pos-menu-top { grid-area: top; display: flex; gap: 12px; }
 .cashier-app .pos-search { position: relative; flex: 1; }
 .cashier-app .pos-search svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8; }
 .cashier-app .pos-search input {
@@ -128,21 +138,29 @@
 }
 .cashier-app .pos-search input:focus { border-color: #2563eb; }
 
-/* category chips (CategoryTabs component) */
-.cashier-app .category-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
-.cashier-app .category-tabs::-webkit-scrollbar { height: 6px; }
+/* category rail (CategoryTabs component) — vertical on the desktop counter */
+.cashier-app .category-tabs {
+    grid-area: cats;
+    display: flex; flex-direction: column; gap: 8px;
+    overflow-y: auto; overflow-x: hidden; min-height: 0;
+    align-content: start; padding: 2px 6px 2px 0;
+}
+.cashier-app .category-tabs::-webkit-scrollbar { width: 6px; height: 6px; }
 .cashier-app .category-tabs::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
 .cashier-app .category-tabs button {
-    flex: 0 0 auto; border: none; background: #e9edf3; color: #475569;
-    padding: 9px 18px; border-radius: 999px; font-size: 14px; font-weight: 700;
-    cursor: pointer; white-space: nowrap;
+    flex: 0 0 auto; width: 100%; text-align: left;
+    border: none; background: #e9edf3; color: #475569;
+    padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 700;
+    cursor: pointer; white-space: normal; line-height: 1.25;
 }
+.cashier-app .category-tabs button:hover { background: #dbe3ee; }
 .cashier-app .category-tabs .active-category { background: #2563eb; color: #fff; }
 .cashier-app .category-tabs .tab-star { display: none; }
 
 /* menu grid */
 .cashier-app .pos-menu-grid {
-    flex: 1; overflow-y: auto; display: grid;
+    grid-area: grid;
+    overflow-y: auto; min-height: 0; display: grid;
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
     gap: 14px; align-content: start; padding-right: 4px;
 }
@@ -742,10 +760,21 @@
     /* Menu on top, bill below — both reachable, both scrollable. */
     .cashier-app .pos-body { flex-direction: column; }
 
+    /* Tablets / phones: back to the stacked layout with horizontal category
+       chips (the vertical rail is only for the wide desktop counter). */
     .cashier-app .pos-menu {
+        display: flex; flex-direction: column;
         flex: 1 1 auto;
         min-height: 42vh;          /* never collapses to nothing */
         padding: 12px;
+    }
+    .cashier-app .category-tabs {
+        flex-direction: row; overflow-x: auto; overflow-y: hidden;
+        padding: 0 0 2px 0;
+    }
+    .cashier-app .category-tabs button {
+        width: auto; text-align: center; white-space: nowrap;
+        padding: 9px 18px; border-radius: 999px;
     }
 
     .cashier-app .pos-bill {
