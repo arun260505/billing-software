@@ -225,76 +225,76 @@ const getTableStatus = (restaurantId, callback) => {
 
 };
 
-// Sales Chart (tenant-scoped)
+// Sales Chart (tenant-scoped). Days are BUSINESS days: each paid bill is bucketed
+// by the day it was opened under (day_closures window), so after-midnight sales
+// stay on the still-open day's bar. "today" is the current open day, "yesterday"
+// the last closed day.
 const getSalesChart = (period, restaurantId, today, callback) => {
 
     const D = dayLiteral(today);
+    // The business day a bill belongs to (the day_closures window containing it).
+    const bizDay = "(SELECT DATE_FORMAT(dc.business_date, '%Y-%m-%d') FROM day_closures dc " +
+        "WHERE dc.restaurant_id = o.restaurant_id AND dc.deleted_at IS NULL " +
+        "AND o.created_at >= COALESCE(dc.opened_at, dc.business_date) " +
+        "AND (dc.closed_at IS NULL OR o.created_at < dc.closed_at) " +
+        "ORDER BY dc.opened_at DESC LIMIT 1)";
+    const openWin = "(SELECT MIN(opened_at) FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL)";
     let sql = "";
 
     if (period === "today") {
 
         sql = `
-            SELECT
-                HOUR(created_at) AS label,
-                SUM(grand_total) AS sales
-            FROM orders
-            WHERE restaurant_id = ?
-              AND DATE(created_at) = CURDATE()
-              AND deleted_at IS NULL
-              AND payment_status='Paid'
-            GROUP BY HOUR(created_at)
-            ORDER BY HOUR(created_at)
+            SELECT HOUR(o.created_at) AS label, SUM(o.grand_total) AS sales
+            FROM orders o
+            WHERE o.restaurant_id = ? AND o.deleted_at IS NULL AND o.payment_status='Paid'
+              AND o.created_at >= ${openWin}
+            GROUP BY HOUR(o.created_at)
+            ORDER BY HOUR(o.created_at)
         `;
 
     } else if (period === "yesterday") {
 
+        const lastOpen  = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND status='closed' AND deleted_at IS NULL ORDER BY closed_at DESC LIMIT 1)";
+        const lastClose = "(SELECT closed_at FROM day_closures WHERE restaurant_id = ? AND status='closed' AND deleted_at IS NULL ORDER BY closed_at DESC LIMIT 1)";
         sql = `
-            SELECT
-                HOUR(created_at) AS label,
-                SUM(grand_total) AS sales
-            FROM orders
-            WHERE restaurant_id = ?
-              AND DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
-              AND deleted_at IS NULL
-              AND payment_status='Paid'
-            GROUP BY HOUR(created_at)
-            ORDER BY HOUR(created_at)
+            SELECT HOUR(o.created_at) AS label, SUM(o.grand_total) AS sales
+            FROM orders o
+            WHERE o.restaurant_id = ? AND o.deleted_at IS NULL AND o.payment_status='Paid'
+              AND o.created_at >= ${lastOpen} AND o.created_at < ${lastClose}
+            GROUP BY HOUR(o.created_at)
+            ORDER BY HOUR(o.created_at)
         `;
 
     } else if (period === "week") {
 
         sql = `
-            SELECT
-                DATE_FORMAT(created_at, '%Y-%m-%d') AS label,
-                SUM(grand_total) AS sales
-            FROM orders
-            WHERE restaurant_id = ?
-              AND YEARWEEK(created_at,0)=YEARWEEK(CURDATE(),0)
-              AND deleted_at IS NULL
-              AND payment_status='Paid'
-            GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
-            ORDER BY DATE_FORMAT(created_at, '%Y-%m-%d')
+            SELECT bd AS label, SUM(grand_total) AS sales FROM (
+                SELECT ${bizDay} AS bd, o.grand_total
+                FROM orders o
+                WHERE o.restaurant_id = ? AND o.deleted_at IS NULL AND o.payment_status='Paid'
+            ) t
+            WHERE t.bd IS NOT NULL AND YEARWEEK(t.bd, 0) = YEARWEEK(${D}, 0)
+            GROUP BY t.bd
+            ORDER BY t.bd
         `;
 
     } else {
 
         sql = `
-            SELECT
-                DATE_FORMAT(created_at, '%Y-%m-%d') AS label,
-                SUM(grand_total) AS sales
-            FROM orders
-            WHERE restaurant_id = ?
-              AND MONTH(created_at)=MONTH(CURDATE())
-              AND YEAR(created_at)=YEAR(CURDATE())
-              AND deleted_at IS NULL
-              AND payment_status='Paid'
-            GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
-            ORDER BY DATE_FORMAT(created_at, '%Y-%m-%d')
+            SELECT bd AS label, SUM(grand_total) AS sales FROM (
+                SELECT ${bizDay} AS bd, o.grand_total
+                FROM orders o
+                WHERE o.restaurant_id = ? AND o.deleted_at IS NULL AND o.payment_status='Paid'
+            ) t
+            WHERE t.bd IS NOT NULL AND MONTH(t.bd) = MONTH(${D}) AND YEAR(t.bd) = YEAR(${D})
+            GROUP BY t.bd
+            ORDER BY t.bd
         `;
 
     }
 
-    db.query(sql.replace(/CURDATE\(\)/g, D), [restaurantId], callback);
+    const params = new Array((sql.match(/\?/g) || []).length).fill(restaurantId);
+    db.query(sql, params, callback);
 
 };
 
