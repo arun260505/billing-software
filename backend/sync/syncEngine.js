@@ -111,8 +111,15 @@ async function applyRows(dbp, def, rows, scope = {}) {
         let missingParent = false;
 
         for (const [fkCol, parentTable] of Object.entries(def.fks)) {
-            const parentUuid = data[`${fkCol}__uuid`];
-            delete data[`${fkCol}__uuid`];
+            const uuidKey = `${fkCol}__uuid`;
+            const hasUuidKey = Object.prototype.hasOwnProperty.call(data, uuidKey);
+            const parentUuid = data[uuidKey];
+            delete data[uuidKey];
+            // An older node that predates this FK in its own sync config won't send
+            // the parent uuid at all. Keep whatever raw value it did send rather
+            // than nulling the column — nulling a NOT NULL column (e.g. employee_id)
+            // makes the whole row fail to upsert and silently stops it syncing.
+            if (!hasUuidKey) continue;
             if (parentUuid == null) {
                 data[fkCol] = null;
                 continue;
