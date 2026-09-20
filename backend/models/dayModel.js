@@ -22,6 +22,12 @@ const rupee = (n) => `₹${(Math.round((Number(n) || 0) * 100) / 100).toLocaleSt
 const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
 function ymd(d) {
+    // Already a 'YYYY-MM-DD' string (the queries below format business_date this
+    // way): use it as-is. Re-parsing it into a JS Date and reading it back drifts
+    // by a day whenever the driver's timezone (DB_TIMEZONE=+05:30 on the cloud)
+    // and the Node process timezone (UTC on the cloud) disagree — which is what
+    // made a day dated today read as "yesterday" and loop the close prompt.
+    if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
     const x = d instanceof Date ? d : new Date(d);
     if (isNaN(x)) return String(d);
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
@@ -142,7 +148,8 @@ async function summaryForDay(restaurantId, dayId) {
 async function getOpenDay(restaurantId) {
     await consolidateOpens(restaurantId);
     const [[row]] = await db.query(
-        `SELECT dc.*, uo.full_name AS opened_by_name
+        `SELECT dc.*, DATE_FORMAT(dc.business_date, '%Y-%m-%d') AS business_date,
+                uo.full_name AS opened_by_name
          FROM day_closures dc
          LEFT JOIN users uo ON uo.id = dc.opened_by
          WHERE dc.restaurant_id = ? AND dc.status = 'open' AND dc.deleted_at IS NULL
@@ -156,7 +163,8 @@ async function getOpenDay(restaurantId) {
 // The most recent day row (open or closed).
 async function getLatest(restaurantId) {
     const [[row]] = await db.query(
-        `SELECT dc.*, u.full_name AS closed_by_name
+        `SELECT dc.*, DATE_FORMAT(dc.business_date, '%Y-%m-%d') AS business_date,
+                u.full_name AS closed_by_name
          FROM day_closures dc
          LEFT JOIN users u ON u.id = dc.closed_by
          WHERE dc.restaurant_id = ? AND dc.deleted_at IS NULL
@@ -169,7 +177,8 @@ async function getLatest(restaurantId) {
 
 async function getRowById(restaurantId, id) {
     const [[row]] = await db.query(
-        `SELECT dc.*, u.full_name AS closed_by_name
+        `SELECT dc.*, DATE_FORMAT(dc.business_date, '%Y-%m-%d') AS business_date,
+                u.full_name AS closed_by_name
          FROM day_closures dc
          LEFT JOIN users u ON u.id = dc.closed_by
          WHERE dc.restaurant_id = ? AND dc.id = ? AND dc.deleted_at IS NULL`,
@@ -315,7 +324,8 @@ async function getState(restaurantId, today) {
 // Past closures for the reports / history screen.
 async function getClosures(restaurantId, from, to) {
     const [rows] = await db.query(
-        `SELECT dc.*, u.full_name AS closed_by_name
+        `SELECT dc.*, DATE_FORMAT(dc.business_date, '%Y-%m-%d') AS business_date,
+                u.full_name AS closed_by_name
          FROM day_closures dc
          LEFT JOIN users u ON u.id = dc.closed_by
          WHERE dc.restaurant_id = ? AND dc.status = 'closed' AND dc.deleted_at IS NULL
