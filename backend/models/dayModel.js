@@ -33,9 +33,12 @@ function ymd(d) {
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
 }
 
-// Testing / races can leave more than one row "open". Keep the EARLIEST (the true
-// start of the running day, so its window covers all the day's bills) and retire
-// the rest, so there is always exactly one open day.
+// More than one row can be "open" at once — from testing/races, or when a stale
+// open day left on one machine (or the cloud) collides with the real current day
+// opened on another. Keep the MOST RECENTLY opened one (that's the day the
+// counter is actually on now) and retire the older stragglers, so there is always
+// exactly one open day and it's the current one. (Keeping the earliest instead
+// once made the cloud cling to a stale day and bucket today's sales under it.)
 async function consolidateOpens(restaurantId) {
     // Self-heal orphaned open days first. Business days are sequential and
     // disjoint, so an OPEN day cannot be OLDER than one that is already CLOSED —
@@ -61,7 +64,7 @@ async function consolidateOpens(restaurantId) {
     const [opens] = await db.query(
         `SELECT id FROM day_closures
          WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL
-         ORDER BY opened_at ASC, id ASC`,
+         ORDER BY opened_at DESC, id DESC`,
         [restaurantId]
     );
     if (opens.length > 1) {
@@ -153,7 +156,7 @@ async function getOpenDay(restaurantId) {
          FROM day_closures dc
          LEFT JOIN users uo ON uo.id = dc.opened_by
          WHERE dc.restaurant_id = ? AND dc.status = 'open' AND dc.deleted_at IS NULL
-         ORDER BY dc.opened_at ASC, dc.id ASC
+         ORDER BY dc.opened_at DESC, dc.id DESC
          LIMIT 1`,
         [restaurantId]
     );
