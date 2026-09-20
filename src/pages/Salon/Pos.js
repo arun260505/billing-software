@@ -133,7 +133,7 @@ function SalonPos() {
     const [stylistId, setStylistId] = useState("");
 
     // ── Discount (only if the owner allows it, within their limits) ─
-    const [discountPolicy, setDiscountPolicy] = useState({ enabled: false, max_percent: 0, max_amount: 0 });
+    const [discountPolicy, setDiscountPolicy] = useState({ enabled: false, max_percent: 0, max_amount: 0, auto_type: "none", auto_value: 0 });
     const [discountType, setDiscountType] = useState("percent");   // "percent" | "amount"
     const [discountValue, setDiscountValue] = useState("");
 
@@ -212,7 +212,9 @@ function SalonPos() {
             setDiscountPolicy({
                 enabled: Boolean(Number(s.discount_enabled)),
                 max_percent: Number(s.discount_max_percent) || 0,
-                max_amount: Number(s.discount_max_amount) || 0
+                max_amount: Number(s.discount_max_amount) || 0,
+                auto_type: ["percent", "amount"].includes(s.discount_auto_type) ? s.discount_auto_type : "none",
+                auto_value: Number(s.discount_auto_value) || 0
             });
             setDesk({
                 bill_delivery: normalizeBillDelivery(s.bill_delivery),
@@ -384,16 +386,19 @@ function SalonPos() {
     // The discount typed in, checked against the owner's rule — the backend
     // checks it again when the bill is created. It comes off the services before
     // GST, the same order backend/utils/billing.js uses.
-    const percentAllowed = discountPolicy.enabled && discountPolicy.max_percent > 0;
-    const amountAllowed = discountPolicy.enabled && discountPolicy.max_amount > 0;
+    // The owner's automatic (standing) discount, applied to every bill.
+    const hasAuto = discountPolicy.auto_type !== "none" && discountPolicy.auto_value > 0;
+    const percentAllowed = (discountPolicy.enabled && discountPolicy.max_percent > 0) || discountPolicy.auto_type === "percent";
+    const amountAllowed = (discountPolicy.enabled && discountPolicy.max_amount > 0) || discountPolicy.auto_type === "amount";
     const activeDiscountType = discountType === "percent"
         ? (percentAllowed ? "percent" : "amount")
         : (amountAllowed ? "amount" : "percent");
     const discountNumber = Number(discountValue);
-    const discountEntered = discountPolicy.enabled && discountValue !== "" && discountNumber !== 0;
+    // A manual discount only counts when the desk is allowed to give one.
+    const manualEntered = discountPolicy.enabled && discountValue !== "" && discountNumber !== 0;
 
     let discountProblem = "";
-    if (discountEntered) {
+    if (manualEntered) {
         if (!Number.isFinite(discountNumber) || discountNumber < 0) {
             discountProblem = "Enter a valid discount.";
         } else if (activeDiscountType === "percent" && discountNumber > discountPolicy.max_percent) {
@@ -405,12 +410,17 @@ function SalonPos() {
         }
     }
 
-    const discount = discountEntered && !discountProblem
-        ? resolveDiscount(subtotal, activeDiscountType === "percent"
-            ? { percent: discountNumber }
-            : { amount: discountNumber })
+    // Effective discount for THIS bill: the desk's manual entry when valid,
+    // otherwise the owner's standing auto discount. So every bill carries the
+    // auto discount without the receptionist typing anything.
+    const manualValid = manualEntered && !discountProblem;
+    const effType = manualValid ? activeDiscountType : (hasAuto ? discountPolicy.auto_type : activeDiscountType);
+    const effValue = manualValid ? discountNumber : (hasAuto ? discountPolicy.auto_value : 0);
+
+    const discount = effValue > 0
+        ? resolveDiscount(subtotal, effType === "percent" ? { percent: effValue } : { amount: effValue })
         : 0;
-    const discountLabel = activeDiscountType === "percent" ? `Discount (${discountNumber}%)` : "Discount";
+    const discountLabel = effType === "percent" ? `Discount (${effValue}%)` : "Discount";
 
     const cartTotals = billTotals(subtotal, autoChargesFor(charges, ORDER_TYPE), discount);
     const lineCharges = [...cartTotals.tax_lines, ...cartTotals.service_lines, ...cartTotals.charge_lines];
@@ -551,7 +561,7 @@ function SalonPos() {
             const key = JSON.stringify({
                 c: cust ? cust.id : null,
                 s: stylist.id,
-                d: discount > 0 ? [activeDiscountType, discountNumber] : null,
+                d: discount > 0 ? [effType, effValue] : null,
                 i: items.map((i) => [i.menu_item_id, i.quantity])
             });
             if (pendingRef.current && pendingRef.current.key !== key) {
@@ -563,8 +573,8 @@ function SalonPos() {
                     order_type: ORDER_TYPE,
                     customer_id: cust ? cust.id : null,
                     stylist_id: stylist.id,
-                    discount_type: discount > 0 ? activeDiscountType : null,
-                    discount_value: discount > 0 ? discountNumber : null,
+                    discount_type: discount > 0 ? effType : null,
+                    discount_value: discount > 0 ? effValue : null,
                     items
                 });
                 pendingRef.current = {

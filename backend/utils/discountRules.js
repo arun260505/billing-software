@@ -17,8 +17,20 @@ const { money, resolveDiscount } = require("./billing");
 const readPolicy = (row) => ({
     enabled: Boolean(Number(row && row.discount_enabled)),
     max_percent: money(row && row.discount_max_percent),
-    max_amount: money(row && row.discount_max_amount)
+    max_amount: money(row && row.discount_max_amount),
+    // Standing discount the owner applies to EVERY bill automatically.
+    auto_type: ["percent", "amount"].includes(row && row.discount_auto_type) ? row.discount_auto_type : "none",
+    auto_value: money(row && row.discount_auto_value)
 });
+
+// The rupee value of the owner's automatic (standing) discount on a subtotal.
+const autoDiscountRupees = (policy, subtotal) => {
+    const p = policy || {};
+    const sub = money(subtotal);
+    if (p.auto_type === "percent" && p.auto_value > 0) return resolveDiscount(sub, { percent: p.auto_value });
+    if (p.auto_type === "amount" && p.auto_value > 0) return resolveDiscount(sub, { amount: p.auto_value });
+    return 0;
+};
 
 /**
  * Check the discount asked for on a new bill.
@@ -51,7 +63,15 @@ const checkDiscount = ({ policy, role, input = {}, subtotal }) => {
     }
     if (v === 0) return none;
 
-    if (role !== "admin") {
+    // The owner's automatic (standing) discount is always allowed, even when
+    // manual desk discounts are off or below this — it's the owner's own rule.
+    // A requested discount up to that standing amount passes without the limit
+    // checks; anything above it still goes through the normal role/max checks.
+    const requestedRupees = type === "percent" ? resolveDiscount(sub, { percent: v }) : resolveDiscount(sub, { amount: v });
+    const standing = autoDiscountRupees(policy, sub);
+    const withinStanding = standing > 0 && requestedRupees <= standing + 0.5;
+
+    if (role !== "admin" && !withinStanding) {
         const p = policy || readPolicy(null);
         if (!p.enabled) {
             return { problem: "Discounts are turned off. The owner can allow them in Settings → Discounts." };
@@ -73,4 +93,4 @@ const checkDiscount = ({ policy, role, input = {}, subtotal }) => {
         : { discount: resolveDiscount(sub, { amount: v }), discount_percent: null };
 };
 
-module.exports = { readPolicy, checkDiscount };
+module.exports = { readPolicy, checkDiscount, autoDiscountRupees };

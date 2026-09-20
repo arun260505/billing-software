@@ -56,10 +56,24 @@ exports.saveDiscounts = (req, res) => {
         return error(res, "Set a maximum percentage, a maximum amount, or both.", 400);
     }
 
+    // Automatic (standing) discount applied to every bill.
+    const autoType = ["percent", "amount"].includes(req.body.discount_auto_type) ? req.body.discount_auto_type : "none";
+    const autoVal = autoType === "none" ? 0 : Number(req.body.discount_auto_value || 0);
+    if (autoType !== "none") {
+        if (!Number.isFinite(autoVal) || autoVal <= 0) {
+            return error(res, "Enter the automatic discount value, or set its type to None.", 400);
+        }
+        if (autoType === "percent" && autoVal > 100) {
+            return error(res, "Automatic percentage can't be more than 100.", 400);
+        }
+    }
+
     settingsModel.saveDiscountSettings(rid, {
         discount_enabled: enabled,
         discount_max_percent: Math.round(pct * 100) / 100,
-        discount_max_amount: Math.round(amt * 100) / 100
+        discount_max_amount: Math.round(amt * 100) / 100,
+        discount_auto_type: autoType,
+        discount_auto_value: Math.round(autoVal * 100) / 100
     }, (err) => {
         if (err) return error(res, err.message, 500);
         settingsModel.getRestaurantSettings(rid, (fetchErr, data) => {

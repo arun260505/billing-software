@@ -920,7 +920,10 @@ function TabPrintersKitchen() {
 const toDiscountForm = (row = {}) => ({
     discount_enabled: Boolean(Number(row.discount_enabled)),
     discount_max_percent: String(Number(row.discount_max_percent) || 0),
-    discount_max_amount: String(Number(row.discount_max_amount) || 0)
+    discount_max_amount: String(Number(row.discount_max_amount) || 0),
+    // Automatic (standing) discount applied to every bill.
+    discount_auto_type: ["percent", "amount"].includes(row.discount_auto_type) ? row.discount_auto_type : "none",
+    discount_auto_value: String(Number(row.discount_auto_value) || 0)
 });
 
 function TabDiscounts() {
@@ -960,12 +963,21 @@ function TabDiscounts() {
         if (!Number.isFinite(amt) || amt < 0) { setError("Maximum amount must be 0 or more."); return; }
         if (data.discount_enabled && pct === 0 && amt === 0) { setError("Set a maximum percentage, a maximum amount, or both."); return; }
 
+        const autoType = data.discount_auto_type || "none";
+        const autoVal = Number(data.discount_auto_value || 0);
+        if (autoType !== "none") {
+            if (!Number.isFinite(autoVal) || autoVal <= 0) { setError("Enter the automatic discount value (or set it to None)."); return; }
+            if (autoType === "percent" && autoVal > 100) { setError("Automatic percentage can't be more than 100."); return; }
+        }
+
         setSaving(true);
         try {
             const res = await settingsService.saveDiscounts({
                 discount_enabled: data.discount_enabled,
                 discount_max_percent: pct,
-                discount_max_amount: amt
+                discount_max_amount: amt,
+                discount_auto_type: autoType,
+                discount_auto_value: autoType === "none" ? 0 : autoVal
             });
             const form = toDiscountForm(res.data?.data);
             setData(form);
@@ -1049,6 +1061,51 @@ function TabDiscounts() {
                     </div>
                 </div>
             )}
+
+            <div className="set-section-inner">
+                <h4>Automatic discount on every bill</h4>
+                <p style={{ marginTop: 0, marginBottom: 12, fontSize: 13, color: "#64748B" }}>
+                    Applied to <strong>every</strong> bill automatically — the front desk doesn&rsquo;t type it.
+                    Set it to None to turn it off. GST is worked out on the amount after the discount.
+                </p>
+                <div className="set-grid">
+                    <div className="set-field">
+                        <label htmlFor="disc-auto-type">Type</label>
+                        <select
+                            id="disc-auto-type"
+                            value={data.discount_auto_type}
+                            onChange={(e) => update("discount_auto_type", e.target.value)}
+                            disabled={saving}
+                        >
+                            <option value="none">None</option>
+                            <option value="percent">Percentage (%)</option>
+                            <option value="amount">Flat amount (₹)</option>
+                        </select>
+                    </div>
+                    {data.discount_auto_type !== "none" && (
+                        <div className="set-field">
+                            <label htmlFor="disc-auto-value">
+                                {data.discount_auto_type === "percent" ? "Discount (%)" : "Discount (₹)"}
+                            </label>
+                            <input
+                                id="disc-auto-value"
+                                type="number"
+                                min="0"
+                                max={data.discount_auto_type === "percent" ? "100" : undefined}
+                                step={data.discount_auto_type === "percent" ? "0.5" : "1"}
+                                inputMode="decimal"
+                                value={data.discount_auto_value}
+                                onChange={(e) => update("discount_auto_value", e.target.value)}
+                            />
+                            <span style={hint}>
+                                {data.discount_auto_type === "percent"
+                                    ? "e.g. 10 takes 10% off every bill."
+                                    : "e.g. 20 takes ₹20 off every bill."}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
 
             <div className="set-section-footer">
                 <button className="set-save-btn" onClick={handleSave} disabled={saving || !dirty}>

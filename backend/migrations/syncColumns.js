@@ -129,6 +129,13 @@ async function runSyncSchema() {
         await ensureColumn("payment_settings", "default_method", "VARCHAR(10) NOT NULL DEFAULT 'Cash'");
     }
 
+    // Automatic (standing) discount applied to every bill — owner config on the
+    // settings row (syncs down). 'none' keeps existing tills unchanged.
+    if (await tableExists("settings")) {
+        await ensureColumn("settings", "discount_auto_type", "VARCHAR(10) NOT NULL DEFAULT 'none'");
+        await ensureColumn("settings", "discount_auto_value", "DECIMAL(10,2) NOT NULL DEFAULT 0");
+    }
+
     // Feature columns from later migrations (002 served, 003 service_charge).
     // A DB set up before those migrations is missing them, which breaks order
     // creation / billing with "Unknown column '...'". Add them idempotently so

@@ -125,20 +125,30 @@ const saveRestaurantSettings = (restaurantId, data, callback) => {
 // column) and this one never overwrite each other.
 
 const saveDiscountSettings = (restaurantId, data, callback) => {
+    // Automatic discount applied to EVERY bill (owner-set standing discount) —
+    // 'none' | 'percent' | 'amount' + a value. The desk doesn't type it.
+    const autoType = ["percent", "amount"].includes(data.discount_auto_type) ? data.discount_auto_type : "none";
+    const autoValue = autoType === "none" ? 0 : Math.max(0, Number(data.discount_auto_value) || 0);
+
     const sql = `
         INSERT INTO settings
-            (restaurant_id, discount_enabled, discount_max_percent, discount_max_amount)
-        VALUES (?, ?, ?, ?)
+            (restaurant_id, discount_enabled, discount_max_percent, discount_max_amount,
+             discount_auto_type, discount_auto_value)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             discount_enabled     = VALUES(discount_enabled),
             discount_max_percent = VALUES(discount_max_percent),
-            discount_max_amount  = VALUES(discount_max_amount)
+            discount_max_amount  = VALUES(discount_max_amount),
+            discount_auto_type   = VALUES(discount_auto_type),
+            discount_auto_value  = VALUES(discount_auto_value)
     `;
     db.query(sql, [
         restaurantId,
         data.discount_enabled ? 1 : 0,
         Number(data.discount_max_percent) || 0,
-        Number(data.discount_max_amount) || 0
+        Number(data.discount_max_amount) || 0,
+        autoType,
+        autoValue
     ], callback);
 };
 
@@ -165,7 +175,8 @@ const saveWhatsAppSettings = (restaurantId, data, callback) => {
 // The rule a new bill is checked against (utils/discountRules.js).
 const getDiscountPolicy = (restaurantId, callback) => {
     db.query(
-        `SELECT discount_enabled, discount_max_percent, discount_max_amount
+        `SELECT discount_enabled, discount_max_percent, discount_max_amount,
+                discount_auto_type, discount_auto_value
          FROM settings WHERE restaurant_id = ? LIMIT 1`,
         [restaurantId],
         (err, rows) => {
