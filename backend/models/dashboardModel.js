@@ -16,15 +16,23 @@ const getSummary = (restaurantId, today, callback) => {
 
     const D = dayLiteral(today);
 
+    // "Today" follows the BUSINESS DAY, not the calendar date: a bill counts for
+    // the day that's currently open at the counter (from the moment it was
+    // opened), so after-midnight sales stay on the still-open day — exactly like
+    // the day-close Z-report. When no day is open this is NULL, so today's
+    // figures read zero until the counter opens the day. Weekly/monthly stay on
+    // the calendar (that's the usual reporting period).
+    const openWin = "(SELECT MIN(opened_at) FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL)";
+
     const sql = (`
         SELECT
             (SELECT COUNT(*) FROM orders
-             WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
+             WHERE restaurant_id = ? AND created_at >= ${openWin}
                AND deleted_at IS NULL
                AND order_status <> 'Cancelled') AS total_orders,
 
             (SELECT IFNULL(SUM(grand_total),0) FROM orders
-             WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
+             WHERE restaurant_id = ? AND created_at >= ${openWin}
              AND deleted_at IS NULL
              AND payment_status='Paid') AS total_sales,
 
@@ -59,37 +67,37 @@ const getSummary = (restaurantId, today, callback) => {
             (SELECT IFNULL(SUM(amount),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND DATE(payment_date)=CURDATE()) AS total_collection,
+             AND payment_date >= ${openWin}) AS total_collection,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='Cash' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND DATE(payment_date)=CURDATE()) AS cash_amount,
+             AND payment_date >= ${openWin}) AS cash_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='UPI' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND DATE(payment_date)=CURDATE()) AS upi_amount,
+             AND payment_date >= ${openWin}) AS upi_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='Card' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND DATE(payment_date)=CURDATE()) AS card_amount,
+             AND payment_date >= ${openWin}) AS card_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='Wallet' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND DATE(payment_date)=CURDATE()) AS wallet_amount,
+             AND payment_date >= ${openWin}) AS wallet_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method IN ('Bank Transfer','Split') THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND DATE(payment_date)=CURDATE()) AS other_amount,
+             AND payment_date >= ${openWin}) AS other_amount,
 
             -- Salon dashboard: distinct customers billed today, and stock
             -- items at or below their reorder level.
             (SELECT COUNT(DISTINCT customer_id) FROM orders
-             WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
+             WHERE restaurant_id = ? AND created_at >= ${openWin}
                AND deleted_at IS NULL
                AND customer_id IS NOT NULL
                AND order_status <> 'Cancelled') AS customers_today,
@@ -136,18 +144,19 @@ const getSummary = (restaurantId, today, callback) => {
 // Today's Sales (tenant-scoped)
 const getTodaysSales = (restaurantId, today, callback) => {
 
-    const D = dayLiteral(today);
-    db.query((`
+    // Business day: the orders since the counter opened the current day.
+    const openWin = "(SELECT MIN(opened_at) FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL)";
+    db.query(`
         SELECT
             order_number,
             grand_total,
             payment_status,
             created_at
         FROM orders
-        WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
+        WHERE restaurant_id = ? AND created_at >= ${openWin}
           AND deleted_at IS NULL
         ORDER BY created_at DESC
-    `).replace(/CURDATE\(\)/g, D), [restaurantId], callback);
+    `, [restaurantId, restaurantId], callback);
 
 };
 
@@ -295,8 +304,9 @@ const getSalesChart = (period, restaurantId, today, callback) => {
 // who is idle; an inactive one appears only if they billed today.
 const getStylistBoard = (restaurantId, today, callback) => {
 
-    const D = dayLiteral(today);
-    const sql = (`
+    // "Today" = the current open business day (opened at the counter).
+    const openWin = "(SELECT MIN(opened_at) FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL)";
+    const sql = `
         SELECT
             u.id,
             u.full_name,
@@ -311,7 +321,7 @@ const getStylistBoard = (restaurantId, today, callback) => {
                 AND o2.restaurant_id = u.restaurant_id
                 AND o2.order_status = 'Completed'
                 AND o2.deleted_at IS NULL
-                AND DATE(o2.created_at) = CURDATE()) AS services,
+                AND o2.created_at >= ${openWin}) AS services,
             MAX(CASE WHEN o.order_status = 'Completed' THEN o.created_at END) AS last_bill_at
         FROM users u
         LEFT JOIN orders o
@@ -319,16 +329,17 @@ const getStylistBoard = (restaurantId, today, callback) => {
               AND o.restaurant_id = u.restaurant_id
               AND o.order_status IN ('Completed', 'Pending')
               AND o.deleted_at IS NULL
-              AND DATE(o.created_at) = CURDATE()
+              AND o.created_at >= ${openWin}
         WHERE u.restaurant_id = ?
           AND u.role = 'stylist'
           AND u.deleted_at IS NULL
         GROUP BY u.id, u.full_name, u.status
         HAVING u.status = 'Active' OR bills > 0
         ORDER BY sales DESC, customers DESC, u.full_name ASC
-    `).replace(/CURDATE\(\)/g, D);
+    `;
 
-    db.query(sql, [restaurantId], callback);
+    const params = new Array((sql.match(/\?/g) || []).length).fill(restaurantId);
+    db.query(sql, params, callback);
 
 };
 
@@ -342,8 +353,9 @@ const getStylistBoard = (restaurantId, today, callback) => {
 // rows, so "items" is the quantity of menu items handled, not the bill count.
 const getWaiterBoard = (restaurantId, today, callback) => {
 
-    const D = dayLiteral(today);
-    const sql = (`
+    // "Today" = the current open business day (opened at the counter).
+    const openWin = "(SELECT MIN(opened_at) FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL)";
+    const sql = `
         SELECT
             u.id,
             u.full_name,
@@ -361,9 +373,9 @@ const getWaiterBoard = (restaurantId, today, callback) => {
               AND o.restaurant_id = u.restaurant_id
               AND o.order_status <> 'Cancelled'
               AND o.deleted_at IS NULL
-              AND DATE(o.created_at) = CURDATE()
+              AND o.created_at >= ${openWin}
         LEFT JOIN (
-                -- Item quantity per order, only for today's live orders.
+                -- Item quantity per order, only for the open day's live orders.
                 SELECT o2.id AS order_id,
                        COALESCE(SUM(oi.quantity), 0) AS items_qty
                 FROM orders o2
@@ -371,7 +383,7 @@ const getWaiterBoard = (restaurantId, today, callback) => {
                 WHERE o2.restaurant_id = ?
                   AND o2.deleted_at IS NULL
                   AND o2.order_status <> 'Cancelled'
-                  AND DATE(o2.created_at) = CURDATE()
+                  AND o2.created_at >= ${openWin}
                 GROUP BY o2.id
             ) it ON it.order_id = o.id
         WHERE u.restaurant_id = ?
@@ -380,9 +392,10 @@ const getWaiterBoard = (restaurantId, today, callback) => {
         GROUP BY u.id, u.full_name, u.role, u.status
         HAVING u.status = 'Active' OR orders > 0
         ORDER BY orders DESC, sales DESC, u.full_name ASC
-    `).replace(/CURDATE\(\)/g, D);
+    `;
 
-    db.query(sql, [restaurantId, restaurantId], callback);
+    const params = new Array((sql.match(/\?/g) || []).length).fill(restaurantId);
+    db.query(sql, params, callback);
 
 };
 
