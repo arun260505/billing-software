@@ -1,11 +1,22 @@
 const db = require("../config/db");
 
+// The date to treat as "today" in a query. The cloud DB runs in UTC while
+// timestamps are stored as IST wall-clock, so the server's CURDATE() is a day
+// behind between IST midnight and 05:30 — every "today" figure would read zero.
+// Callers pass the client's local (IST) date "YYYY-MM-DD"; we splice it in as a
+// literal (validated, so it's injection-safe). Falls back to CURDATE() when no
+// valid date is given (e.g. an old caller, or the till which already runs in IST).
+const dayLiteral = (today) =>
+    (typeof today === "string" && /^\d{4}-\d{2}-\d{2}$/.test(today)) ? `'${today}'` : "CURDATE()";
+
 // Dashboard Summary (tenant-scoped). One call returns every headline figure
 // the Admin Dashboard reads — order/sales KPI plus today's payment split and
 // live operational counters (tables, kitchen, pending bills, restaurant state).
-const getSummary = (restaurantId, callback) => {
+const getSummary = (restaurantId, today, callback) => {
 
-    const sql = `
+    const D = dayLiteral(today);
+
+    const sql = (`
         SELECT
             (SELECT COUNT(*) FROM orders
              WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
@@ -111,7 +122,7 @@ const getSummary = (restaurantId, callback) => {
                 (SELECT closing_time FROM settings WHERE restaurant_id=?),
                 (SELECT closing_time FROM restaurants WHERE id=?)
             ) AS closing_time
-    `;
+    `).replace(/CURDATE\(\)/g, D);
 
     // Every placeholder in this query is the same restaurant id, and the list
     // was a hand-counted row of 16. Deriving the count from the SQL means adding
@@ -123,9 +134,10 @@ const getSummary = (restaurantId, callback) => {
 };
 
 // Today's Sales (tenant-scoped)
-const getTodaysSales = (restaurantId, callback) => {
+const getTodaysSales = (restaurantId, today, callback) => {
 
-    db.query(`
+    const D = dayLiteral(today);
+    db.query((`
         SELECT
             order_number,
             grand_total,
@@ -135,7 +147,7 @@ const getTodaysSales = (restaurantId, callback) => {
         WHERE restaurant_id = ? AND DATE(created_at)=CURDATE()
           AND deleted_at IS NULL
         ORDER BY created_at DESC
-    `, [restaurantId], callback);
+    `).replace(/CURDATE\(\)/g, D), [restaurantId], callback);
 
 };
 
@@ -205,8 +217,9 @@ const getTableStatus = (restaurantId, callback) => {
 };
 
 // Sales Chart (tenant-scoped)
-const getSalesChart = (period, restaurantId, callback) => {
+const getSalesChart = (period, restaurantId, today, callback) => {
 
+    const D = dayLiteral(today);
     let sql = "";
 
     if (period === "today") {
@@ -272,7 +285,7 @@ const getSalesChart = (period, restaurantId, callback) => {
 
     }
 
-    db.query(sql, [restaurantId], callback);
+    db.query(sql.replace(/CURDATE\(\)/g, D), [restaurantId], callback);
 
 };
 
@@ -280,9 +293,10 @@ const getSalesChart = (period, restaurantId, callback) => {
 // count paid bills only; unpaid_bills shows what's still open at the desk. Every
 // active stylist is listed, including those with nothing yet, so the owner sees
 // who is idle; an inactive one appears only if they billed today.
-const getStylistBoard = (restaurantId, callback) => {
+const getStylistBoard = (restaurantId, today, callback) => {
 
-    const sql = `
+    const D = dayLiteral(today);
+    const sql = (`
         SELECT
             u.id,
             u.full_name,
@@ -312,7 +326,7 @@ const getStylistBoard = (restaurantId, callback) => {
         GROUP BY u.id, u.full_name, u.status
         HAVING u.status = 'Active' OR bills > 0
         ORDER BY sales DESC, customers DESC, u.full_name ASC
-    `;
+    `).replace(/CURDATE\(\)/g, D);
 
     db.query(sql, [restaurantId], callback);
 
@@ -326,9 +340,10 @@ const getStylistBoard = (restaurantId, callback) => {
 // no orders yet, so the owner sees who is idle; an inactive one appears only if
 // they took an order today. Items are counted through the order's order_items
 // rows, so "items" is the quantity of menu items handled, not the bill count.
-const getWaiterBoard = (restaurantId, callback) => {
+const getWaiterBoard = (restaurantId, today, callback) => {
 
-    const sql = `
+    const D = dayLiteral(today);
+    const sql = (`
         SELECT
             u.id,
             u.full_name,
@@ -365,7 +380,7 @@ const getWaiterBoard = (restaurantId, callback) => {
         GROUP BY u.id, u.full_name, u.role, u.status
         HAVING u.status = 'Active' OR orders > 0
         ORDER BY orders DESC, sales DESC, u.full_name ASC
-    `;
+    `).replace(/CURDATE\(\)/g, D);
 
     db.query(sql, [restaurantId, restaurantId], callback);
 

@@ -1,9 +1,18 @@
 const dashboardModel = require("../models/dashboardModel");
 const { success, error } = require("../utils/response");
 
+// The client's local (IST) date, so "today" figures match the wall-clock in
+// front of the owner — not the cloud server's UTC date. Only the YYYY-MM-DD
+// shape is trusted; anything else falls back to the server's today.
+function pickDate(v) {
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 exports.getSummary = (req, res) => {
 
-    dashboardModel.getSummary(req.user.restaurant_id, (err, result) => {
+    dashboardModel.getSummary(req.user.restaurant_id, pickDate(req.query.date), (err, result) => {
 
         if (err) return error(res, err.message, 500);
 
@@ -15,7 +24,7 @@ exports.getSummary = (req, res) => {
 
 exports.getTodaysSales = (req, res) => {
 
-    dashboardModel.getTodaysSales(req.user.restaurant_id, (err, result) => {
+    dashboardModel.getTodaysSales(req.user.restaurant_id, pickDate(req.query.date), (err, result) => {
 
         if (err) return error(res, err.message, 500);
 
@@ -65,7 +74,7 @@ exports.getSalesChart = (req, res) => {
 
     const period = req.query.period || "today";
 
-    dashboardModel.getSalesChart(period, req.user.restaurant_id, (err, result) => {
+    dashboardModel.getSalesChart(period, req.user.restaurant_id, pickDate(req.query.date), (err, result) => {
 
         if (err) return error(res, err.message, 500);
 
@@ -78,7 +87,7 @@ exports.getSalesChart = (req, res) => {
 // GET /api/dashboard/stylists — the salon's live stylist board for today.
 exports.getStylistBoard = (req, res) => {
 
-    dashboardModel.getStylistBoard(req.user.restaurant_id, (err, result) => {
+    dashboardModel.getStylistBoard(req.user.restaurant_id, pickDate(req.query.date), (err, result) => {
 
         if (err) return error(res, err.message, 500);
 
@@ -91,7 +100,7 @@ exports.getStylistBoard = (req, res) => {
 // GET /api/dashboard/waiters — today's waiter activity for the restaurant.
 exports.getWaiterBoard = (req, res) => {
 
-    dashboardModel.getWaiterBoard(req.user.restaurant_id, (err, result) => {
+    dashboardModel.getWaiterBoard(req.user.restaurant_id, pickDate(req.query.date), (err, result) => {
 
         if (err) return error(res, err.message, 500);
 
