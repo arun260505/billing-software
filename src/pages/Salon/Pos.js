@@ -115,7 +115,8 @@ function SalonPos() {
     // The unpaid order already created for the bill on screen. Closing the bill
     // modal without taking payment and pressing Bill again must not ring up a
     // second order for the same visit.
-    const pendingRef = useRef(null);   // { id, order_number, key }
+    const pendingRef = useRef(null);   // { id, order_number, key } (legacy; unused now)
+    const billPayloadRef = useRef(null);  // the order to create at payment (create-on-pay)
 
     // ── Customer ────────────────────────────────────────────────────
     const [mobile, setMobile] = useState("");
@@ -531,7 +532,19 @@ function SalonPos() {
         clearCustomer();
         setStylistId("");
         setDiscountValue("");
+        billPayloadRef.current = null;
         await discardPending();
+    };
+
+    // Create the salon order at PAYMENT (BillModal calls this on confirm), from
+    // the snapshot taken when the bill was opened. Returns the new id + number.
+    const createSalonOrder = async () => {
+        if (!billPayloadRef.current) throw new Error("This bill has expired — reopen it.");
+        const res = await createOrder(billPayloadRef.current);
+        return {
+            order_id: res.data.data.order_id,
+            order_number: res.data.data.order_number
+        };
     };
 
     const handleBill = async () => {
@@ -556,39 +569,24 @@ function SalonPos() {
                 price: Number(it.price)
             }));
 
-            // Reuse the unpaid order when nothing about the bill has changed;
-            // otherwise cancel it and ring up a fresh one.
-            const key = JSON.stringify({
-                c: cust ? cust.id : null,
-                s: stylist.id,
-                d: discount > 0 ? [effType, effValue] : null,
-                i: items.map((i) => [i.menu_item_id, i.quantity])
-            });
-            if (pendingRef.current && pendingRef.current.key !== key) {
-                await discardPending();
-            }
-            if (!pendingRef.current) {
-                const res = await createOrder({
-                    table_id: null,
-                    order_type: ORDER_TYPE,
-                    customer_id: cust ? cust.id : null,
-                    stylist_id: stylist.id,
-                    discount_type: discount > 0 ? effType : null,
-                    discount_value: discount > 0 ? effValue : null,
-                    items
-                });
-                pendingRef.current = {
-                    id: res.data.data.order_id,
-                    order_number: res.data.data.order_number,
-                    key
-                };
-            }
+            // Don't create the order yet — snapshot everything it needs and let
+            // BillModal create it only when payment is confirmed (ensureOrder
+            // below). A bill the desk starts but never pays leaves nothing behind:
+            // no draft, no cancelled row, no burned order number.
+            billPayloadRef.current = {
+                table_id: null,
+                order_type: ORDER_TYPE,
+                customer_id: cust ? cust.id : null,
+                stylist_id: stylist.id,
+                discount_type: discount > 0 ? effType : null,
+                discount_value: discount > 0 ? effValue : null,
+                items
+            };
 
             const { date, time } = dateParts();
 
             setBillData({
-                order_id: pendingRef.current.id,
-                order_number: pendingRef.current.order_number,
+                // order_id / order_number are assigned at payment (ensureOrder).
                 placeLabel: "Customer",
                 tableName: cust ? `${cust.customer_name} · ${cust.mobile}` : "Walk-in",
                 isCounter: true,
@@ -618,9 +616,11 @@ function SalonPos() {
     };
 
     const handlePaymentSuccess = (result) => {
-        const number = billData?.order_number;
+        // The order is created at payment now, so its number comes back here.
+        const number = result?.order_number || billData?.order_number;
         const how = result?.printed === false ? "paid and sent to WhatsApp" : "paid and printed";
         pendingRef.current = null;
+        billPayloadRef.current = null;
         setBillData(null);
         setCart([]);
         clearCustomer();
@@ -1119,6 +1119,7 @@ function SalonPos() {
                     format={salonBillFormat(billFormat)}
                     charges={charges}
                     defaultMethod={paymentDefault}
+                    ensureOrder={createSalonOrder}
                     onClose={() => setBillData(null)}
                     onSuccess={handlePaymentSuccess}
                     delivery={desk.bill_delivery}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
@@ -105,6 +105,10 @@ function Dashboard() {
     // Which payment method is pre-selected on the bill screen (per restaurant,
     // Settings → Payments). Cash unless the owner set another default.
     const [paymentDefault, setPaymentDefault] = useState("Cash");
+    // A NEW counter/parcel bill is created only at payment (create-on-pay), so a
+    // bill the cashier starts but never settles leaves no draft behind. This holds
+    // the order to create when payment is confirmed.
+    const counterPayloadRef = useRef(null);
     const [restaurantInfo, setRestaurantInfo] = useState(null);
     // WhatsApp: the shop's message template + shop number + the owner's default
     // Web/App choice (Settings → Bills & WhatsApp). Bills → correct & reprint can
@@ -672,14 +676,19 @@ function Dashboard() {
         // these differently from dine-in (option 3 prints their kitchen copy).
         const isTakeaway = !selectedTable || Boolean(selectedTable?.isParcel);
 
-        // No existing order yet → create it now (this also sends it to the kitchen).
-        if (!orderId) {
+        // A NEW counter/parcel bill is created only at payment (ensureOrder below)
+        // so an abandoned bill leaves nothing behind. A parcel goes to the kitchen
+        // only after it's paid anyway, so nothing is lost by waiting. A NEW dine-in
+        // billed directly still creates + sends to the kitchen now.
+        const deferCreate = !orderId && isTakeaway;
+
+        // New dine-in billed directly → create it now (this also sends it to the kitchen).
+        if (!orderId && !deferCreate) {
             setOrderBusy(true);
-            // The backend assigns order_number; see placeOrder above.
             const orderData = {
                 waiter_id: 1,
                 table_id: selectedTable?.id || null,
-                order_type: isTakeaway ? "Takeaway" : "Dine-In",
+                order_type: "Dine-In",
                 items: mergeCartItems(cart),
             };
             try {
@@ -689,18 +698,13 @@ function Dashboard() {
                 if (selectedTable && selectedTable.id) {
                     await updateTableStatus(selectedTable.id, "OCCUPIED");
                 }
-
-                // Dine-in starts cooking the moment it's sent. A takeaway/parcel
-                // must be PAID first, so its kitchen ticket is held back and
-                // printed only after settle (see handleBillPrinted). Only dine-in
-                // prints its KOT here on the two-printer setup.
-                if (!isTakeaway && shouldPrintKotOnSend(printerMode)) {
+                if (shouldPrintKotOnSend(printerMode)) {
                     printKotNow({
                         order: {
                             order_number: assignedOrderNumber,
-                            order_type: isTakeaway ? "Takeaway" : "Dine-In",
-                            isParcel: isTakeaway,
-                            tableName: selectedTable ? (selectedTable.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`) : "Counter",
+                            order_type: "Dine-In",
+                            isParcel: false,
+                            tableName: selectedTable ? `Table ${selectedTable.table_number}` : "Counter",
                             table_number: selectedTable?.table_number,
                             items: orderData.items,
                             cashier_name: cashierName,
@@ -721,9 +725,15 @@ function Dashboard() {
             }
         }
 
+        // Snapshot the parcel/counter order so it's created at payment, not before.
+        counterPayloadRef.current = deferCreate ? {
+            table_id: selectedTable?.id || null,
+            items: mergeCartItems(cart)
+        } : null;
+
         setBillData({
-            order_id: orderId,
-            order_number: assignedOrderNumber,
+            order_id: deferCreate ? undefined : orderId,
+            order_number: deferCreate ? undefined : assignedOrderNumber,
             tableName: selectedTable ? (selectedTable.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`) : "Counter",
             isCounter: isTakeaway,
             table_number: selectedTable?.table_number,
@@ -747,6 +757,23 @@ function Dashboard() {
                 ? undefined : cashierName,
         });
         setShowBill(true);
+    };
+
+    // Create the counter/parcel order at PAYMENT (BillModal calls this on confirm),
+    // from the snapshot taken when billing was opened. Returns the new id + number.
+    const createCounterOrder = async () => {
+        if (!counterPayloadRef.current) throw new Error("This bill has expired — reopen it.");
+        const p = counterPayloadRef.current;
+        const res = await createOrder({
+            waiter_id: 1,
+            table_id: p.table_id || null,
+            order_type: "Takeaway",
+            items: p.items,
+        });
+        if (p.table_id) {
+            try { await updateTableStatus(p.table_id, "OCCUPIED"); } catch (e) { /* non-fatal */ }
+        }
+        return { order_id: res.data.data.order_id, order_number: res.data.data.order_number };
     };
 
     // Option 3 of the printer setup: one printer prints two bills for a counter
@@ -792,6 +819,7 @@ function Dashboard() {
     const handlePaymentSuccess = () => {
         setShowBill(false);
         setBillData(null);
+        counterPayloadRef.current = null;
         setCart([]);
         setSelectedTable(null);
         setEditingOrder(null);
@@ -1392,6 +1420,7 @@ function Dashboard() {
                     format={billFormat}
                     charges={charges}
                     defaultMethod={paymentDefault}
+                    ensureOrder={createCounterOrder}
                     onClose={() => setShowBill(false)}
                     onSuccess={handlePaymentSuccess}
                     onPrinted={handleBillPrinted}

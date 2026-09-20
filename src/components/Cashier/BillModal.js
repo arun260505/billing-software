@@ -17,7 +17,11 @@ import useEscapeClose from "../../hooks/useEscapeClose";
 // WhatsApp) swaps the single confirm button for "Send on WhatsApp" and, unless
 // there is no printer, "Print" (which sends on WhatsApp too). `onWhatsApp` gets
 // the bill as paid. Without `delivery` (the restaurant counter) nothing changes.
-function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess, onPrinted, delivery, onWhatsApp, defaultMethod = "Cash" }) {
+// `ensureOrder` (optional): when the order does not exist yet, this creates it
+// and returns { order_id, order_number }. It runs only when payment is confirmed,
+// so the salon never leaves a draft/cancelled bill behind if the desk backs out.
+// Callers that already have an order (the restaurant counter/table) don't pass it.
+function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess, onPrinted, delivery, onWhatsApp, defaultMethod = "Cash", ensureOrder }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
@@ -100,12 +104,24 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
         const shouldPrint = print !== false;
         setLoading(true);
         try {
+            // Create the order now, at payment, if it doesn't exist yet (salon):
+            // so a bill the desk started but never paid leaves nothing behind —
+            // no cancelled row, no order number burned.
+            let orderId = order.order_id;
+            let orderNumber = order.order_number;
+            if (!orderId && typeof ensureOrder === "function") {
+                const created = await ensureOrder();
+                if (!created || !created.order_id) throw new Error("Could not create the bill.");
+                orderId = created.order_id;
+                orderNumber = created.order_number || orderNumber;
+            }
+
             // Persist the picked charges onto the order and recompute its total
             // BEFORE taking payment, so a removable parcel fee or an opt-in charge
             // is actually stored and counted — not merely added to the amount
             // collected. Only needed when this bill has such charges to manage.
-            if (pickableCharges.length > 0 && order.order_id) {
-                await setOrderCharges(order.order_id, selectedCharges);
+            if (pickableCharges.length > 0 && orderId) {
+                await setOrderCharges(orderId, selectedCharges);
             }
 
             if (splitMode) {
@@ -113,7 +129,7 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
                 // once the split amounts cover the grand total.
                 for (const sp of exactSplits) {
                     await createPayment({
-                        order_id: order.order_id,
+                        order_id: orderId,
                         payment_method: sp.payment_method,
                         amount: sp.amount,
                         remarks: order.tableName,
@@ -121,7 +137,7 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
                 }
             } else {
                 await createPayment({
-                    order_id: order.order_id,
+                    order_id: orderId,
                     payment_method: paymentMethod,
                     amount: money(grandTotal),
                     remarks: order.tableName,
@@ -131,6 +147,8 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
             // Automatically print the customized bill
             const printedOrder = {
                 ...order,
+                order_id: orderId,
+                order_number: orderNumber,
                 payment_method: splitMode ? exactSplits.map((s) => s.payment_method).join(" + ") : paymentMethod,
                 // Standing charges plus the ones just picked. Overwriting with
                 // the picked ones alone dropped a restaurant's automatic packing
@@ -157,7 +175,7 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
                 if (onPrinted) onPrinted(printedOrder, billResult);
             }
 
-            onSuccess({ printed: shouldPrint });
+            onSuccess({ printed: shouldPrint, order_id: orderId, order_number: orderNumber });
         } catch (error) {
             console.error("Payment Error:", error);
             alert(error.response?.data?.message || "Payment failed. Please try again.");
@@ -175,7 +193,7 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
                 </div>
 
                 <div className="bill-meta">
-                    <span><strong>Bill:</strong> {order.order_number}</span>
+                    <span><strong>Bill:</strong> {order.order_number || "New"}</span>
                     {/* placeLabel lets a salon bill say "Customer:" here. */}
                     <span><strong>{order.placeLabel || "Table"}:</strong> {order.tableName}</span>
                     {order.stylist_name && <span><strong>Stylist:</strong> {order.stylist_name}</span>}
