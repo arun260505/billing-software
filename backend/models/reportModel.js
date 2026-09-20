@@ -15,7 +15,7 @@ const getDailySales = (restaurantId, callback) => {
 
     const sql = `
         SELECT
-            DATE(created_at) AS sale_date,
+            DATE_FORMAT(created_at, '%Y-%m-%d') AS sale_date,
             COUNT(*) AS total_orders,
             SUM(grand_total) AS total_sales
         FROM orders
@@ -175,7 +175,7 @@ const getOverview = async ({ restaurantId, from, to, businessType }) => {
 
     const seriesSql = `
         SELECT
-            DATE(o.created_at) AS date,
+            DATE_FORMAT(o.created_at, '%Y-%m-%d') AS date,
             COUNT(*) AS orders,
             IFNULL(SUM(CASE WHEN o.payment_status = 'Paid' THEN o.grand_total END), 0) AS sales
         FROM orders o

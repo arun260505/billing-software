@@ -256,7 +256,7 @@ const getSalesChart = (period, restaurantId, today, callback) => {
 
         sql = `
             SELECT
-                DATE(created_at) AS label,
+                DATE_FORMAT(created_at, '%Y-%m-%d') AS label,
                 SUM(grand_total) AS sales
             FROM orders
             WHERE restaurant_id = ?
@@ -271,7 +271,7 @@ const getSalesChart = (period, restaurantId, today, callback) => {
 
         sql = `
             SELECT
-                DATE(created_at) AS label,
+                DATE_FORMAT(created_at, '%Y-%m-%d') AS label,
                 SUM(grand_total) AS sales
             FROM orders
             WHERE restaurant_id = ?
