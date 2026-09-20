@@ -263,8 +263,8 @@ const getSalesChart = (period, restaurantId, today, callback) => {
               AND YEARWEEK(created_at,0)=YEARWEEK(CURDATE(),0)
               AND deleted_at IS NULL
               AND payment_status='Paid'
-            GROUP BY DATE(created_at)
-            ORDER BY DATE(created_at)
+            GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+            ORDER BY DATE_FORMAT(created_at, '%Y-%m-%d')
         `;
 
     } else {
@@ -279,8 +279,8 @@ const getSalesChart = (period, restaurantId, today, callback) => {
               AND YEAR(created_at)=YEAR(CURDATE())
               AND deleted_at IS NULL
               AND payment_status='Paid'
-            GROUP BY DATE(created_at)
-            ORDER BY DATE(created_at)
+            GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+            ORDER BY DATE_FORMAT(created_at, '%Y-%m-%d')
         `;
 
     }

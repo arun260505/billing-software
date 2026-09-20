@@ -21,7 +21,7 @@ const getDailySales = (restaurantId, callback) => {
         FROM orders
         WHERE restaurant_id = ?
           AND payment_status = 'Paid'
-        GROUP BY DATE(created_at)
+        GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
         ORDER BY sale_date DESC
     `;
 
@@ -180,8 +180,8 @@ const getOverview = async ({ restaurantId, from, to, businessType }) => {
             IFNULL(SUM(CASE WHEN o.payment_status = 'Paid' THEN o.grand_total END), 0) AS sales
         FROM orders o
         WHERE ${rangeFilter}
-        GROUP BY DATE(o.created_at)
-        ORDER BY DATE(o.created_at)
+        GROUP BY DATE_FORMAT(o.created_at, '%Y-%m-%d')
+        ORDER BY DATE_FORMAT(o.created_at, '%Y-%m-%d')
     `;
 
     const orderTypesSql = `
