@@ -3,7 +3,7 @@ import "../../styles/pages/Auth/Login.css";
 import { FaUserAlt, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import logo from "../../assets/inwallz-logo.png";
 import authService from "../../services/authService";
-import { isNativeApp, isOwnerApp } from "../../services/serverConfig";
+import { isNativeApp, isOwnerApp, resolveApiBaseUrl } from "../../services/serverConfig";
 import { homeFor } from "../../utils/businessType";
 
 // The roles the Android waiter APK is allowed to sign in. Kitchen is included
@@ -59,7 +59,7 @@ function Login() {
 
             const response = await authService.login(loginData);
 
-            if (response.success && response.data) {
+            if (response && response.success && response.data) {
 
                 const { token, user } = response.data;
 
@@ -97,14 +97,33 @@ function Login() {
 
                 window.location.href = home;
 
+            } else {
+
+                // The login call came back 2xx but NOT in the expected
+                // { success, data } shape — e.g. the request hit the app's own
+                // static server (HTML) instead of the till's /api. Silently
+                // doing nothing here looked like "login does nothing", so show
+                // what actually came back and where it went.
+                const shape = typeof response === "string"
+                    ? response.slice(0, 120)
+                    : JSON.stringify(response || {}).slice(0, 200);
+                alert(
+                    "Login didn't go through.\nServer: " + (resolveApiBaseUrl() || "(none)") +
+                    "\nResponse: " + shape
+                );
+
             }
 
         } catch (error) {
 
+            const status = error.response?.status;
+            const server = resolveApiBaseUrl() || "(none)";
             alert(
-                error.response?.data?.message ||
-                error.friendlyMessage ||
-                "Login Failed"
+                (error.response?.data?.message ||
+                    error.friendlyMessage ||
+                    "Login Failed") +
+                "\nServer: " + server +
+                (status ? "\nHTTP " + status : (error.code ? "\n" + error.code : ""))
             );
 
         } finally {
