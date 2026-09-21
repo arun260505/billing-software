@@ -755,7 +755,26 @@
    and no way to add anything to the cart. Below 1024px the two stack instead.
    ============================================================================ */
 
-@media (max-width: 1024px) {
+/* Small desktop tills — e.g. a 1024px Essae touch counter. Keep the wide-screen
+   vertical-rail layout (left categories + right bill, like the big counter), but
+   tighten the three panes so they fit 1024px without overflow. Only screens in
+   this band are affected; wide PCs (>1180px) keep the full-size rail look, and
+   true tablets/phones (<901px) fall through to the stacked layout below. */
+@media (min-width: 901px) and (max-width: 1180px) {
+    /* Free header width so the top bar stays one tidy row at this size. */
+    .cashier-app .pos-stats { display: none; }
+    .cashier-app .pos-time { display: none; }
+    .cashier-app .pos-topbar { gap: 12px; padding: 0 12px; }
+    .cashier-app .pos-topactions { gap: 10px; }
+
+    /* Narrower rail + bill; smaller menu cards → three columns still fit. */
+    .cashier-app .pos-menu { grid-template-columns: 150px minmax(0, 1fr); padding: 12px; gap: 10px 12px; }
+    .cashier-app .pos-menu-grid { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; }
+    .cashier-app .category-tabs button { padding: 11px 12px; font-size: 13px; }
+    .cashier-app .pos-bill { flex: 0 0 320px; width: 320px; }
+}
+
+@media (max-width: 900px) {
 
     /* Menu on top, bill below — both reachable, both scrollable. */
     .cashier-app .pos-body { flex-direction: column; }
@@ -790,10 +809,19 @@
     .cashier-app .menu-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 
     /* The top bar runs out of room long before this; let it wrap instead of
-       pushing the logout button off the edge. */
-    .cashier-app .pos-topbar { flex-wrap: wrap; gap: 10px 14px; padding: 10px 12px; }
-    .cashier-app .pos-topactions { gap: 10px; }
+       pushing the logout button off the edge. CRITICAL: also release the fixed
+       56px height, or a wrapped second row has nowhere to go and spills down
+       over the content below (the overlap seen on 1024px touch tills). */
+    .cashier-app .pos-topbar {
+        flex-wrap: wrap; gap: 8px 12px; padding: 8px 12px;
+        height: auto; flex: 0 0 auto; min-height: 56px; row-gap: 8px;
+    }
+    .cashier-app .pos-topactions { gap: 10px; margin-left: auto; }
     .cashier-app .pos-time { display: none; }      /* the tablet shows its own clock */
+    /* Free the width on small counters so the header stays a single tidy row:
+       the running-order count already lives on the bell, and free tables show in
+       the table bar, so these pills are redundant here. */
+    .cashier-app .pos-stats { display: none; }
 }
 
 @media (max-width: 720px) {
