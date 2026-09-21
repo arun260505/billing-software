@@ -635,12 +635,15 @@
     background: #ffffff; border: 1px solid #eceff3; border-radius: 16px;
     padding: 14px; cursor: pointer; box-shadow: 0 1px 3px rgba(16,24,40,.05);
     transition: transform .1s, box-shadow .15s; width: auto;
-    /* min-height MUST be auto (not 0). As a CSS-grid item, min-height:0 lets the
-       auto row collapse to ~39px — far shorter than the card's content — so on
-       items WITHOUT a description the price/＋ row spilled onto the card below
-       (the overlapping menu seen on the phone). min-height:auto makes each grid
-       row size to the card's content. height:auto keeps it content-driven. */
-    min-height: auto; height: auto; overflow: hidden;
+    /* Two things must hold together or the grid row collapses to ~39px and the
+       name/price/＋ get clipped or overlap the card below (seen on the phone for
+       items with no description):
+         - min-height:auto  (NOT 0) so the auto row can size to the card content;
+         - overflow:visible (NOT hidden) because a grid item whose overflow is
+           not visible has an automatic minimum size of 0, which makes
+           min-height:auto resolve to 0 and the row collapse again.
+       With both, each row sizes to its content (~115-132px) and everything shows. */
+    min-height: auto; height: auto; overflow: visible;
 }
 .waiter-app .menu-card:active { transform: scale(.97); }
 
