@@ -285,7 +285,7 @@ function Dashboard() {
     const loadTables = async () => {
         try {
             const data = await getTables();
-            setTables(data.data);
+            setTables(Array.isArray(data.data) ? data.data : []);
         } catch (e) { console.error(e); }
     };
 
@@ -330,7 +330,7 @@ function Dashboard() {
     const loadMenuItems = async (categoryId) => {
         try {
             const res = await getItemsByCategory(categoryId);
-            setMenuItems(res.data.data);
+            setMenuItems(Array.isArray(res.data?.data) ? res.data.data : []);
         } catch (e) { console.error(e); }
     };
 
@@ -345,7 +345,7 @@ function Dashboard() {
     const loadRunningOrders = async () => {
         try {
             const res = await getRunningOrders();
-            setRunningOrders(res.data.data);
+            setRunningOrders(Array.isArray(res.data?.data) ? res.data.data : []);
         } catch (e) { console.error("Error loading running orders:", e); }
     };
 
