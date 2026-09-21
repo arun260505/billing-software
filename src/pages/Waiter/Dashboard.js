@@ -949,7 +949,22 @@ function Dashboard() {
                         onSelectCategory={(id) => { setSearchTerm(""); setSelectedCategory(id); }}
                     />
 
-                    <div className="menu-items">
+                    <div
+                        className="menu-items"
+                        /* After searching, the on-screen keyboard covers most of
+                           the results (you could only see one). Tapping or
+                           scrolling the results now drops the keyboard so the
+                           whole list is visible. Blur only an INPUT so tapping a
+                           card's + still adds the item. */
+                        onTouchStart={() => {
+                            const a = document.activeElement;
+                            if (a && a.tagName === "INPUT" && typeof a.blur === "function") a.blur();
+                        }}
+                        onScroll={() => {
+                            const a = document.activeElement;
+                            if (a && a.tagName === "INPUT" && typeof a.blur === "function") a.blur();
+                        }}
+                    >
                         {filteredItems.length === 0 ? (
                             <p className="no-items-msg">No items available</p>
                         ) : (
