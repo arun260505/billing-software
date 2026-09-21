@@ -613,8 +613,11 @@
 
 /* ── Category chips ─────────────────────────────────────────────────── */
 .waiter-app .category-tabs {
-    display: flex; gap: 8px; padding: 0 12px 12px; margin: 0;
-    overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; border: none;
+    display: flex; gap: 8px; padding: 2px 12px 8px; margin: 0;
+    overflow-x: auto; overflow-y: visible; scrollbar-width: none; flex-wrap: nowrap; border: none;
+    /* Size to the chips and never let a flex parent squeeze the strip (it was
+       collapsing to ~31px and clipping the selected pill top/bottom). */
+    flex: 0 0 auto; align-items: center;
 }
 .waiter-app .category-tabs::-webkit-scrollbar { display: none; }
 .waiter-app .category-tabs button {
@@ -691,7 +694,14 @@
 .waiter-app .menu-card-bottom {
     display: flex; align-items: center; justify-content: space-between;
     gap: 8px; margin-top: auto;
+    /* On narrow cards the price + qty-stepper are wider than the card, so the
+       stepper used to spill past the right edge. Let the row wrap: the add/
+       stepper drops to its own line, right-aligned, and stays inside the card
+       on every phone width. */
+    flex-wrap: wrap; row-gap: 8px;
 }
+.waiter-app .menu-card-bottom .mc-add,
+.waiter-app .menu-card-bottom .mc-stepper { margin-left: auto; }
 .waiter-app .menu-card .menu-price { margin-top: 0; }
 
 .waiter-app .mc-add {
