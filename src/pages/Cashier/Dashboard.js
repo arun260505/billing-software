@@ -358,9 +358,13 @@ function Dashboard() {
     const loadCategories = async () => {
         try {
             const res = await getCategories();
-            setCategories(res.data.data);
+            const cats = Array.isArray(res.data?.data) ? res.data.data : [];
+            setCategories(cats);
             // Keep the current tab on live re-polls; only default on first load.
-            setSelectedCategory((cur) => cur || (res.data.data[0]?.id ?? null));
+            // This updater runs later inside React's render — OUTSIDE this
+            // try/catch — so the index must be fully optional-chained or an
+            // undefined response crashes the whole till (white screen).
+            setSelectedCategory((cur) => cur || (cats[0]?.id ?? null));
         } catch (e) { console.error(e); }
     };
 

@@ -271,10 +271,14 @@ function Dashboard() {
     const loadCategories = async () => {
         try {
             const res = await getCategories();
-            setCategories(res.data.data);
+            const cats = Array.isArray(res.data?.data) ? res.data.data : [];
+            setCategories(cats);
             // Only default the selection on first load; keep it on live re-polls
             // so a synced-in category doesn't yank the waiter's current tab.
-            setSelectedCategory((cur) => cur || (res.data.data[0]?.id ?? null));
+            // NOTE: this updater runs later, inside React's render — OUTSIDE the
+            // try/catch — so any index into a possibly-undefined value must be
+            // fully optional-chained, or it crashes the whole app (white screen).
+            setSelectedCategory((cur) => cur || (cats[0]?.id ?? null));
         } catch (e) { console.error(e); }
     };
 
