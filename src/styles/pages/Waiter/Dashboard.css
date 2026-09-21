@@ -634,11 +634,13 @@
     position: relative; display: flex; flex-direction: column;
     background: #ffffff; border: 1px solid #eceff3; border-radius: 16px;
     padding: 14px; cursor: pointer; box-shadow: 0 1px 3px rgba(16,24,40,.05);
-    transition: transform .1s, box-shadow .15s; min-height: 0; width: auto;
-    /* Defeat the legacy image-card rule above (overflow:hidden + fixed row
-       height) that clipped the price/＋ row off the bottom on the phone. The
-       card must always grow to fit its content so every item is selectable. */
-    overflow: visible; height: auto;
+    transition: transform .1s, box-shadow .15s; width: auto;
+    /* min-height MUST be auto (not 0). As a CSS-grid item, min-height:0 lets the
+       auto row collapse to ~39px — far shorter than the card's content — so on
+       items WITHOUT a description the price/＋ row spilled onto the card below
+       (the overlapping menu seen on the phone). min-height:auto makes each grid
+       row size to the card's content. height:auto keeps it content-driven. */
+    min-height: auto; height: auto; overflow: hidden;
 }
 .waiter-app .menu-card:active { transform: scale(.97); }
 
