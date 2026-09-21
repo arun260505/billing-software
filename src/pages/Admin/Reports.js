@@ -511,7 +511,9 @@ function TopItemsCard({ items, span = 7 }) {
 
     const salon = isSalon();
 
-    const [showAll, setShowAll] = useState(false);
+    // "Items Sold" is a full list, so show every item by default; the toggle can
+    // still collapse it to the top few on a very long list.
+    const [showAll, setShowAll] = useState(true);
     const visible = showAll ? items : items.slice(0, 5);
 
     const rankClass = (rank) =>
@@ -521,9 +523,11 @@ function TopItemsCard({ items, span = 7 }) {
         <div className={`rp-card rp-span-${span}`}>
             <div className="rp-card-head">
                 <div>
-                    <h3 className="rp-card-title">{salon ? "Top Services" : "Top Selling Items"}</h3>
+                    <h3 className="rp-card-title">{salon ? "Services Sold" : "Items Sold"}</h3>
                     <p className="rp-card-sub">
-                        {salon ? "Most booked services in this period" : "Best performers by quantity sold"}
+                        {salon
+                            ? "Every service done in this period, with how many times"
+                            : "Every item sold in this period, with quantity"}
                     </p>
                 </div>
             </div>
@@ -540,7 +544,7 @@ function TopItemsCard({ items, span = 7 }) {
                         <table className="rp-table">
                             <thead>
                                 <tr>
-                                    <th>Rank</th>
+                                    <th>#</th>
                                     <th>{salon ? "Service" : "Item"}</th>
                                     <th>Category</th>
                                     <th className="num">{salon ? "Times Done" : "Qty Sold"}</th>
@@ -590,8 +594,8 @@ function TopItemsCard({ items, span = 7 }) {
                             onClick={() => setShowAll(!showAll)}
                         >
                             {showAll
-                                ? "Show Less"
-                                : `View Full Item Report (${items.length})`}
+                                ? "Show top 5 only"
+                                : `Show all ${items.length} items sold`}
                         </button>
                     )}
                 </>
@@ -1139,10 +1143,10 @@ function buildWorkbook(d) {
     });
 
     wb.push({
-        title: salon ? "Top Services" : "Top Selling Items",
+        title: salon ? "Services Sold" : "Items Sold",
         header: salon
-            ? ["Rank", "Service", "Category", "Times Done", "Revenue"]
-            : ["Rank", "Item", "Category", "Qty", "Revenue"],
+            ? ["#", "Service", "Category", "Times Done", "Revenue"]
+            : ["#", "Item", "Category", "Qty Sold", "Revenue"],
         rows: d.top_items.map((i) => [
             i.rank, i.item_name, i.category_name, i.qty, i.revenue
         ])

@@ -213,6 +213,8 @@ const getOverview = async ({ restaurantId, from, to, businessType }) => {
         WHERE ${rangeFilter} AND o.payment_status IN ('Pending','Partial')
     `;
 
+    // Items Sold: EVERY item sold in the range with its quantity (not just the
+    // top 10). Ordered most-sold first; the UI and export list them all.
     const topItemsSql = `
         SELECT
             mi.id,
@@ -227,7 +229,6 @@ const getOverview = async ({ restaurantId, from, to, businessType }) => {
         WHERE ${rangeFilter}
         GROUP BY oi.menu_item_id, mi.item_name, c.category_name
         ORDER BY qty DESC
-        LIMIT 10
     `;
 
     const lowItemsSql = `
