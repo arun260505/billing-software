@@ -19,10 +19,12 @@ const getSummary = (restaurantId, today, callback) => {
     // "Today" follows the BUSINESS DAY, not the calendar date: a bill counts for
     // the day that's currently open at the counter (from the moment it was
     // opened), so after-midnight sales stay on the still-open day — exactly like
-    // the day-close Z-report. When no day is open this is NULL, so today's
-    // figures read zero until the counter opens the day. Weekly/monthly stay on
-    // the calendar (that's the usual reporting period).
-    const openWin = "(SELECT MIN(opened_at) FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL)";
+    // the day-close Z-report. If NO day is open (e.g. the counter already pressed
+    // Close Day for the evening) it falls back to the MOST RECENT day, so that
+    // day's totals stay visible on the dashboard until the next day is opened —
+    // instead of the whole "Today" panel dropping to zero right after closing.
+    // Weekly/monthly stay on the calendar (that's the usual reporting period).
+    const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
 
     const sql = (`
         SELECT
@@ -118,6 +120,11 @@ const getSummary = (restaurantId, today, callback) => {
             -- True business day status (opened at the counter)
             (SELECT COUNT(*) > 0 FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL) AS day_is_open,
 
+            -- The business day the "today" figures above actually belong to: the
+            -- open day, or the most recent day when none is open (so the label can
+            -- say which day's totals are on screen until the next day is opened).
+            (SELECT DATE_FORMAT(business_date, '%Y-%m-%d') FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1) AS today_business_date,
+
             COALESCE(
                 (SELECT restaurant_status FROM settings WHERE restaurant_id=?),
                 (SELECT status FROM restaurants WHERE id=?)
@@ -145,7 +152,7 @@ const getSummary = (restaurantId, today, callback) => {
 const getTodaysSales = (restaurantId, today, callback) => {
 
     // Business day: the orders since the counter opened the current day.
-    const openWin = "(SELECT MIN(opened_at) FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL)";
+    const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
     db.query(`
         SELECT
             order_number,
@@ -238,7 +245,7 @@ const getSalesChart = (period, restaurantId, today, callback) => {
         "AND o.created_at >= COALESCE(dc.opened_at, dc.business_date) " +
         "AND (dc.closed_at IS NULL OR o.created_at < dc.closed_at) " +
         "ORDER BY dc.opened_at DESC LIMIT 1)";
-    const openWin = "(SELECT MIN(opened_at) FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL)";
+    const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
     let sql = "";
 
     if (period === "today") {
@@ -305,7 +312,7 @@ const getSalesChart = (period, restaurantId, today, callback) => {
 const getStylistBoard = (restaurantId, today, callback) => {
 
     // "Today" = the current open business day (opened at the counter).
-    const openWin = "(SELECT MIN(opened_at) FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL)";
+    const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
     const sql = `
         SELECT
             u.id,
@@ -354,7 +361,7 @@ const getStylistBoard = (restaurantId, today, callback) => {
 const getWaiterBoard = (restaurantId, today, callback) => {
 
     // "Today" = the current open business day (opened at the counter).
-    const openWin = "(SELECT MIN(opened_at) FROM day_closures WHERE restaurant_id = ? AND status = 'open' AND deleted_at IS NULL)";
+    const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
     const sql = `
         SELECT
             u.id,

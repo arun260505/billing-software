@@ -28,6 +28,14 @@ import "../../styles/Admin/DashboardCard.css";
 import "../../styles/pages/Salon/Salon.css";
 
 const money = (v) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
+
+// "2026-09-22" -> "22 Sep 2026" (parsed by parts so no timezone shift).
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const bizDateLabel = (ymd) => {
+  if (!ymd) return "";
+  const [y, m, d] = String(ymd).split("-").map(Number);
+  return y && m && d ? `${d} ${MONTHS[m - 1]} ${y}` : String(ymd);
+};
 const qty = (v) => Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 // Stock at or below its reorder level, emptiest first.
@@ -330,6 +338,19 @@ function SalonDashboard() {
           <div>
             <h1>Welcome back, {salonName} Owner</h1>
             <p>Here&rsquo;s what&rsquo;s happening at {salonName} today.</p>
+            {summary.today_business_date && (
+              <p
+                className="ad-heading-day"
+                style={{
+                  marginTop: 6, fontSize: 13, fontWeight: 700,
+                  color: Number(summary.day_is_open) ? "#1a9e8f" : "#b45309"
+                }}
+              >
+                {Number(summary.day_is_open)
+                  ? `Showing: ${bizDateLabel(summary.today_business_date)} (today)`
+                  : `Showing: ${bizDateLabel(summary.today_business_date)} — day closed. Open the shop to start a new day.`}
+              </p>
+            )}
           </div>
         </div>
 

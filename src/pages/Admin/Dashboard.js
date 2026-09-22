@@ -30,6 +30,14 @@ import "../../styles/Admin/DashboardCard.css";
 
 const money = (v) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
 
+// "2026-09-22" -> "22 Sep 2026" (parsed by parts so no timezone shift).
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const bizDateLabel = (ymd) => {
+  if (!ymd) return "";
+  const [y, m, d] = String(ymd).split("-").map(Number);
+  return y && m && d ? `${d} ${MONTHS[m - 1]} ${y}` : String(ymd);
+};
+
 function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -214,6 +222,19 @@ function Dashboard() {
           <div>
             <h1>Welcome back, {restaurantName} Owner</h1>
             <p>Here&rsquo;s what&rsquo;s happening at {restaurantName} today.</p>
+            {summary.today_business_date && (
+              <p
+                className="ad-heading-day"
+                style={{
+                  marginTop: 6, fontSize: 13, fontWeight: 700,
+                  color: Number(summary.day_is_open) ? "#2563eb" : "#b45309"
+                }}
+              >
+                {Number(summary.day_is_open)
+                  ? `Showing: ${bizDateLabel(summary.today_business_date)} (today)`
+                  : `Showing: ${bizDateLabel(summary.today_business_date)} — day closed. Open the shop to start a new day.`}
+              </p>
+            )}
           </div>
 
           <button
