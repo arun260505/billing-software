@@ -360,7 +360,9 @@ function SalonPos() {
                     price: Number(item.price),
                     quantity: 1,
                     isNew: false,
-                    lineId: `svc-${item.id}`
+                    lineId: `svc-${item.id}`,
+                    // "" = use the bill's stylist; set to override this one service.
+                    stylistId: ""
                 }];
             }
             const copy = [...prev];
@@ -379,6 +381,15 @@ function SalonPos() {
 
     const removeOneFromCart = (item) => changeQuantity(`svc-${item.id}`, -1);
     const removeLine = (lineId) => setCart((prev) => prev.filter((c) => c.lineId !== lineId));
+
+    // Per-service stylist: each line can override the bill's stylist. "" means
+    // "same as the bill", so the top picker still applies to every line by default.
+    const setLineStylist = (lineId, value) =>
+        setCart((prev) => prev.map((c) => (c.lineId === lineId ? { ...c, stylistId: value } : c)));
+    const stylistNameFor = (id) => {
+        const s = stylistOptions.find((x) => String(x.id) === String(id));
+        return s ? s.full_name : "";
+    };
     const cartQtyFor = (itemId) => cart.filter((c) => c.id === itemId).reduce((s, c) => s + Number(c.quantity), 0);
 
     // Same calculation the backend runs (utils/rates mirrors backend/utils/billing.js).
@@ -566,7 +577,9 @@ function SalonPos() {
                 menu_item_id: it.id,
                 item_name: it.item_name,
                 quantity: Number(it.quantity),
-                price: Number(it.price)
+                price: Number(it.price),
+                // The line's own stylist if chosen, else the bill's stylist.
+                stylist_id: it.stylistId ? Number(it.stylistId) : stylist.id
             }));
 
             // Don't create the order yet — snapshot everything it needs and let
@@ -1039,13 +1052,33 @@ function SalonPos() {
                                 </div>
                             ) : (
                                 cart.map((item) => (
-                                    <CartItem
-                                        key={item.lineId}
-                                        item={item}
-                                        increaseQuantity={(lineId) => changeQuantity(lineId, 1)}
-                                        decreaseQuantity={(lineId) => changeQuantity(lineId, -1)}
-                                        removeItem={removeLine}
-                                    />
+                                    <div key={item.lineId} className="sl-cart-line">
+                                        <CartItem
+                                            item={item}
+                                            increaseQuantity={(lineId) => changeQuantity(lineId, 1)}
+                                            decreaseQuantity={(lineId) => changeQuantity(lineId, -1)}
+                                            removeItem={removeLine}
+                                        />
+                                        {stylistOptions.length > 0 && (
+                                            <div className="sl-line-stylist">
+                                                <span className="sl-line-stylist-label">Stylist</span>
+                                                <select
+                                                    value={item.stylistId || ""}
+                                                    onChange={(e) => setLineStylist(item.lineId, e.target.value)}
+                                                    aria-label={`Stylist for ${item.item_name}`}
+                                                >
+                                                    <option value="">
+                                                        {stylistId
+                                                            ? `Same as bill (${stylistNameFor(stylistId)})`
+                                                            : "Same as bill"}
+                                                    </option>
+                                                    {stylistOptions.map((s) => (
+                                                        <option key={s.id} value={String(s.id)}>{s.full_name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
                                 ))
                             )}
                         </div>

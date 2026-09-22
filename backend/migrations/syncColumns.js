@@ -184,6 +184,10 @@ async function runSyncSchema() {
     }
     if (await tableExists("order_items")) {
         await ensureColumn("order_items", "served", "TINYINT(1) NOT NULL DEFAULT 0");
+        // Per-service stylist (salon): a bill can have services by different
+        // stylists, so each line names who did it. NULL falls back to the bill's
+        // stylist (orders.stylist_id) in reports. Syncs via users.uuid like any FK.
+        await ensureColumn("order_items", "stylist_id", "INT NULL DEFAULT NULL");
     }
     if (await tableExists("printer_settings")) {
         // Lets a waiter print + settle a bill directly (Admin toggle); off by

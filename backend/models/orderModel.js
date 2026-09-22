@@ -128,7 +128,9 @@ const priceCartItems = (items, restaurantId, callback) => {
                     quantity: qty,
                     price,
                     total: money(price * qty),
-                    notes: it.notes || null
+                    notes: it.notes || null,
+                    // Per-service stylist (salon); carried into order_items.
+                    stylist_id: it.stylist_id || null
                 });
             }
 
@@ -262,12 +264,14 @@ const createOrderItems = (items, orderId, callback) => {
         item.quantity,
         item.price,
         item.total,
-        item.notes || null
+        item.notes || null,
+        // Per-service stylist (salon). NULL keeps the bill's stylist for that line.
+        item.stylist_id || null
     ]);
 
     const sql = `
         INSERT INTO order_items
-        (order_id, menu_item_id, quantity, price, total, notes)
+        (order_id, menu_item_id, quantity, price, total, notes, stylist_id)
         VALUES ?
     `;
 

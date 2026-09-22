@@ -313,30 +313,34 @@ const getStylistBoard = (restaurantId, today, callback) => {
 
     // "Today" = the current open business day (opened at the counter).
     const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
+    // Credit each service LINE to the stylist chosen on it (order_items.stylist_id),
+    // falling back to the bill's stylist (orders.stylist_id) for lines/old bills
+    // with none. So a bill worked by two stylists splits between them. "sales" is
+    // the service revenue (sum of line totals) each stylist generated; "services"
+    // is the quantity of items they did; bills/customers count the distinct bills
+    // they had a line on.
     const sql = `
         SELECT
             u.id,
             u.full_name,
-            COUNT(DISTINCT CASE WHEN o.order_status = 'Completed' THEN o.customer_id END) AS customers,
-            COALESCE(SUM(o.order_status = 'Completed'), 0) AS bills,
-            COALESCE(SUM(o.order_status = 'Pending'), 0) AS unpaid_bills,
-            COALESCE(SUM(CASE WHEN o.order_status = 'Completed' THEN o.grand_total END), 0) AS sales,
-            (SELECT COALESCE(SUM(oi.quantity), 0)
-               FROM order_items oi
-               JOIN orders o2 ON o2.id = oi.order_id
-              WHERE o2.stylist_id = u.id
-                AND o2.restaurant_id = u.restaurant_id
-                AND o2.order_status = 'Completed'
-                AND o2.deleted_at IS NULL
-                AND o2.created_at >= ${openWin}) AS services,
-            MAX(CASE WHEN o.order_status = 'Completed' THEN o.created_at END) AS last_bill_at
+            COUNT(DISTINCT CASE WHEN li.order_status = 'Completed' THEN li.customer_id END) AS customers,
+            COUNT(DISTINCT CASE WHEN li.order_status = 'Completed' THEN li.order_id END) AS bills,
+            COUNT(DISTINCT CASE WHEN li.order_status = 'Pending' THEN li.order_id END) AS unpaid_bills,
+            COALESCE(SUM(CASE WHEN li.order_status = 'Completed' THEN li.line_total END), 0) AS sales,
+            COALESCE(SUM(CASE WHEN li.order_status = 'Completed' THEN li.qty END), 0) AS services,
+            MAX(CASE WHEN li.order_status = 'Completed' THEN li.created_at END) AS last_bill_at
         FROM users u
-        LEFT JOIN orders o
-               ON o.stylist_id = u.id
-              AND o.restaurant_id = u.restaurant_id
+        LEFT JOIN (
+            SELECT COALESCE(oi.stylist_id, o.stylist_id) AS eff_stylist,
+                   o.id AS order_id, o.customer_id, o.order_status, o.created_at,
+                   oi.total AS line_total, oi.quantity AS qty
+            FROM orders o
+            INNER JOIN order_items oi ON oi.order_id = o.id
+            WHERE o.restaurant_id = ?
               AND o.order_status IN ('Completed', 'Pending')
               AND o.deleted_at IS NULL
               AND o.created_at >= ${openWin}
+        ) li ON li.eff_stylist = u.id
         WHERE u.restaurant_id = ?
           AND u.role = 'stylist'
           AND u.deleted_at IS NULL

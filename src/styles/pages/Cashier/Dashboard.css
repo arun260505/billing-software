@@ -200,6 +200,22 @@
 .cashier-app .out-of-stock-card { opacity: .55; }
 .cashier-app .out-of-stock-card .menu-price { color: #94a3b8; }
 
+/* Per-service stylist picker under each cart line (salon). Defaults to the
+   bill's stylist; change it when a different person did that service. */
+.cashier-app .sl-line-stylist {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 16px 10px; margin-top: -2px;
+}
+.cashier-app .sl-line-stylist-label {
+    flex: 0 0 auto; font-size: 10px; font-weight: 800; letter-spacing: .04em;
+    text-transform: uppercase; color: #94a3b8;
+}
+.cashier-app .sl-line-stylist select {
+    flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid #e2e8f0;
+    border-radius: 8px; font-size: 12px; font-weight: 600; background: #fff; color: #0f172a;
+}
+.cashier-app .sl-line-stylist select:focus { border-color: #2563eb; outline: none; }
+
 /* ── Docked bill panel ───────────────────────────────────────────────── */
 .cashier-app .pos-bill {
     flex: 0 0 380px; width: 380px; background: #fff;

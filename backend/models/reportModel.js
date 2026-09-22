@@ -285,17 +285,40 @@ const getOverview = async ({ restaurantId, from, to, businessType }) => {
         WHERE ${rangeFilter}
     `;
 
-    const staffColumn = salon ? "o.stylist_id" : "o.employee_id";
-    const staffSql = `
+    // Salon: credit each service line to the stylist chosen on it
+    // (order_items.stylist_id), falling back to the bill's stylist for lines/old
+    // bills with none — so a bill worked by two stylists splits between them, and
+    // "sales" is the service revenue (line totals) each generated. Restaurant:
+    // unchanged — the order-taker (employee) gets the whole order.
+    const staffSql = salon
+        ? `
+        SELECT
+            u.full_name,
+            COUNT(DISTINCT li.order_id) AS orders,
+            COUNT(DISTINCT li.customer_id) AS customers,
+            IFNULL(SUM(li.line_total), 0) AS sales
+        FROM users u
+        INNER JOIN (
+            SELECT COALESCE(oi.stylist_id, o.stylist_id) AS eff_stylist,
+                   o.id AS order_id, o.customer_id, oi.total AS line_total
+            FROM orders o
+            INNER JOIN order_items oi ON oi.order_id = o.id
+            WHERE ${rangeFilter}
+        ) li ON li.eff_stylist = u.id
+        GROUP BY u.id, u.full_name
+        ORDER BY sales DESC
+        LIMIT 10
+    `
+        : `
         SELECT
             u.full_name,
             COUNT(o.id) AS orders,
             COUNT(DISTINCT o.customer_id) AS customers,
             IFNULL(SUM(o.grand_total), 0) AS sales
         FROM orders o
-        INNER JOIN users u ON ${staffColumn} = u.id
+        INNER JOIN users u ON o.employee_id = u.id
         WHERE ${rangeFilter}
-        GROUP BY ${staffColumn}, u.full_name
+        GROUP BY o.employee_id, u.full_name
         ORDER BY sales DESC
         LIMIT 10
     `;

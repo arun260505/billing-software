@@ -48,7 +48,7 @@ const SYNC_ORDER = [
     { table: "users",           direction: "down", fks: { restaurant_id: "restaurants", created_by: "users" } },
     // stylist_id (014) points at users, which a till already has from the pull.
     { table: "orders",          direction: "up",   fks: { restaurant_id: "restaurants", customer_id: "customers", table_id: "dining_tables", stylist_id: "users", employee_id: "users" } },
-    { table: "order_items",     direction: "up",   fks: { order_id: "orders", menu_item_id: "menu_items" } },
+    { table: "order_items",     direction: "up",   fks: { order_id: "orders", menu_item_id: "menu_items", stylist_id: "users" } },
     { table: "payments",        direction: "up",   fks: { restaurant_id: "restaurants", order_id: "orders" } },
     // Day close / cash-up snapshots: written at the till, pushed up for reports.
     { table: "day_closures",    direction: "up",   fks: { restaurant_id: "restaurants", opened_by: "users", closed_by: "users" } },
