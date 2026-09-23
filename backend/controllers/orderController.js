@@ -133,63 +133,100 @@ function placeOrder(req, res, restaurantId, items) {
 
         const { subtotal, tax, service_charge, grand_total } = computeTotals(pricedItems, autoCharges, asked.discount);
 
-        generateOrderNumber(restaurantId, (err, orderNumber) => {
+        const orderType = req.body.order_type || "Dine-In";
+        const tableId = req.body.table_id;
 
-            if (err) return error(res, err.message, 500);
-
-            const order = {
-                ...req.body,
-                restaurant_id: restaurantId,
-                employee_id: req.user.id,           // the logged-in waiter/cashier
-                order_number: orderNumber,
-                order_type: req.body.order_type || "Dine-In",
-                // Orders auto-start as Preparing — the kitchen is display-only.
-                order_status: req.body.order_status || "Preparing",
-                payment_status: req.body.payment_status || "Pending",
-                subtotal,
-                discount: asked.discount,
-                discount_percent: asked.discount_percent,
-                tax,
-                service_charge,
-                grand_total
-            };
-
-            orderModel.createOrder(order, (err, result) => {
+        // Create a brand-new order (a table's FIRST send, or any counter/takeaway).
+        const createNew = () => {
+            generateOrderNumber(restaurantId, (err, orderNumber) => {
 
                 if (err) return error(res, err.message, 500);
 
-                const orderId = result.insertId;
+                const order = {
+                    ...req.body,
+                    restaurant_id: restaurantId,
+                    employee_id: req.user.id,           // the logged-in waiter/cashier
+                    order_number: orderNumber,
+                    order_type: orderType,
+                    // Orders auto-start as Preparing — the kitchen is display-only.
+                    order_status: req.body.order_status || "Preparing",
+                    payment_status: req.body.payment_status || "Pending",
+                    subtotal,
+                    discount: asked.discount,
+                    discount_percent: asked.discount_percent,
+                    tax,
+                    service_charge,
+                    grand_total
+                };
 
-                orderModel.createOrderItems(pricedItems, orderId, (err) => {
+                orderModel.createOrder(order, (err, result) => {
 
                     if (err) return error(res, err.message, 500);
 
-                    const respond = () => success(
-                        res,
-                        "Order created successfully.",
-                        { order_id: orderId, order_number: orderNumber },
-                        201
-                    );
+                    const orderId = result.insertId;
 
-                    if (order.order_type === "Dine-In" && order.table_id) {
-                        orderModel.updateTableStatus(
-                            order.table_id,
-                            restaurantId,
-                            "Occupied",
-                            (err) => {
-                                if (err) return error(res, err.message, 500);
-                                return respond();
-                            }
+                    orderModel.createOrderItems(pricedItems, orderId, (err) => {
+
+                        if (err) return error(res, err.message, 500);
+
+                        const respond = () => success(
+                            res,
+                            "Order created successfully.",
+                            { order_id: orderId, order_number: orderNumber },
+                            201
                         );
-                    } else {
-                        return respond();
-                    }
+
+                        if (orderType === "Dine-In" && tableId) {
+                            orderModel.updateTableStatus(
+                                tableId,
+                                restaurantId,
+                                "Occupied",
+                                (err) => {
+                                    if (err) return error(res, err.message, 500);
+                                    return respond();
+                                }
+                            );
+                        } else {
+                            return respond();
+                        }
+
+                    });
 
                 });
-
             });
+        };
 
-        });
+        // A dine-in table runs as ONE order that ACCUMULATES every waiter send,
+        // so the table is a single bill (one order number) the whole time it's
+        // open — not a new order, and a burnt bill number, per send. When the
+        // table already has an open order, the new items are appended to it and
+        // its totals bumped; the KOT still prints only the items just sent (the
+        // app prints the sent cart). A counter/takeaway order always starts fresh.
+        if (orderType === "Dine-In" && tableId) {
+            orderModel.getOpenOrderForTable(tableId, restaurantId, (err, openOrder) => {
+                if (err) return error(res, err.message, 500);
+                if (!openOrder) return createNew();
+                orderModel.createOrderItems(pricedItems, openOrder.id, (err) => {
+                    if (err) return error(res, err.message, 500);
+                    orderModel.addOrderTotals(
+                        openOrder.id,
+                        restaurantId,
+                        { subtotal, tax, service_charge, grand_total },
+                        (err) => {
+                            if (err) return error(res, err.message, 500);
+                            return success(
+                                res,
+                                "Items added to the table's order.",
+                                { order_id: openOrder.id, order_number: openOrder.order_number },
+                                201
+                            );
+                        }
+                    );
+                });
+            });
+        } else {
+            createNew();
+        }
 
         });
 

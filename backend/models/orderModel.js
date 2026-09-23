@@ -252,6 +252,38 @@ const getInvoiceItems = (orderId, restaurantId, callback) => {
 
 };
 
+// The table's current OPEN order (the one a new waiter send accumulates onto),
+// or null if the table has none open. Oldest-first so a table keeps ONE order.
+const getOpenOrderForTable = (tableId, restaurantId, callback) => {
+    db.query(
+        `SELECT id, order_number FROM orders
+         WHERE restaurant_id = ? AND table_id = ? AND deleted_at IS NULL
+           AND order_status IN ('Pending','Preparing','Ready','Served')
+         ORDER BY id ASC LIMIT 1`,
+        [restaurantId, tableId],
+        (err, rows) => {
+            if (err) return callback(err);
+            callback(null, rows && rows[0] ? rows[0] : null);
+        }
+    );
+};
+
+// Add a fresh waiter send's amounts onto an existing open order (tenant-scoped).
+// Percentage GST/service are linear, so summing per-send equals taxing the whole
+// order once. New items are unserved, so a Served/Ready order goes back to Preparing.
+const addOrderTotals = (orderId, restaurantId, add, callback) => {
+    db.query(
+        `UPDATE orders
+         SET subtotal = subtotal + ?, tax = tax + ?, service_charge = service_charge + ?,
+             grand_total = grand_total + ?,
+             order_status = CASE WHEN order_status IN ('Served','Ready') THEN 'Preparing' ELSE order_status END
+         WHERE id = ? AND restaurant_id = ?`,
+        [Number(add.subtotal) || 0, Number(add.tax) || 0, Number(add.service_charge) || 0,
+         Number(add.grand_total) || 0, orderId, restaurantId],
+        callback
+    );
+};
+
 const createOrderItems = (items, orderId, callback) => {
 
     if (!items || items.length === 0) {
@@ -1386,6 +1418,8 @@ module.exports = {
     priceCartItems,
     createOrder,
     createOrderItems,
+    getOpenOrderForTable,
+    addOrderTotals,
     deductProductStock,
     deleteOrder,
     getInvoiceByOrderId,
