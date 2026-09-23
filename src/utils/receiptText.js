@@ -348,32 +348,24 @@ export function buildKotText({ order = {}, format = {} }) {
     out.push(bold(lr(takenBy, timeStr, W)));
 
     out.push(repeat("-", W));
-    // Item on the left, quantity on the RIGHT edge. Columns labelled to match.
     const showQty = cfg.show_item_qty !== 0;   // default on
-    out.push(bold(showQty ? lr("ITEM", "QTY", W) : "ITEM"));
+    out.push(bold("ITEM"));
 
-    // Items are the one thing the cook must not misread, so print them at double
-    // HEIGHT (this printer honours the GS! size command even when it ignores the
-    // ESC E / ESC G bold commands) and run a DOTTED LEADER from each dish to its
-    // count on the right, so a busy line never maps to the wrong quantity.
+    // Normal size (as before). The quantity sits right NEXT TO the item name
+    // (e.g. "Chicken Soup  x2") — near it, not pushed to the far edge and no
+    // leader dots — so it's easy to read at a glance.
     let totalQty = 0;
     items.forEach((it) => {
         const qty = Number(it.quantity || 1);
         totalQty += qty;
         const name = it.item_name || it.name || "Item";
-        const qtyStr = showQty ? `${qty}` : "";
-        const reserve = showQty ? qtyStr.length + 2 : 0;   // room for "..N" on the last line
-        const nameLines = wrap(name, W - reserve);
+        const suffix = showQty ? `    x${qty}` : "";   // a comfortable gap — near, not too close, not at the edge
+        const nameLines = wrap(name, W - suffix.length);
         nameLines.forEach((l, i) => {
             const isLast = i === nameLines.length - 1;
-            if (showQty && isLast) {
-                const dots = Math.max(2, W - l.length - qtyStr.length);
-                out.push(bold(tall(l + repeat(".", dots) + qtyStr)));  // name .... qty (big)
-            } else {
-                out.push(bold(tall(l)));
-            }
+            out.push(bold(isLast ? l + suffix : l));   // qty right after the last name line
         });
-        // A cooking note matters, so keep it (normal size) right under its item.
+        // A cooking note matters, so keep it right under its item.
         if (cfg.show_item_notes && (it.notes || it.note)) {
             wrap(`** ${it.notes || it.note}`, W).forEach((l) => out.push(bold(l)));
         }

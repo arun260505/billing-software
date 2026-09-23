@@ -118,9 +118,8 @@ export function generateKitchenTicketHtml({ order = {}, format = {} }) {
     // ── 4. KITCHEN ITEMS TABLE ─────────────────────────────
     let itemsHtml = `
         <div style="margin: 6px 0;">
-            <div style="display: flex; justify-content: space-between; font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 4px; font-size: ${is58mm ? "11px" : "13px"}; text-transform: uppercase;">
-                <span style="flex: 1; text-align: left;">ITEM DESCRIPTION</span>
-                ${cfg.show_item_qty ? `<span style="width: ${is58mm ? "36px" : "46px"}; text-align: right;">QTY</span>` : ""}
+            <div style="font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 4px; font-size: ${is58mm ? "11px" : "13px"}; text-transform: uppercase;">
+                ITEM
             </div>
     `;
 
@@ -132,14 +131,9 @@ export function generateKitchenTicketHtml({ order = {}, format = {} }) {
 
         itemsHtml += `
             <div style="border-bottom: 1px dashed #ccc; padding: 5px 0;">
-                <div style="display: flex; align-items: flex-start; justify-content: space-between;">
-                    <div style="flex: 1; padding-right: 6px;">
-                        ${cfg.show_item_category && category ? `<div style="font-size: 9px; text-transform: uppercase; color: #555;">[${escapeHtml(category)}]</div>` : ""}
-                        ${cfg.show_item_name ? `<div style="font-size: ${is58mm ? "12px" : "14px"}; font-weight: bold; line-height: 1.2;">${escapeHtml(name)}</div>` : ""}
-                        ${cfg.show_item_notes && notes ? `<div style="font-size: ${is58mm ? "10px" : "11px"}; font-weight: bold; font-style: italic; margin-top: 2px; padding: 2px 4px; border-left: 2px solid #000;">** ${escapeHtml(notes)}</div>` : ""}
-                    </div>
-                    ${cfg.show_item_qty ? `<span style="width: ${is58mm ? "36px" : "46px"}; font-size: ${is58mm ? "13px" : "15px"}; font-weight: 900; text-align: right; line-height: 1.2;">${qty}x</span>` : ""}
-                </div>
+                ${cfg.show_item_category && category ? `<div style="font-size: 9px; text-transform: uppercase; color: #555;">[${escapeHtml(category)}]</div>` : ""}
+                ${cfg.show_item_name ? `<div style="font-size: ${is58mm ? "12px" : "14px"}; font-weight: bold; line-height: 1.2;">${escapeHtml(name)}${cfg.show_item_qty ? `<span style="margin-left: 18px;">x${qty}</span>` : ""}</div>` : ""}
+                ${cfg.show_item_notes && notes ? `<div style="font-size: ${is58mm ? "10px" : "11px"}; font-weight: bold; font-style: italic; margin-top: 2px; padding: 2px 4px; border-left: 2px solid #000;">** ${escapeHtml(notes)}</div>` : ""}
             </div>
         `;
     });
