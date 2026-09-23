@@ -267,7 +267,7 @@ exports.getWaiterItems = (restaurantId, callback) => {
         FROM menu_items m
         INNER JOIN categories c ON m.category_id = c.id
         WHERE m.restaurant_id = ? AND m.deleted_at IS NULL
-        ORDER BY m.item_name ASC
+        ORDER BY m.display_order ASC, m.item_name ASC
     `;
 
     db.query(sql, [restaurantId], callback);
@@ -304,7 +304,7 @@ exports.getWaiterItemsByCategory = (categoryId, restaurantId, callback) => {
         FROM menu_items m
         INNER JOIN categories c ON m.category_id = c.id
         WHERE m.category_id = ? AND m.restaurant_id = ? AND m.deleted_at IS NULL
-        ORDER BY m.item_name ASC
+        ORDER BY m.display_order ASC, m.item_name ASC
     `;
 
     db.query(sql, [categoryId, restaurantId], callback);
