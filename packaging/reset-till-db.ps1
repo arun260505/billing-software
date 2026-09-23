@@ -59,7 +59,7 @@ if (Test-Path $data) {
 }
 
 Say ""
-Say "DONE. Now run InWallzSetup.exe (the new one) and enter the salon key:"
-Say "    INWZ-GJJA-AKWR"
+Say "DONE. Now run InWallzSetup.exe (the new one) and enter THIS shop's activation"
+Say "key when asked (from the cloud admin / your InWallz records)."
 Say "Keep the PC on the internet. After it finishes, wait ~1 minute for the sync,"
-Say "then log in with:  glowowner  /  Glow@2026"
+Say "then log in with this shop's owner/cashier account."
