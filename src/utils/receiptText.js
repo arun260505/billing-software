@@ -340,7 +340,9 @@ export function buildKotText({ order = {}, format = {} }) {
     // The order number on every ticket: a parcel calls it a Token (to match the
     // packed order at pickup), a dine-in calls it the Bill No. — so the kitchen
     // can call an order by the same number that's on the customer's bill.
-    if (orderNumber) out.push(bold(lr(isParcel ? "Token:" : "Bill No.:", `#${orderNumber}`, W)));
+    // The token number, joined on one line and printed BIG + bold (double height),
+    // so the kitchen can call the order by the number that's also on the bill.
+    if (orderNumber) out.push(heading(center(`Token No.: #${orderNumber}`, W)));
 
     // Who took the order (bold) on the left, time on the right — one line. A
     // waiter's dine-in order names the waiter; a counter order the cashier rang
@@ -362,7 +364,7 @@ export function buildKotText({ order = {}, format = {} }) {
     out.push("");   // breathing room before the first item
 
     let totalQty = 0;
-    items.forEach((it, idx) => {
+    items.forEach((it) => {
         const qty = Number(it.quantity || 1);
         totalQty += qty;
         const name = it.item_name || it.name || "Item";
@@ -377,8 +379,8 @@ export function buildKotText({ order = {}, format = {} }) {
         if (cfg.show_item_notes && (it.notes || it.note)) {
             wrap(`** ${it.notes || it.note}`, W).forEach((l) => out.push(bold(l)));
         }
-        // Blank line between items (not after the last) for readability.
-        if (idx < items.length - 1) out.push("");
+        // No blank line between items — they sit together (only the one gap after
+        // the header, above the first item).
     });
 
     out.push(repeat("-", W));

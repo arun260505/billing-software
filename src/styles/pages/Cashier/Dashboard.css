@@ -99,6 +99,12 @@
 .cashier-app .pos-tchip.parcel { border-color: #bfdbfe; background: #eff6ff; }
 .cashier-app .pos-tchip.parcel .pos-tchip-state { color: #2563eb; }
 .cashier-app .pos-tchip.sel { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(13,148,136,.22); }
+/* Whatever is selected (Counter / Bill Only / a table) stands out; every OTHER
+   chip is greyed so the cashier sees the active mode at a glance. Still fully
+   clickable — hover/focus brings it back to full colour. */
+.cashier-app .pos-tchip:not(.sel) { opacity: .48; filter: grayscale(.55); transition: opacity .12s, filter .12s, transform .08s; }
+.cashier-app .pos-tchip:not(.sel):hover,
+.cashier-app .pos-tchip:not(.sel):focus-visible { opacity: 1; filter: none; }
 
 /* ── Bills-to-print banner ───────────────────────────────────────────── */
 .cashier-app .pos-printalert {

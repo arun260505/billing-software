@@ -82,9 +82,9 @@ export function generateKitchenTicketHtml({ order = {}, format = {} }) {
     let metaHtml = `<div style="font-size: ${is58mm ? "10px" : "12px"}; margin: 4px 0;">`;
     const metaRows = [];
 
-    // Dine-in reads the table banner above; only a parcel needs a token number.
-    if (cfg.show_order_number && isParcel && orderNumber) {
-        metaRows.push(`<div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58mm ? "11px" : "13px"};"><span>Token:</span><span>#${escapeHtml(orderNumber)}</span></div>`);
+    // The token number, big + bold, on every ticket.
+    if (cfg.show_order_number && orderNumber) {
+        metaRows.push(`<div style="text-align: center; font-weight: 900; font-size: ${is58mm ? "18px" : "24px"}; margin: 3px 0;">Token No.: #${escapeHtml(orderNumber)}</div>`);
     }
 
     if (cfg.show_order_type) {
@@ -131,7 +131,7 @@ export function generateKitchenTicketHtml({ order = {}, format = {} }) {
         const category = it.category_name || it.category || "";
 
         itemsHtml += `
-            <div style="border-bottom: 1px dashed #ccc; padding: 9px 0;">
+            <div style="border-bottom: 1px dashed #ccc; padding: 4px 0;">
                 <div style="display: flex; align-items: flex-start; justify-content: space-between; max-width: 62%;">
                     <div style="flex: 1; padding-right: 6px;">
                         ${cfg.show_item_category && category ? `<div style="font-size: 9px; text-transform: uppercase; color: #555;">[${escapeHtml(category)}]</div>` : ""}
