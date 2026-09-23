@@ -53,6 +53,10 @@ function Dashboard() {
     // ── State ───────────────────────────────────────────────────────
     const [tables, setTables] = useState([]);
     const [selectedTable, setSelectedTable] = useState(null);
+    // "Bill only" counter mode: rings up a walk-in sale WITHOUT sending anything
+    // to the kitchen (for ready items — water, packed goods). It's a counter
+    // order (no table) that skips every kitchen ticket.
+    const [billOnly, setBillOnly] = useState(false);
     const [categories, setCategories] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
     const [allItems, setAllItems] = useState([]);    // whole menu (search across categories)
@@ -410,6 +414,7 @@ function Dashboard() {
     const handleSelectTable = async (table) => {
         if (blockIfParcelLocked()) return;
         setSelectedTable(table);
+        setBillOnly(false);   // a table order always goes to the kitchen
         await loadCategories();
         // Fresh cart for new items (each send = a new kitchen ticket).
         setCart([]);
@@ -547,6 +552,22 @@ function Dashboard() {
             if (!ok) return;
         }
         setSelectedTable(null);
+        setBillOnly(false);
+        setCart([]);
+        setEditingOrder(null);
+        await loadTables();
+    };
+
+    // "Bill Only" counter mode — a walk-in sale that is NOT sent to the kitchen.
+    // Same as Counter, but flags the bill so no kitchen ticket is printed.
+    const handleBillOnly = async () => {
+        if (blockIfParcelLocked()) return;
+        if (cart.length > 0) {
+            const ok = window.confirm("You have an unfinished order. Discard it?");
+            if (!ok) return;
+        }
+        setSelectedTable(null);
+        setBillOnly(true);
         setCart([]);
         setEditingOrder(null);
         await loadTables();
@@ -738,8 +759,10 @@ function Dashboard() {
         setBillData({
             order_id: deferCreate ? undefined : orderId,
             order_number: deferCreate ? undefined : assignedOrderNumber,
-            tableName: selectedTable ? (selectedTable.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`) : "Counter",
+            tableName: selectedTable ? (selectedTable.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`) : (billOnly ? "Counter (Bill only)" : "Counter"),
             isCounter: isTakeaway,
+            // Bill-only: never print a kitchen ticket for this sale.
+            noKitchen: billOnly,
             table_number: selectedTable?.table_number,
             items: mergeCartItems(cart),
             subtotal: Number(subtotal.toFixed(2)),
@@ -789,6 +812,8 @@ function Dashboard() {
         // two-printer sends it to the kitchen printer (its on-send KOT was held
         // back). Dine-in already printed its KOT when it was sent; the kitchen
         // display setup prints nothing.
+        // "Bill only" sales are never sent to the kitchen.
+        if (printedOrder?.noKitchen) return;
         const isCounter = Boolean(printedOrder?.isCounter);
         const wantsKot = isCounter &&
             (shouldPrintKotWithBill(printerMode, isCounter) || shouldPrintKotOnSend(printerMode));
@@ -826,6 +851,7 @@ function Dashboard() {
         counterPayloadRef.current = null;
         setCart([]);
         setSelectedTable(null);
+        setBillOnly(false);
         setEditingOrder(null);
         alert("Bill Generated Successfully");
         updateDateTime();
@@ -1256,6 +1282,16 @@ function Dashboard() {
             <div className="pos-tablebar">
                 <span className="pos-tablebar-label">Tables</span>
                 <div className="pos-tables">
+                    {/* Counter first, then a "Bill only" walk-in that never goes to
+                        the kitchen, then the tables. */}
+                    <button className={`pos-tchip counter${!selectedTable && !billOnly ? " sel" : ""}`} onClick={handleChangeTable} title="Walk-in order (sends to kitchen)">
+                        <span className="pos-tchip-name">🧾</span>
+                        <span className="pos-tchip-state">Counter</span>
+                    </button>
+                    <button className={`pos-tchip billonly${!selectedTable && billOnly ? " sel" : ""}`} onClick={handleBillOnly} title="Bill a ready item — does NOT send to the kitchen">
+                        <span className="pos-tchip-name">💵</span>
+                        <span className="pos-tchip-state">Bill Only</span>
+                    </button>
                     {tables.map((table) => {
                         const isFree = table.status === "FREE";
                         const isBilled = table.needs_bill;
@@ -1271,10 +1307,6 @@ function Dashboard() {
                             </button>
                         );
                     })}
-                    <button className={`pos-tchip counter${!selectedTable ? " sel" : ""}`} onClick={handleChangeTable} title="Order without a table">
-                        <span className="pos-tchip-name">🧾</span>
-                        <span className="pos-tchip-state">Counter</span>
-                    </button>
                 </div>
             </div>
 
@@ -1324,7 +1356,7 @@ function Dashboard() {
                     <div className="pos-bill-head">
                         <div className="pos-bill-headtext">
                             <span className="pos-bill-title">
-                                {selectedTable ? `Table ${selectedTable.table_number}` : "🧾 Counter Order"}
+                                {selectedTable ? `Table ${selectedTable.table_number}` : billOnly ? "💵 Bill Only (no kitchen)" : "🧾 Counter Order"}
                             </span>
                             <span className="pos-bill-sub">{editingOrder ? editingOrder.order_number : (selectedTable ? "New order" : "Walk-in — no table")}</span>
                         </div>
@@ -1387,7 +1419,7 @@ function Dashboard() {
                                 </button>
                             )}
                             <button className="pos-pay" onClick={handleProceedToBilling} disabled={cart.length === 0 || orderBusy}>
-                                {orderBusy ? "Processing..." : selectedTable ? "Proceed to Billing →" : "Send & Bill →"}
+                                {orderBusy ? "Processing..." : selectedTable ? "Proceed to Billing →" : billOnly ? "Bill (No Kitchen) →" : "Send & Bill →"}
                             </button>
                         </div>
                         {selectedTable && (editingOrder || activeTableOrder) && <button className="pos-cancel" onClick={handleCancelOrder}>✕ Cancel Order</button>}

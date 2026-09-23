@@ -287,6 +287,9 @@
 /* Counter chip (order without a table) */
 .cashier-app .pos-tchip.counter { border-color: #cbd5e1; background: #f8fafc; }
 .cashier-app .pos-tchip.counter .pos-tchip-state { color: #475569; }
+.cashier-app .pos-tchip.billonly { border-color: #86efac; background: #f0fdf4; }
+.cashier-app .pos-tchip.billonly .pos-tchip-state { color: #15803d; }
+.cashier-app .pos-tchip.billonly.sel { border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.22); }
 
 /* ── Bill generation modal (BillModal component) ─────────────────────── */
 .cashier-app .bill-overlay {
