@@ -363,7 +363,7 @@ export function buildKotText({ order = {}, format = {} }) {
         const qty = Number(it.quantity || 1);
         totalQty += qty;
         const name = it.item_name || it.name || "Item";
-        const suffix = showQty ? `   Qty ${qty}` : "";
+        const suffix = showQty ? ` Qty ${qty}` : "";
         const nameLines = wrap(name, W - suffix.length);
         nameLines.forEach((l, i) => {
             const isLast = i === nameLines.length - 1;
