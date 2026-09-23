@@ -1226,11 +1226,19 @@ const getTodaysBills = (restaurantId, callback) => {
         WHERE o.restaurant_id = ?
           AND o.order_status IN ('Completed','Cancelled')
           AND o.deleted_at IS NULL
-          AND DATE(o.created_at) = CURDATE()
+          -- Bills for the current OPEN business day (from when it was opened),
+          -- not the calendar date — so a shop billing past midnight keeps its
+          -- bills on screen until it Closes the day. Falls back to today's date
+          -- when no day is open.
+          AND o.created_at >= COALESCE(
+              (SELECT opened_at FROM day_closures
+               WHERE restaurant_id = ? AND deleted_at IS NULL
+               ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1),
+              CURDATE())
         ORDER BY o.id DESC
     `;
 
-    db.query(sql, [restaurantId], callback);
+    db.query(sql, [restaurantId, restaurantId], callback);
 
 };
 

@@ -3,7 +3,7 @@ import authService from "../../services/authService";
 import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
 import { getCategories, getItemsByCategory, getAllItems } from "../../services/menuService";
-import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, markItemServed, cancelItem, setItemQuantity, addBillItem, updateOrder, cancelOrder, getTodaysOrderCount, getBill, addItemToOrder, rebillOrder } from "../../services/orderService";
+import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, markItemServed, cancelItem, setItemQuantity, addBillItem, updateOrder, cancelOrder, getTodaysOrderCount, getBill, addItemToOrder, rebillOrder, getTodaysBills } from "../../services/orderService";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -1105,60 +1105,39 @@ function Dashboard() {
     const generateTableBill = async (payments, finalTotal, selectedCharges = []) => {
         const table = tableBillTarget;
         setTableBillBusy(true);
-        try {
-            const items = tableBillItems;
-            const paymentList = Array.isArray(payments) ? payments : [{ method: payments, amount: finalTotal }];
-            const primaryMethod = paymentList[0]?.method || "Cash";
 
-            // Same calculation the backend will run (utils/rates mirrors
-            // backend/utils/billing.js): the charges this restaurant applies to
-            // every dine-in bill, plus the ones the cashier picked.
-            const sub = roundMoney(items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0));
-            const {
-                tax: gstAmt,
-                service_charge: svc,
-                charge_lines: resolvedCharges,
-                grand_total: computedTotal
-            } = billTotals(sub, [...autoChargesFor(charges, "Dine-In"), ...selectedCharges]);
+        const items = tableBillItems;
+        const paymentList = Array.isArray(payments) ? payments : [{ method: payments, amount: finalTotal }];
+        const primaryMethod = paymentList[0]?.method || "Cash";
 
-            const total = finalTotal || computedTotal;
+        // Same calculation the backend will run (utils/rates mirrors
+        // backend/utils/billing.js): the charges this restaurant applies to
+        // every dine-in bill, plus the ones the cashier picked.
+        const sub = roundMoney(items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0));
+        const {
+            tax: gstAmt,
+            service_charge: svc,
+            charge_lines: resolvedCharges,
+            grand_total: computedTotal
+        } = billTotals(sub, [...autoChargesFor(charges, "Dine-In"), ...selectedCharges]);
 
-            // Settle BEFORE printing. The backend re-derives the total from what
-            // it has stored and can refuse (an item changed under the cashier,
-            // something still unserved) — printing first would put a receipt in
-            // the customer's hand for a sale that never got recorded.
-            //
-            // `charges` go up as name/type/amount; the backend resolves them to
-            // rupees itself and stores them on the order, so grand_total is the
-            // whole amount owed and the payment lines reconcile against it.
-            const settled = await settleTable(table.id, paymentList, total, selectedCharges);
+        const total = finalTotal || computedTotal;
 
-            // The bill's real number, straight from the order that was just
-            // settled. This printed "TBL-<table>-<last 4 digits of the clock>",
-            // which matched nothing in the database and came out different on
-            // every reprint of the same bill.
-            const billNumber = settled?.data?.data?.order_number
-                || `Table ${table.table_number}`;
+        // Who took this order — the waiter who served, else the cashier at the counter.
+        const tableOrder = runningOrders.find((o) => Number(o.table_id) === Number(table.id));
+        const billedByWaiter = tableOrder && tableOrder.employee_role === "waiter" ? tableOrder.employee_name : null;
+        const billedByCashier = billedByWaiter ? null : (tableOrder && tableOrder.employee_name) || cashierName;
 
-            // Who took this order — so the bill names the waiter who served it
-            // (a dine-in order the waiter sent), and falls back to the cashier at
-            // the counter for a walk-in the cashier rang up directly.
-            const tableOrder = runningOrders.find((o) => Number(o.table_id) === Number(table.id));
-            const billedByWaiter = tableOrder && tableOrder.employee_role === "waiter"
-                ? tableOrder.employee_name
-                : null;
-            const billedByCashier = billedByWaiter
-                ? null
-                : (tableOrder && tableOrder.employee_name) || cashierName;
-
-            // Sale is recorded — now print. A print failure from here on cannot
-            // lose the sale, which is the whole point of the ordering.
+        // Print the customer copy and clear the screen. Called on a normal settle
+        // AND on the recovery path (a settle whose reply was lost) so the customer
+        // always gets one bill and the cashier never sees a false failure.
+        const printAndFinish = async (billNumber, methodLabel) => {
             printBillNow({
                 order: {
                     order_number: billNumber,
                     tableName: `Table ${table.table_number}`,
                     table_number: table.table_number,
-                    items: items,
+                    items,
                     subtotal: sub,
                     tax: gstAmt,
                     service_charge: svc,
@@ -1166,7 +1145,6 @@ function Dashboard() {
                     grand_total: total,
                     payment_method: primaryMethod,
                     payments: paymentList,
-                    // The waiter who served, else the cashier at the counter.
                     waiter_name: billedByWaiter || undefined,
                     cashier_name: billedByCashier || undefined,
                     date: currentDate,
@@ -1175,10 +1153,7 @@ function Dashboard() {
                 restaurant: restaurantInfo || {},
                 format: billFormat || {}
             });
-            const label = paymentList.length > 1
-                ? paymentList.map((p) => p.method).join(" + ")
-                : primaryMethod;
-            alert(`Table ${table.table_number} billed (${label}) & settled — now Available.`);
+            alert(`Table ${table.table_number} billed (${methodLabel}) & settled — now Available.`);
             setShowTableBill(false);
             setTableBillTarget(null);
             setTableBillItems([]);
@@ -1186,11 +1161,44 @@ function Dashboard() {
             await loadTables();
             await loadRunningOrders();
             await loadTodaysOrderCount();
+        };
+
+        const label = paymentList.length > 1 ? paymentList.map((p) => p.method).join(" + ") : primaryMethod;
+
+        try {
+            // Settle BEFORE printing — the backend re-derives the total and can
+            // refuse (item changed, something unserved); printing first would hand
+            // a receipt for a sale that never recorded.
+            const settled = await settleTable(table.id, paymentList, total, selectedCharges);
+            const billNumber = settled?.data?.data?.order_number || `Table ${table.table_number}`;
+            await printAndFinish(billNumber, label);
         } catch (e) {
-            // The backend refuses a settle for reasons the cashier can act on
-            // (items not yet served, a total that no longer matches). Swallowing
-            // that behind "Could not generate the bill" left them with nothing
-            // to go on.
+            // A NO-RESPONSE error (timeout / lost reply on a busy moment) does NOT
+            // mean the bill failed — the settle may have completed on the till. Re-
+            // check the table: if it's now free, the bill went through, so recover
+            // its number, print, and show success — instead of the scary "not sent"
+            // that led staff to re-bill the same table.
+            if (!e.response) {
+                try {
+                    const fresh = await getTables();
+                    const t2 = (fresh.data || []).find((x) => Number(x.id) === Number(table.id));
+                    const freed = t2 && !["OCCUPIED", "BILLING"].includes(String(t2.status || "").toUpperCase());
+                    if (freed) {
+                        let billNumber = `Table ${table.table_number}`;
+                        try {
+                            const bills = await getTodaysBills();
+                            const b = (bills.data?.data || [])
+                                .filter((x) => Number(x.table_id) === Number(table.id) && x.order_status === "Completed")
+                                .sort((a, c) => c.id - a.id)[0];
+                            if (b?.order_number) billNumber = b.order_number;
+                        } catch { /* keep the fallback label */ }
+                        await printAndFinish(billNumber, label);
+                        return;
+                    }
+                } catch { /* fall through to the normal error */ }
+            }
+            // A real refusal (unserved item, total mismatch) still tells the cashier
+            // exactly what to fix.
             alert(e.response?.data?.message || e.friendlyMessage || "Could not generate the bill.");
         } finally {
             setTableBillBusy(false);
