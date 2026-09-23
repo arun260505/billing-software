@@ -38,10 +38,6 @@ function RunningOrders({
 
                                 <div className="running-card-body">
                                     <p>
-                                        <span>Status</span>
-                                        <strong className={`status-${order.status.toLowerCase()}`}>{order.status}</strong>
-                                    </p>
-                                    <p>
                                         <span>Items</span>
                                         <strong>{Math.round(Number(order.total_items))}</strong>
                                     </p>
