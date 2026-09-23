@@ -255,7 +255,7 @@ const getSalesChart = (period, restaurantId, today, callback) => {
         "AND o.created_at >= COALESCE(dc.opened_at, dc.business_date) " +
         "AND (dc.closed_at IS NULL OR o.created_at < dc.closed_at) " +
         "ORDER BY dc.opened_at DESC LIMIT 1)";
-    const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
+    const openWin = `COALESCE((SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1), ${D})`;
     let sql = "";
 
     if (period === "today") {
@@ -321,8 +321,10 @@ const getSalesChart = (period, restaurantId, today, callback) => {
 // who is idle; an inactive one appears only if they billed today.
 const getStylistBoard = (restaurantId, today, callback) => {
 
-    // "Today" = the current open business day (opened at the counter).
-    const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
+    // "Today" = the current open business day (opened at the counter). Floors to
+    // start-of-today when there is no day row, so a fresh shop still shows activity.
+    const D = dayLiteral(today);
+    const openWin = `COALESCE((SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1), ${D})`;
     // Credit each service LINE to the stylist chosen on it (order_items.stylist_id),
     // falling back to the bill's stylist (orders.stylist_id) for lines/old bills
     // with none. So a bill worked by two stylists splits between them. "sales" is
@@ -374,8 +376,12 @@ const getStylistBoard = (restaurantId, today, callback) => {
 // rows, so "items" is the quantity of menu items handled, not the bill count.
 const getWaiterBoard = (restaurantId, today, callback) => {
 
-    // "Today" = the current open business day (opened at the counter).
-    const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
+    // "Today" = the current open business day (opened at the counter). Floors to
+    // start-of-today when there is no day row at all, so a fresh/just-cleared shop
+    // still shows live staff activity instead of every row reading zero (same fix
+    // and reasoning as getSummary's today window).
+    const D = dayLiteral(today);
+    const openWin = `COALESCE((SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1), ${D})`;
     const sql = `
         SELECT
             u.id,
