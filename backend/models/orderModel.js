@@ -835,22 +835,29 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
 
                                 consolidate()
                                     .catch((e) => console.error("Bill consolidation warning (sale is safe):", e.message))
-                                    .then(() => db.query(
-                                        "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
-                                        [tableId, restaurantId],
-                                        (err) => {
-                                            if (err) return callback(err);
-                                            // Hand back the bill's identity so the
-                                            // receipt prints the stored number and a
-                                            // reprint carries the same one.
-                                            callback(null, {
-                                                order_id: primary ? primary.id : null,
-                                                order_number: primary ? primary.order_number : null,
-                                                order_count: orders.length,
-                                                grand_total: billTotal
-                                            });
-                                        }
-                                    ));
+                                    .then(() => {
+                                        // NOTE: braces here are REQUIRED. Returning the
+                                        // callback-style db.query() (a mysql2 thenable)
+                                        // from .then made the Promise try to resolve it,
+                                        // mysql2 threw "await on a non-promise query", and
+                                        // the server CRASHED on every table settle.
+                                        db.query(
+                                            "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
+                                            [tableId, restaurantId],
+                                            (err) => {
+                                                if (err) return callback(err);
+                                                // Hand back the bill's identity so the
+                                                // receipt prints the stored number and a
+                                                // reprint carries the same one.
+                                                callback(null, {
+                                                    order_id: primary ? primary.id : null,
+                                                    order_number: primary ? primary.order_number : null,
+                                                    order_count: orders.length,
+                                                    grand_total: billTotal
+                                                });
+                                            }
+                                        );
+                                    });
                             };
 
                             // attrLine(msg, amountLeft, nextOrderIdx, allDone)
