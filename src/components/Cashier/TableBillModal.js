@@ -342,7 +342,7 @@ function TableBillModal({ table, items, menuItems, busy, charges = [], onSetQty,
 
                     <button
                         className="tbill-generate"
-                        disabled={!canGenerate || !canGeneratePayments}
+                        disabled={busy || !canGenerate || !canGeneratePayments}
                         onClick={() => onGenerate(payments, total, selectedCharges)}
                     >
                         {busy ? "Working…" : unservedCount > 0 ? `Served ${groups.length - unservedCount}/${groups.length} — Generate Locked` : `🖨 Generate Bill · ₹${total.toFixed(2)}`}
