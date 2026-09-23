@@ -206,13 +206,26 @@ async function summaryOf(restaurantId, row) {
 // Open the day, or CONTINUE one already running / just closed today. A fresh day
 // only starts when the previous one is closed and belongs to an earlier date —
 // which is what keeps the windows from colliding.
+// Opening the day is a fresh start: every item marked "unavailable" (sold out)
+// during the previous day becomes available again, so the counter never has to
+// re-enable them one by one each morning. Category timing still applies.
+async function resetItemsAvailable(restaurantId) {
+    try {
+        await db.query("UPDATE menu_items SET available = 1 WHERE restaurant_id = ?", [restaurantId]);
+    } catch (e) {
+        // Never let this block opening the day — it's a convenience, not a gate.
+        console.error("resetItemsAvailable failed:", e.message);
+    }
+}
+
 async function openDay(restaurantId, userId, today) {
     const open = await getOpenDay(restaurantId);   // consolidates duplicates too
-    if (open) return open;
+    if (open) return open;                          // already open — leave items as they are
 
     const latest = await getLatest(restaurantId);
     if (latest && latest.status === "closed" && ymd(latest.business_date) === today) {
         await db.query("UPDATE day_closures SET status = 'open', closed_at = NULL WHERE id = ?", [latest.id]);
+        await resetItemsAvailable(restaurantId);
         const row = await getRowById(restaurantId, latest.id);
         await announceOpen(restaurantId, row);
         return row;
@@ -223,6 +236,7 @@ async function openDay(restaurantId, userId, today) {
          VALUES (?, ?, 'open', ?, NOW())`,
         [restaurantId, today, userId || null]
     );
+    await resetItemsAvailable(restaurantId);
     const row = await getOpenDay(restaurantId);
     await announceOpen(restaurantId, row);
     return row;
