@@ -348,27 +348,34 @@ export function buildKotText({ order = {}, format = {} }) {
     out.push(bold(lr(takenBy, timeStr, W)));
 
     out.push(repeat("-", W));
-    // Item on the left, quantity on the RIGHT edge (the cook reads the dish, the
-    // count sits where the eye lands last). Columns labelled to match.
+    // Item on the left, quantity on the RIGHT edge. Columns labelled to match.
     const showQty = cfg.show_item_qty !== 0;   // default on
     out.push(bold(showQty ? lr("ITEM", "QTY", W) : "ITEM"));
 
+    // Items are the one thing the cook must not misread, so print them at double
+    // HEIGHT (this printer honours the GS! size command even when it ignores the
+    // ESC E / ESC G bold commands) and run a DOTTED LEADER from each dish to its
+    // count on the right, so a busy line never maps to the wrong quantity.
     let totalQty = 0;
     items.forEach((it) => {
         const qty = Number(it.quantity || 1);
         totalQty += qty;
         const name = it.item_name || it.name || "Item";
         const qtyStr = showQty ? `${qty}` : "";
-        // Leave room on the first line for the qty pinned to the right edge.
-        const firstWidth = showQty ? W - qtyStr.length - 1 : W;
-        const nameLines = wrap(name, firstWidth);
+        const reserve = showQty ? qtyStr.length + 2 : 0;   // room for "..N" on the last line
+        const nameLines = wrap(name, W - reserve);
         nameLines.forEach((l, i) => {
-            if (i === 0 && showQty) out.push(bold(lr(l, qtyStr, W)));  // name left, qty right
-            else out.push(bold(l));
+            const isLast = i === nameLines.length - 1;
+            if (showQty && isLast) {
+                const dots = Math.max(2, W - l.length - qtyStr.length);
+                out.push(bold(tall(l + repeat(".", dots) + qtyStr)));  // name .... qty (big)
+            } else {
+                out.push(bold(tall(l)));
+            }
         });
-        // A cooking note matters, so keep it (light) right under its item.
+        // A cooking note matters, so keep it (normal size) right under its item.
         if (cfg.show_item_notes && (it.notes || it.note)) {
-            wrap(`** ${it.notes || it.note}`, W).forEach((l) => out.push(l));
+            wrap(`** ${it.notes || it.note}`, W).forEach((l) => out.push(bold(l)));
         }
     });
 
