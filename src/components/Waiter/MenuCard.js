@@ -1,5 +1,7 @@
 // Clean mobile menu card: veg / non-veg dot, name, description, price.
-// A "+" button adds the item; once in the cart it becomes a  − qty +  stepper.
+// Tapping ANYWHERE on the card adds one to the order (and bumps the quantity);
+// the "+" button and the − qty + stepper still work on their own — they stop the
+// click from bubbling so a tap on a button doesn't count twice.
 // onToggleAvailability is optional — only the cashier passes it, which shows the
 // "Mark Available / Unavailable" toggle on each card.
 function MenuCard({ item, addToCart, removeOneFromCart, quantity = 0, onToggleAvailability }) {
@@ -10,8 +12,15 @@ function MenuCard({ item, addToCart, removeOneFromCart, quantity = 0, onToggleAv
     const ft = String(item.food_type || "Veg").toLowerCase();
     const foodClass = ft.includes("non") ? "nonveg" : ft.includes("egg") ? "egg" : "veg";
 
+    // A tap on the card body adds the item (only when it's available).
+    const handleCardAdd = () => { if (!isUnavailable) addToCart(item); };
+
     return (
-        <div className={`menu-card food-${foodClass}${isUnavailable ? " out-of-stock-card" : ""}`}>
+        <div
+            className={`menu-card food-${foodClass}${isUnavailable ? " out-of-stock-card" : " is-tappable"}`}
+            onClick={handleCardAdd}
+            role="button"
+        >
             <span className={`veg-dot veg-dot-${foodClass}`} aria-hidden="true">
                 <i />
             </span>
@@ -30,12 +39,12 @@ function MenuCard({ item, addToCart, removeOneFromCart, quantity = 0, onToggleAv
                         <span className="menu-unavailable-tag">Unavailable</span>
                     ) : quantity > 0 ? (
                         <div className="mc-stepper">
-                            <button className="mc-step" onClick={() => removeOneFromCart && removeOneFromCart(item)}>−</button>
+                            <button className="mc-step" onClick={(e) => { e.stopPropagation(); removeOneFromCart && removeOneFromCart(item); }}>−</button>
                             <span className="mc-qty">{quantity}</span>
-                            <button className="mc-step mc-step-add" onClick={() => addToCart(item)}>+</button>
+                            <button className="mc-step mc-step-add" onClick={(e) => { e.stopPropagation(); addToCart(item); }}>+</button>
                         </div>
                     ) : (
-                        <button className="mc-add" onClick={() => addToCart(item)} title="Add to order">+</button>
+                        <button className="mc-add" onClick={(e) => { e.stopPropagation(); addToCart(item); }} title="Add to order">+</button>
                     )}
                 </div>
             </div>
