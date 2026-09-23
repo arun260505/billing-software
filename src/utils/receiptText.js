@@ -342,7 +342,7 @@ export function buildKotText({ order = {}, format = {} }) {
     // can call an order by the same number that's on the customer's bill.
     // The token number, joined on one line and printed BIG + bold (double height),
     // so the kitchen can call the order by the number that's also on the bill.
-    if (orderNumber) out.push(heading(center(`Token No.: #${orderNumber}`, W)));
+    if (orderNumber) out.push(heading(center(`Token No: ${orderNumber}`, W)));
 
     // Who took the order (bold) on the left, time on the right — one line. A
     // waiter's dine-in order names the waiter; a counter order the cashier rang

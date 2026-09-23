@@ -621,9 +621,9 @@
 }
 .waiter-app .category-tabs::-webkit-scrollbar { display: none; }
 .waiter-app .category-tabs button {
-    flex: 0 0 auto; border: none; background: #eef1f5; color: #475569;
-    padding: 9px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
-    cursor: pointer; white-space: nowrap;
+    flex: 0 0 auto; border: none; background: #eef1f5; color: #334155;
+    padding: 13px 22px; border-radius: 24px; font-size: 16px; font-weight: 700;
+    cursor: pointer; white-space: nowrap; line-height: 1.15;
 }
 .waiter-app .category-tabs .active-category { background: #2563eb; color: #ffffff; }
 .waiter-app .category-tabs .tab-star { display: none; }

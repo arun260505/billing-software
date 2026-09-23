@@ -90,21 +90,23 @@
     position: absolute; top: 6px; right: 8px; font-size: 10px; font-weight: 800;
     color: #475569; background: #eef2f7; border-radius: 999px; padding: 1px 6px;
 }
-.cashier-app .pos-tchip.free   { border-color: #93c5fd; background: #eff6ff; }
-.cashier-app .pos-tchip.free   .pos-tchip-state { color: #2563eb; }
-.cashier-app .pos-tchip.occ    { border-color: #fcd34d; background: #fffbeb; }
+/* Status colours: available = GREEN, occupied = YELLOW, billed = BLUE. */
+.cashier-app .pos-tchip.free   { border-color: #22c55e; background: #f0fdf4; }
+.cashier-app .pos-tchip.free   .pos-tchip-state { color: #15803d; }
+.cashier-app .pos-tchip.free   .pos-tchip-name  { color: #166534; }
+.cashier-app .pos-tchip.occ    { border-color: #f59e0b; background: #fffbeb; }
 .cashier-app .pos-tchip.occ    .pos-tchip-state { color: #b45309; }
-.cashier-app .pos-tchip.billed { border-color: #fca5a5; background: #fef2f2; }
-.cashier-app .pos-tchip.billed .pos-tchip-state { color: #dc2626; }
+.cashier-app .pos-tchip.billed { border-color: #2563eb; background: #eff6ff; }
+.cashier-app .pos-tchip.billed .pos-tchip-state { color: #2563eb; }
 .cashier-app .pos-tchip.parcel { border-color: #bfdbfe; background: #eff6ff; }
 .cashier-app .pos-tchip.parcel .pos-tchip-state { color: #2563eb; }
-.cashier-app .pos-tchip.sel { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(13,148,136,.22); }
-/* Whatever is selected (Counter / Bill Only / a table) stands out; every OTHER
-   chip is greyed so the cashier sees the active mode at a glance. Still fully
-   clickable — hover/focus brings it back to full colour. */
-.cashier-app .pos-tchip:not(.sel) { opacity: .48; filter: grayscale(.55); transition: opacity .12s, filter .12s, transform .08s; }
-.cashier-app .pos-tchip:not(.sel):hover,
-.cashier-app .pos-tchip:not(.sel):focus-visible { opacity: 1; filter: none; }
+/* Whatever is SELECTED (Counter / Bill Only / a table) turns solid BLUE so the
+   active choice is unmistakable. Double .sel.sel keeps it winning over the
+   status/Counter/Bill-Only colours no matter where they sit in the file. */
+.cashier-app .pos-tchip.sel.sel { border-color: #1d4ed8; background: #2563eb; box-shadow: 0 2px 8px rgba(37,99,235,.35); }
+.cashier-app .pos-tchip.sel.sel .pos-tchip-name,
+.cashier-app .pos-tchip.sel.sel .pos-tchip-state { color: #fff; }
+.cashier-app .pos-tchip.sel.sel .pos-tchip-served { background: rgba(255,255,255,.25); color: #fff; }
 
 /* ── Bills-to-print banner ───────────────────────────────────────────── */
 .cashier-app .pos-printalert {
@@ -160,7 +162,12 @@
     cursor: pointer; white-space: normal; line-height: 1.25;
 }
 .cashier-app .category-tabs button:hover { background: #dbe3ee; }
-.cashier-app .category-tabs .active-category { background: #2563eb; color: #fff; }
+/* The selected category stays solid BLUE — including :hover, because on a touch
+   screen the hover state sticks after a tap and (being more specific than a plain
+   .active-category) was overriding the highlight, so the picked category looked
+   un-selected. */
+.cashier-app .category-tabs button.active-category,
+.cashier-app .category-tabs button.active-category:hover { background: #2563eb; color: #fff; }
 .cashier-app .category-tabs .tab-star { display: none; }
 
 /* menu grid */
@@ -294,12 +301,12 @@
 .cashier-app .cir-qty { min-width: 18px; text-align: center; font-weight: 800; }
 .cashier-app .cir-remove { width: 26px; height: 26px; border: none; background: #fef2f2; color: #dc2626; border-radius: 7px; cursor: pointer; font-weight: 800; }
 
-/* Counter chip (order without a table) */
-.cashier-app .pos-tchip.counter { border-color: #cbd5e1; background: #f8fafc; }
-.cashier-app .pos-tchip.counter .pos-tchip-state { color: #475569; }
-.cashier-app .pos-tchip.billonly { border-color: #86efac; background: #f0fdf4; }
-.cashier-app .pos-tchip.billonly .pos-tchip-state { color: #15803d; }
-.cashier-app .pos-tchip.billonly.sel { border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.22); }
+/* Counter + Bill Only: greyed when NOT selected; the solid-blue .sel.sel rule
+   above turns them blue when selected. */
+.cashier-app .pos-tchip.counter  { border-color: #cbd5e1; background: #f8fafc; }
+.cashier-app .pos-tchip.counter  .pos-tchip-state { color: #475569; }
+.cashier-app .pos-tchip.billonly { border-color: #cbd5e1; background: #f8fafc; }
+.cashier-app .pos-tchip.billonly .pos-tchip-state { color: #475569; }
 
 /* ── Bill generation modal (BillModal component) ─────────────────────── */
 .cashier-app .bill-overlay {

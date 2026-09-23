@@ -70,10 +70,23 @@ function NetworkGate({ children }) {
         }
 
         let cancelled = false;
+        let ticks = 0;
+        let scanning = false;
         const reloadNow = () => { if (!cancelled) window.location.reload(); };
 
         const id = setInterval(async () => {
-            if (await isServerReachable() && !cancelled) reloadNow();
+            ticks += 1;
+            // Fast path: the remembered till answered again → reload (this also
+            // resets a wedged WebView network stack after a WiFi drop+return).
+            if (await isServerReachable() && !cancelled) { reloadNow(); return; }
+            // Every ~15s, RE-SCAN the WiFi in case the till moved to a new IP.
+            // This auto-recovers the "stuck searching" loop without the waiter
+            // having to tap Try Again.
+            if (!scanning && !cancelled && ticks % 3 === 0) {
+                scanning = true;
+                try { if (await discoverAndStoreTill() && !cancelled) reloadNow(); }
+                finally { scanning = false; }
+            }
         }, 5000);
 
         // When the waiter returns to the app, probe once right away (background

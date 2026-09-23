@@ -10,7 +10,7 @@
 // (mDNS-obfuscated), we fall back to the common private ranges.
 
 import axios from "axios";
-import { setStoredServer } from "./serverConfig";
+import { setStoredServer, getStoredServer } from "./serverConfig";
 
 // The till serves on 5050 by default (installer), but older installs used 5000,
 // so probe both. First match wins.
@@ -107,9 +107,24 @@ function getLocalIps(timeout = 1500) {
  * then the common fallback prefixes.
  */
 export async function discoverTill() {
-    const localIps = await getLocalIps();
-
     const prefixes = [];
+
+    // 1) Try the LAST-KNOWN till first: its exact address, then its /24. When the
+    //    router just handed the till a new IP (DHCP), it's almost always still on
+    //    the same subnet — so this re-finds it in ~1s instead of a blind scan, and
+    //    is what breaks the "stuck searching" loop after a WiFi/IP change.
+    const stored = getStoredServer();   // "ip:port"
+    if (stored) {
+        const ip = String(stored).split(":")[0];
+        if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) {
+            const port = await tillPortAt(ip);
+            if (port) return `${ip}:${port}`;
+            prefixes.push(ip.split(".").slice(0, 3).join("."));
+        }
+    }
+
+    // 2) The phone's own subnet (WebRTC), then the common fallback prefixes.
+    const localIps = await getLocalIps();
     localIps.forEach((ip) => {
         const prefix = ip.split(".").slice(0, 3).join(".");
         if (!prefixes.includes(prefix)) prefixes.push(prefix);

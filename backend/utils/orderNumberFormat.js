@@ -23,11 +23,17 @@ const normalizeDigits = (digits) => {
     return Math.max(1, Math.min(10, Math.round(n)));
 };
 
-const sanitizePrefix = (prefix) => String(prefix || "ORD").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 20) || "ORD";
+// null/undefined (never configured) defaults to "ORD"; an explicit "" is kept
+// empty so a shop can run with NO prefix (just the number).
+const sanitizePrefix = (prefix) => String(prefix == null ? "ORD" : prefix).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 20);
 
-// One formatted number for a position, e.g. { prefix: "ORD", sequence: 1, digits: 4 } → "ORD-0001".
-const formatOrderNumber = ({ prefix, sequence, digits }) =>
-    `${sanitizePrefix(prefix)}-${String(sequence).padStart(normalizeDigits(digits), "0")}`;
+// One formatted number for a position, e.g. { prefix: "ORD", sequence: 1, digits: 4 }
+// → "ORD-0001". With an empty prefix there is no dash — just the number ("0001").
+const formatOrderNumber = ({ prefix, sequence, digits }) => {
+    const p = sanitizePrefix(prefix);
+    const num = String(sequence).padStart(normalizeDigits(digits), "0");
+    return p ? `${p}-${num}` : num;
+};
 
 // The next number to issue, given stored state. Pure so it can be unit tested
 // and reused by the settings screen's own preview.
