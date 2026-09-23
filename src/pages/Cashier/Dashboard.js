@@ -4,10 +4,6 @@ import { getTables, updateTableStatus } from "../../services/tableService";
 import "../../styles/pages/Cashier/Dashboard.css";
 import { getCategories, getItemsByCategory, getAllItems } from "../../services/menuService";
 import { createOrder, getRunningOrders, getOrderDetails, getTableItems, settleTable, markItemServed, cancelItem, setItemQuantity, addBillItem, updateOrder, cancelOrder, getTodaysOrderCount, getBill, addItemToOrder, rebillOrder } from "../../services/orderService";
-// Two printers coexist for now: billPrinter renders the admin-configured bill
-// format and is used for the first print, while printBill carries the
-// "REPRINT — CORRECTED BILL" stamp the Bills screen needs.
-import { printBill as printCorrectedBill } from "../../utils/printBill";
 import RunningOrders from "../../components/Waiter/RunningOrders";
 import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
@@ -1020,27 +1016,32 @@ function Dashboard() {
             }
 
             if (print) {
-                const opened = printCorrectedBill({
-                    title: header.restaurant_name || restaurantInfo?.restaurant_name || "InWallz",
-                    billNumber: header.order_number,
-                    place: header.table_name ? `Table ${header.table_name}` : "Counter",
-                    items: editingBillItems,
-                    subtotal: totals.subtotal,
-                    discount: totals.discount,
-                    discountLabel: totals.discountLabel,
-                    taxLines: totals.taxLines,
-                    charges: totals.charges,
-                    total: totals.total,
-                    method,
-                    isReprint: true,
-                    // Bill + WhatsApp: open WhatsApp only after the print dialog
-                    // closes, so launching it can't steal focus from printing.
-                    onAfter: whatsapp ? () => sendBillOnWhatsApp(header) : null
+                // Reprint straight to the thermal printer, exactly like the first
+                // bill (printBillNow → POST /api/print). It falls back to the
+                // browser dialog only if the printer can't be reached, instead of
+                // ALWAYS opening that dialog as the old HTML reprint did.
+                await printBillNow({
+                    order: {
+                        order_number: header.order_number,
+                        tableName: header.table_name ? `Table ${header.table_name}` : "Counter",
+                        table_number: header.table_name || undefined,
+                        items: editingBillItems,
+                        subtotal: totals.subtotal,
+                        discount: totals.discount,
+                        discount_label: totals.discountLabel,
+                        tax: totals.gst,
+                        service_charge: totals.service,
+                        charges: totals.charges,
+                        grand_total: totals.total,
+                        payment_method: method,
+                        cashier_name: cashierName,
+                        isReprint: true
+                    },
+                    restaurant: restaurantInfo || {},
+                    format: billFormat || {}
                 });
-                if (!opened) {
-                    alert("Bill saved, but the print window was blocked. Allow pop-ups to print.");
-                    if (whatsapp) sendBillOnWhatsApp(header);   // still send it
-                }
+                // WhatsApp (if asked) after the receipt has gone to paper.
+                if (whatsapp) sendBillOnWhatsApp(header);
             } else if (whatsapp) {
                 sendBillOnWhatsApp(header);
             }

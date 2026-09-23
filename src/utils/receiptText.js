@@ -188,6 +188,9 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_email && restaurant.email) out.push(center(restaurant.email, W));
     if (cfg.show_fssai && restaurant.fssai_number) out.push(center(`FSSAI: ${restaurant.fssai_number}`, W));
 
+    // A corrected/re-issued bill is marked so it is never mistaken for a second sale.
+    if (order.isReprint) out.push(bold(center("* DUPLICATE / REPRINT *", W)));
+
     out.push(repeat("=", W));
 
     // ── Order meta: a name rule, then fields paired two to a line ──

@@ -24,7 +24,14 @@ const getSummary = (restaurantId, today, callback) => {
     // day's totals stay visible on the dashboard until the next day is opened —
     // instead of the whole "Today" panel dropping to zero right after closing.
     // Weekly/monthly stay on the calendar (that's the usual reporting period).
-    const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
+    //
+    // Ultimate floor = start of TODAY: when there is NO day row at all (a brand-new
+    // shop, or one whose bills/day rows were just cleared), the subquery is NULL and
+    // "created_at >= NULL" matched nothing — so the dashboard read zero even while
+    // orders were being rung up. COALESCE to today's date keeps today's sales
+    // visible in that case, without disturbing the "keep last day after close"
+    // fallback (the subquery is only NULL when there are genuinely no day rows).
+    const openWin = `COALESCE((SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1), ${D})`;
 
     const sql = (`
         SELECT
@@ -151,8 +158,11 @@ const getSummary = (restaurantId, today, callback) => {
 // Today's Sales (tenant-scoped)
 const getTodaysSales = (restaurantId, today, callback) => {
 
-    // Business day: the orders since the counter opened the current day.
-    const openWin = "(SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1)";
+    // Business day: the orders since the counter opened the current day. Floors to
+    // the start of today when there is no day row at all, so a fresh/just-cleared
+    // shop still lists the sales it's ringing up (see getSummary for the why).
+    const D = dayLiteral(today);
+    const openWin = `COALESCE((SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1), ${D})`;
     db.query(`
         SELECT
             order_number,
