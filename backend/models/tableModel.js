@@ -17,7 +17,11 @@ const getAllTables = (restaurantId, callback) => {
                 AND oi.served = 1) AS served_items
         FROM dining_tables dt
         WHERE dt.restaurant_id = ? AND dt.deleted_at IS NULL
-        ORDER BY dt.table_name ASC
+        -- Natural order: sort by the NUMBER in the name so 10 comes after 9, not
+        -- after 1 (plain string order put "10" before "2"). Names with no digits
+        -- fall to 0 and then sort by name.
+        ORDER BY CAST(REGEXP_REPLACE(dt.table_name, '[^0-9]+', '') AS UNSIGNED) ASC,
+                 dt.table_name ASC
     `;
 
     db.query(sql, [restaurantId], callback);
