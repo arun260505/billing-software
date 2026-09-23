@@ -506,7 +506,7 @@
 .cashier-app .tbill-sub { font-size: 12px; color: #94a3b8; }
 .cashier-app .tbill-close { background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 16px; color: #475569; cursor: pointer; }
 
-.cashier-app .tbill-body { flex: 1; overflow-y: auto; padding: 12px 20px; }
+.cashier-app .tbill-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px 20px; }
 .cashier-app .tbill-empty { text-align: center; color: #94a3b8; padding: 16px; }
 .cashier-app .tbill-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 0; border-bottom: 1px dashed #eef1f5; }
 .cashier-app .tbill-row-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -536,11 +536,27 @@
 .cashier-app .tbill-add-done { width: 100%; padding: 9px; border-radius: 9px; border: 1px solid #e2e8f0; background: #fff; color: #475569; font-weight: 700; cursor: pointer; }
 
 .cashier-app .tbill-foot {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 58vh;          /* never eat the whole modal; items keep room to scroll */
+    border-top: 1px solid #eef1f5;
+    background: #f8fafc;
+}
+/* Totals + additional-charges: scroll if the list gets long. */
+.cashier-app .tbill-foot-scroll {
+    flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    padding: 14px 20px 8px;
+}
+/* Payment + Generate: pinned, always fully on screen (this is the part that used
+   to get clipped behind the sticky Generate button on a long bill). */
+.cashier-app .tbill-foot-pay {
+    flex: 0 0 auto;
+    padding: 8px 20px 16px;
     border-top: 1px solid #eef1f5;
-    padding: 14px 20px 18px;
     background: #f8fafc;
 }
 .cashier-app .tbill-tot { display: flex; justify-content: space-between; font-size: 14px; color: #475569; padding: 2px 0; }

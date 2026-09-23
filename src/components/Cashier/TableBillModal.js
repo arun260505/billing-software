@@ -226,6 +226,10 @@ function TableBillModal({ table, items, menuItems, busy, charges = [], onSetQty,
                 </div>
 
                 <div className="tbill-foot">
+                  {/* Totals + charges scroll if long; the payment block below is
+                      pinned so Cash/Card/UPI and Generate are ALWAYS visible,
+                      even on a short screen with a long bill. */}
+                  <div className="tbill-foot-scroll">
                     <div className="tbill-tot"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
 
                     {/* The charges this restaurant applies to every bill, named
@@ -278,7 +282,9 @@ function TableBillModal({ table, items, menuItems, busy, charges = [], onSetQty,
                     )}
 
                     <div className="tbill-tot grand"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
+                  </div>
 
+                  <div className="tbill-foot-pay">
                     <div className="tbill-pay">
                         <div className="tbill-pay-head">
                             <span className="tbill-pay-label">Payment</span>
@@ -341,6 +347,7 @@ function TableBillModal({ table, items, menuItems, busy, charges = [], onSetQty,
                     >
                         {busy ? "Working…" : unservedCount > 0 ? `Served ${groups.length - unservedCount}/${groups.length} — Generate Locked` : `🖨 Generate Bill · ₹${total.toFixed(2)}`}
                     </button>
+                  </div>
                 </div>
 
             </div>
