@@ -6,9 +6,11 @@ import {
     isNativeApp
 } from "./serverConfig";
 
-// Long enough for a slow WiFi handshake, short enough that a waiter standing
-// at a table is not staring at a blank screen.
-const PROBE_TIMEOUT_MS = 4000;
+// Long enough for a slow/busy restaurant WiFi handshake, short enough that a
+// waiter standing at a table is not staring at a blank screen. Raised from 4s
+// because a congested WiFi was timing out healthy probes and flapping the app
+// into the "searching" screen.
+const PROBE_TIMEOUT_MS = 6000;
 
 // Not the shared `api` instance — the probe must stay a dumb "can I reach this
 // box at all" question with no auth and no redirects.

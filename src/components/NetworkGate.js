@@ -30,9 +30,15 @@ function NetworkGate({ children }) {
         setStatus("checking");
 
         // 1) Do we already know the till (remembered from a prior launch)?
-        if (await isServerReachable()) {
-            setStatus("online");
-            return;
+        //    Try it a few times before giving up — a momentary WiFi blip must
+        //    NOT trigger a full subnet scan when the till is actually still
+        //    there and reachable (that flash of "searching" was the complaint).
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+            if (await isServerReachable()) {
+                setStatus("online");
+                return;
+            }
+            if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
         }
 
         // 2) Not known / moved (DHCP) / different network: auto-scan this WiFi.
@@ -88,8 +94,8 @@ function NetworkGate({ children }) {
 
     }, [status]);
 
-    // Heartbeat while online: if the till stops answering, re-block. Two
-    // consecutive misses (a ~20s grace) before walling, so a momentary WiFi
+    // Heartbeat while online: if the till stops answering, re-block. Three
+    // consecutive misses (a ~18s grace) before walling, so a momentary WiFi
     // hiccup doesn't kick a waiter out of an open cart. AND react at once when a
     // real request (e.g. sending an order) just failed to reach the till — that
     // is a concrete signal the till is gone, so confirm and block immediately
@@ -106,7 +112,9 @@ function NetworkGate({ children }) {
             if (cancelled) return;
             if (ok) { misses = 0; return; }
             misses += 1;
-            if (misses >= 2) setStatus("offline");
+            // Three consecutive misses (~18s) before walling, so a flaky WiFi
+            // doesn't keep bouncing the waiter to the "searching" screen.
+            if (misses >= 3) setStatus("offline");
         }, 5000);
 
         const onUnreachable = async () => {
