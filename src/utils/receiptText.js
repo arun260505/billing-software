@@ -352,9 +352,12 @@ export function buildKotText({ order = {}, format = {} }) {
 
     out.push(repeat("-", W));
     const showQty = cfg.show_item_qty !== 0;   // default on
-    // ITEM on the left, QTY as a column header on the right — the number for each
-    // item lines up under that header. A blank line separates items.
-    out.push(bold(showQty ? lr("ITEM", "QTY", W) : "ITEM"));
+    // ITEM on the left, QTY as a column header — but the column is pulled IN from
+    // the far paper edge so the number sits NEAR the item, not stranded at the
+    // right margin. The number for each item lines up under that header, with a
+    // blank line between items.
+    const QW = showQty ? Math.max(20, Math.round(W * 0.62)) : W;   // qty column width (nearer the items)
+    out.push(bold(showQty ? lr("ITEM", "QTY", QW) : "ITEM"));
     out.push(repeat("-", W));
     out.push("");   // breathing room before the first item
 
@@ -365,10 +368,10 @@ export function buildKotText({ order = {}, format = {} }) {
         const name = it.item_name || it.name || "Item";
         const qtyStr = showQty ? `${qty}` : "";
         const reserve = showQty ? qtyStr.length + 1 : 0;   // keep the name clear of the qty column
-        const nameLines = wrap(name, W - reserve);
+        const nameLines = wrap(name, QW - reserve);
         nameLines.forEach((l, i) => {
             const isLast = i === nameLines.length - 1;
-            out.push(bold(showQty && isLast ? lr(l, qtyStr, W) : l));   // number under the QTY header
+            out.push(bold(showQty && isLast ? lr(l, qtyStr, QW) : l));   // number under the QTY header
         });
         // A cooking note matters, so keep it right under its item.
         if (cfg.show_item_notes && (it.notes || it.note)) {

@@ -132,7 +132,7 @@ export function generateKitchenTicketHtml({ order = {}, format = {} }) {
 
         itemsHtml += `
             <div style="border-bottom: 1px dashed #ccc; padding: 9px 0;">
-                <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; max-width: 62%;">
                     <div style="flex: 1; padding-right: 6px;">
                         ${cfg.show_item_category && category ? `<div style="font-size: 9px; text-transform: uppercase; color: #555;">[${escapeHtml(category)}]</div>` : ""}
                         ${cfg.show_item_name ? `<div style="font-size: ${is58mm ? "12px" : "14px"}; font-weight: bold; line-height: 1.3;">${escapeHtml(name)}</div>` : ""}
