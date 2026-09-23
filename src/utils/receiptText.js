@@ -39,8 +39,10 @@ const RUPEE = "Rs.";
 const ESC = "\x1b";
 const GS = "\x1d";
 
-/** ESC E 1 / ESC E 0 — the printer's own emphasised (double-strike) mode. */
-const bold = (line) => `${ESC}E\x01${line}${ESC}E\x00`;
+/** Bold. Sends BOTH emphasis (ESC E) and double-strike (ESC G): many thermal
+ *  printers honour only one of the two, so a ticket that "printed flat" with
+ *  ESC E alone comes out properly bold when both are set. */
+const bold = (line) => `${ESC}E\x01${ESC}G\x01${line}${ESC}G\x00${ESC}E\x00`;
 
 // GS ! 0x01 — double HEIGHT only. Double width would halve the columns per line
 // and wrap the header, so the big lines here grow downwards, not sideways.
@@ -346,21 +348,27 @@ export function buildKotText({ order = {}, format = {} }) {
     out.push(bold(lr(takenBy, timeStr, W)));
 
     out.push(repeat("-", W));
-    out.push(bold("QTY  ITEM"));   // label the columns so the qty is unmistakable
+    // Item on the left, quantity on the RIGHT edge (the cook reads the dish, the
+    // count sits where the eye lands last). Columns labelled to match.
+    const showQty = cfg.show_item_qty !== 0;   // default on
+    out.push(bold(showQty ? lr("ITEM", "QTY", W) : "ITEM"));
 
-    // Items: "<qty>  <name>", bold, one line each — no blank lines.
     let totalQty = 0;
     items.forEach((it) => {
         const qty = Number(it.quantity || 1);
         totalQty += qty;
         const name = it.item_name || it.name || "Item";
-        const prefix = `${qty}`.padEnd(5);          // aligns the name under "ITEM"
-        const indent = repeat(" ", prefix.length);
-        const nameLines = wrap(name, W - prefix.length);
-        nameLines.forEach((l, i) => out.push(bold((i === 0 ? prefix : indent) + l)));
+        const qtyStr = showQty ? `${qty}` : "";
+        // Leave room on the first line for the qty pinned to the right edge.
+        const firstWidth = showQty ? W - qtyStr.length - 1 : W;
+        const nameLines = wrap(name, firstWidth);
+        nameLines.forEach((l, i) => {
+            if (i === 0 && showQty) out.push(bold(lr(l, qtyStr, W)));  // name left, qty right
+            else out.push(bold(l));
+        });
         // A cooking note matters, so keep it (light) right under its item.
         if (cfg.show_item_notes && (it.notes || it.note)) {
-            wrap(`** ${it.notes || it.note}`, W - prefix.length).forEach((l) => out.push(indent + l));
+            wrap(`** ${it.notes || it.note}`, W).forEach((l) => out.push(l));
         }
     });
 
