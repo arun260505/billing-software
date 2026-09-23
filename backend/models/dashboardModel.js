@@ -43,6 +43,7 @@ const getSummary = (restaurantId, today, callback) => {
             (SELECT IFNULL(SUM(grand_total),0) FROM orders
              WHERE restaurant_id = ? AND created_at >= ${openWin}
              AND deleted_at IS NULL
+             AND order_status <> 'Cancelled'
              AND payment_status='Paid') AS total_sales,
 
             -- Week runs Sunday..Saturday (YEARWEEK mode 0 = week starts Sunday).
@@ -76,32 +77,38 @@ const getSummary = (restaurantId, today, callback) => {
             (SELECT IFNULL(SUM(amount),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND payment_date >= ${openWin}) AS total_collection,
+             AND payment_date >= ${openWin}
+             AND order_id IN (SELECT id FROM orders WHERE restaurant_id = ? AND order_status <> 'Cancelled' AND deleted_at IS NULL)) AS total_collection,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='Cash' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND payment_date >= ${openWin}) AS cash_amount,
+             AND payment_date >= ${openWin}
+             AND order_id IN (SELECT id FROM orders WHERE restaurant_id = ? AND order_status <> 'Cancelled' AND deleted_at IS NULL)) AS cash_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='UPI' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND payment_date >= ${openWin}) AS upi_amount,
+             AND payment_date >= ${openWin}
+             AND order_id IN (SELECT id FROM orders WHERE restaurant_id = ? AND order_status <> 'Cancelled' AND deleted_at IS NULL)) AS upi_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='Card' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND payment_date >= ${openWin}) AS card_amount,
+             AND payment_date >= ${openWin}
+             AND order_id IN (SELECT id FROM orders WHERE restaurant_id = ? AND order_status <> 'Cancelled' AND deleted_at IS NULL)) AS card_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method='Wallet' THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND payment_date >= ${openWin}) AS wallet_amount,
+             AND payment_date >= ${openWin}
+             AND order_id IN (SELECT id FROM orders WHERE restaurant_id = ? AND order_status <> 'Cancelled' AND deleted_at IS NULL)) AS wallet_amount,
 
             (SELECT IFNULL(SUM(CASE WHEN payment_method IN ('Bank Transfer','Split') THEN amount END),0) FROM payments
              WHERE restaurant_id = ? AND payment_status='Success'
              AND deleted_at IS NULL
-             AND payment_date >= ${openWin}) AS other_amount,
+             AND payment_date >= ${openWin}
+             AND order_id IN (SELECT id FROM orders WHERE restaurant_id = ? AND order_status <> 'Cancelled' AND deleted_at IS NULL)) AS other_amount,
 
             -- Salon dashboard: distinct customers billed today, and stock
             -- items at or below their reorder level.
