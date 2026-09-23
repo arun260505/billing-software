@@ -687,7 +687,7 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
             // Ordered so orders[0] is stable — it is the one charges attach to
             // and the one whose number identifies the bill.
             db.query(
-                `SELECT id, order_number, subtotal, discount, charges_total, grand_total FROM orders
+                `SELECT id, order_number, subtotal, discount, tax, service_charge, charges_total, grand_total FROM orders
                  WHERE table_id=? AND restaurant_id=?
                    AND order_status IN ('Pending','Preparing','Ready','Served')
                  ORDER BY id`,
@@ -757,7 +757,7 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
                             // orders (and an order can be paid by multiple lines).
                             orders.forEach((o) => { o.remaining = money(o.grand_total); });
 
-                            const recordOrders = (ordersDone) => {
+                            const recordOrders = () => {
 
                                 // Ensure every order's grand_total got covered before
                                 // freeing the table.
@@ -768,27 +768,50 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
                                     ));
                                 }
 
-                                // Per-bill charges used to be paid BEYOND the stored
-                                // grand_totals and recorded as a surplus payment line.
-                                // They are now part of the order's grand_total (see
-                                // applyBillCharges), so the ordinary distribution above
-                                // already covers them and there is no surplus left.
-                                return db.query(
-                                    "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
-                                    [tableId, restaurantId],
-                                    (err) => {
-                                        if (err) return callback(err);
-                                        // Hand back the bill's identity so the
-                                        // receipt prints the stored number and a
-                                        // reprint carries the same one.
-                                        callback(null, {
-                                            order_id: orders[0] ? orders[0].id : null,
-                                            order_number: orders[0] ? orders[0].order_number : null,
-                                            order_count: orders.length,
-                                            grand_total: billTotal
-                                        });
-                                    }
-                                );
+                                // ── Consolidate the table's orders into ONE bill ──
+                                // A waiter's repeated sends each made a separate order
+                                // row, so Recent Bills showed a fragment per send. Move
+                                // every send's items and payments onto the FIRST order,
+                                // give it the whole table's totals, and soft-delete the
+                                // extra rows — one bill, all items, all totals intact.
+                                // Best-effort: it runs AFTER payment is recorded, so a
+                                // hiccup here can never undo the sale (the bill would
+                                // just stay split, exactly like before this change).
+                                const primary = orders[0];
+                                const secondaryIds = orders.slice(1).map((o) => o.id);
+                                const dbp = db.promise();
+                                const consolidate = async () => {
+                                    if (!primary || secondaryIds.length === 0) return;
+                                    await dbp.query("UPDATE order_items SET order_id=? WHERE order_id IN (?)", [primary.id, secondaryIds]);
+                                    await dbp.query("UPDATE payments SET order_id=? WHERE order_id IN (?)", [primary.id, secondaryIds]);
+                                    const sum = (f) => orders.reduce((s, o) => s + Number(o[f] || 0), 0);
+                                    await dbp.query(
+                                        `UPDATE orders SET subtotal=?, discount=?, tax=?, service_charge=?, charges_total=?, grand_total=?
+                                         WHERE id=? AND restaurant_id=?`,
+                                        [money(sum("subtotal")), money(sum("discount")), money(sum("tax")),
+                                         money(sum("service_charge")), money(sum("charges_total")), billTotal, primary.id, restaurantId]
+                                    );
+                                    await dbp.query("UPDATE orders SET deleted_at=NOW() WHERE id IN (?) AND restaurant_id=?", [secondaryIds, restaurantId]);
+                                };
+
+                                consolidate()
+                                    .catch((e) => console.error("Bill consolidation warning (sale is safe):", e.message))
+                                    .then(() => db.query(
+                                        "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
+                                        [tableId, restaurantId],
+                                        (err) => {
+                                            if (err) return callback(err);
+                                            // Hand back the bill's identity so the
+                                            // receipt prints the stored number and a
+                                            // reprint carries the same one.
+                                            callback(null, {
+                                                order_id: primary ? primary.id : null,
+                                                order_number: primary ? primary.order_number : null,
+                                                order_count: orders.length,
+                                                grand_total: billTotal
+                                            });
+                                        }
+                                    ));
                             };
 
                             // attrLine(msg, amountLeft, nextOrderIdx, allDone)
@@ -1163,6 +1186,7 @@ const getTodaysBills = (restaurantId, callback) => {
         LEFT JOIN users st ON o.stylist_id = st.id
         WHERE o.restaurant_id = ?
           AND o.order_status IN ('Completed','Cancelled')
+          AND o.deleted_at IS NULL
           AND DATE(o.created_at) = CURDATE()
         ORDER BY o.id DESC
     `;
