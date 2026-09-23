@@ -727,6 +727,13 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
                 (err, orders) => {
                     if (err) return callback(err);
 
+                    // No open order left = the table was already billed (a second
+                    // settle, or a stale bill screen). Say so plainly instead of the
+                    // confusing "screen total does not match recorded 0.00" mismatch.
+                    if (!orders || orders.length === 0) {
+                        return callback(new Error("This table has already been billed. Refresh and it will show as free."));
+                    }
+
                     // Fix the per-bill charges onto the order before anything is
                     // totalled, so grand_total is the whole amount owed and the
                     // payment lines below reconcile against it exactly.
