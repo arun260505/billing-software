@@ -352,26 +352,29 @@ export function buildKotText({ order = {}, format = {} }) {
 
     out.push(repeat("-", W));
     const showQty = cfg.show_item_qty !== 0;   // default on
-    // Same layout as the customer bill: item on the left, QTY right-aligned on
-    // the right edge. Normal size, bold, no leader dots.
-    out.push(bold(showQty ? lr("ITEM", "QTY", W) : "ITEM"));
+    out.push(bold("ITEM"));
+    out.push(repeat("-", W));
+    out.push("");   // breathing room before the first item
 
+    // Quantity sits right NEXT TO the item name (e.g. "Chicken Soup   x2"), and a
+    // blank line separates each item so the cook can read them at a glance.
     let totalQty = 0;
-    items.forEach((it) => {
+    items.forEach((it, idx) => {
         const qty = Number(it.quantity || 1);
         totalQty += qty;
         const name = it.item_name || it.name || "Item";
-        const qtyStr = showQty ? `${qty}` : "";
-        const reserve = showQty ? qtyStr.length + 1 : 0;   // keep the name clear of the qty
-        const nameLines = wrap(name, W - reserve);
+        const suffix = showQty ? `   x${qty}` : "";
+        const nameLines = wrap(name, W - suffix.length);
         nameLines.forEach((l, i) => {
             const isLast = i === nameLines.length - 1;
-            out.push(bold(showQty && isLast ? lr(l, qtyStr, W) : l));   // qty on the RIGHT
+            out.push(bold(isLast ? l + suffix : l));   // qty right beside the item
         });
         // A cooking note matters, so keep it right under its item.
         if (cfg.show_item_notes && (it.notes || it.note)) {
             wrap(`** ${it.notes || it.note}`, W).forEach((l) => out.push(bold(l)));
         }
+        // Blank line between items (not after the last) for readability.
+        if (idx < items.length - 1) out.push("");
     });
 
     out.push(repeat("-", W));
