@@ -1113,6 +1113,8 @@ function Dashboard() {
 
     // Bills → correct & reprint: paper only, or (with the option) WhatsApp / both.
     const handleBillReprint = (method, totals) => deliverCorrectedBill(method, totals, { print: true, whatsapp: false });
+    // Save the correction without printing a new copy.
+    const handleBillSaveOnly = (method, totals) => deliverCorrectedBill(method, totals, { print: false, whatsapp: false });
     const handleBillWhatsApp = (method, totals, opts = {}) =>
         deliverCorrectedBill(method, totals, { print: !!opts.print, whatsapp: true });
 
@@ -1546,6 +1548,7 @@ function Dashboard() {
                     onRemoveGroup={handleBillRemove}
                     onAddItem={handleBillAdd}
                     onReprint={handleBillReprint}
+                    onSaveOnly={handleBillSaveOnly}
                     onWhatsApp={isSalon() ? handleBillWhatsApp : undefined}
                     onClose={closeBillEdit}
                 />

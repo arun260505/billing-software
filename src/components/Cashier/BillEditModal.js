@@ -12,7 +12,7 @@ import { isSalon } from "../../utils/businessType";
 // the backend then refused to agree with. They now come from the restaurant's
 // own charge rows (Admin → Charges), like everywhere else.
 function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [],
-                         onSetQty, onRemoveGroup, onAddItem, onReprint, onWhatsApp, onClose }) {
+                         onSetQty, onRemoveGroup, onAddItem, onReprint, onSaveOnly, onWhatsApp, onClose }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
@@ -207,10 +207,20 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                         // handler, fall back to the plain reprint button.
                         if (!onWhatsApp) {
                             return (
-                                <button className="tbill-generate" disabled={busy || groups.length === 0}
-                                    onClick={() => onReprint(method, totals)}>
-                                    {reprintLabel}
-                                </button>
+                                <div className="tbill-deliver-wa">
+                                    {/* Save the correction WITHOUT printing — for a
+                                        fix that doesn't need a fresh paper copy. */}
+                                    {onSaveOnly && (
+                                        <button className="tbill-wa" disabled={busy || groups.length === 0}
+                                            onClick={() => onSaveOnly(method, totals)}>
+                                            {busy ? "Working…" : `💾 Save${changed ? " changes" : ""}`}
+                                        </button>
+                                    )}
+                                    <button className="tbill-generate" disabled={busy || groups.length === 0}
+                                        onClick={() => onReprint(method, totals)}>
+                                        {reprintLabel}
+                                    </button>
+                                </div>
                             );
                         }
                         return (
