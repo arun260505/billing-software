@@ -308,6 +308,15 @@
 .cashier-app .pos-tchip.billonly { border-color: #cbd5e1; background: #f8fafc; }
 .cashier-app .pos-tchip.billonly .pos-tchip-state { color: #475569; }
 
+/* Held (parked) order chip — amber, with a small ✕ to discard — and the Hold button. */
+.cashier-app .pos-tchip.hold { border-color: #f59e0b; background: #fff7ed; }
+.cashier-app .pos-tchip.hold .pos-tchip-name,
+.cashier-app .pos-tchip.hold .pos-tchip-state { color: #b45309; }
+.cashier-app .pos-tchip-held-x { position: absolute; top: 4px; right: 7px; font-size: 12px; font-weight: 800; color: #b45309; opacity: .7; line-height: 1; }
+.cashier-app .pos-tchip-held-x:hover { opacity: 1; }
+.cashier-app .pos-bill-hold { border: 1.5px solid #f59e0b; background: #fff7ed; color: #b45309; border-radius: 9px; padding: 7px 14px; font-weight: 800; font-size: 13px; cursor: pointer; }
+.cashier-app .pos-bill-hold:hover { background: #ffedd5; }
+
 /* ── Bill generation modal (BillModal component) ─────────────────────── */
 .cashier-app .bill-overlay {
     position: fixed; inset: 0; z-index: 300;

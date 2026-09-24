@@ -59,6 +59,12 @@ function Dashboard() {
     const [selectedCategory, setSelectedCategory] = useState(null);
     // Survives a refresh and an Android WebView kill (hooks/usePersistentCart).
     const [cart, setCart] = usePersistentCart("inwallz_cart_cashier");
+    // Parked counter / bill-only carts (the "Hold" feature). Persisted so a page
+    // reload or a brief restart doesn't lose a held customer's order.
+    const [heldOrders, setHeldOrders] = useState(() => {
+        try { return JSON.parse(localStorage.getItem("inwallz_held_cashier") || "[]"); }
+        catch { return []; }
+    });
     const [runningOrders, setRunningOrders] = useState([]);
     const [todayOrders, setTodayOrders] = useState(0);
     const [editingOrder, setEditingOrder] = useState(null);
@@ -539,6 +545,46 @@ function Dashboard() {
     const clearCart = () => {
         if (blockIfParcelLocked()) return;
         setCart([]);
+    };
+
+    // Keep the parked orders in localStorage so they survive a reload/restart.
+    useEffect(() => {
+        try { localStorage.setItem("inwallz_held_cashier", JSON.stringify(heldOrders)); }
+        catch { /* private mode / quota — holds just won't persist */ }
+    }, [heldOrders]);
+
+    // ── Hold / park a counter or bill-only order ─────────────────────────
+    // A walk-in is half rung-up when another customer needs billing NOW. Park the
+    // current cart under a "Hold N" chip, clear the counter for the new order, and
+    // resume the parked one later. Only counter / bill-only carts hold — a table
+    // already parks itself as the table.
+    const holdCurrentOrder = () => {
+        if (blockIfParcelLocked()) return;
+        if (cart.length === 0) { alert("Add items before holding the order."); return; }
+        setHeldOrders((h) => [...h, { id: Date.now(), cart: cart.map((c) => ({ ...c })), billOnly }]);
+        setCart([]);
+        setSelectedTable(null);
+        setBillOnly(false);
+        setEditingOrder(null);
+    };
+
+    // Resume a held order into the active cart and drop it from the held list.
+    const resumeHeldOrder = (held) => {
+        if (blockIfParcelLocked()) return;
+        if (cart.length > 0) {
+            alert("Finish or Hold the current order first, then open the held one.");
+            return;
+        }
+        setSelectedTable(null);
+        setBillOnly(Boolean(held.billOnly));
+        setEditingOrder(null);
+        setCart((held.cart || []).map((c) => ({ ...c })));
+        setHeldOrders((h) => h.filter((x) => x.id !== held.id));
+    };
+
+    const discardHeldOrder = (id) => {
+        if (!window.confirm("Discard this held order?")) return;
+        setHeldOrders((h) => h.filter((x) => x.id !== id));
     };
 
     const handleChangeTable = async () => {
@@ -1301,6 +1347,18 @@ function Dashboard() {
                         <span className="pos-tchip-name">💵</span>
                         <span className="pos-tchip-state">Bill Only</span>
                     </button>
+                    {/* Parked (held) counter/bill-only orders — tap to resume, ✕ to discard. */}
+                    {heldOrders.map((h, i) => (
+                        <button key={h.id} className="pos-tchip hold" onClick={() => resumeHeldOrder(h)} title="Resume this held order">
+                            <span className="pos-tchip-name">⏸</span>
+                            <span className="pos-tchip-state">Hold{i + 1}</span>
+                            <span
+                                className="pos-tchip-held-x"
+                                onClick={(e) => { e.stopPropagation(); discardHeldOrder(h.id); }}
+                                title="Discard this held order"
+                            >✕</span>
+                        </button>
+                    ))}
                     {tables.map((table) => {
                         const isFree = table.status === "FREE";
                         const isBilled = table.needs_bill;
@@ -1370,6 +1428,11 @@ function Dashboard() {
                             <span className="pos-bill-sub">{editingOrder ? editingOrder.order_number : (selectedTable ? "New order" : "Walk-in — no table")}</span>
                         </div>
                         <div className="pos-bill-headbtns">
+                            {/* Hold: park this counter/bill-only order to bill a sudden
+                                new customer, then resume it from the Hold chip. */}
+                            {!selectedTable && cart.length > 0 && (
+                                <button className="pos-bill-hold" onClick={holdCurrentOrder} title="Hold this order and start a new one">⏸ Hold</button>
+                            )}
                             {selectedTable && <button className="pos-bill-change" onClick={handleChangeTable} title="Change table">Change</button>}
                             {cart.length > 0 && <button className="pos-bill-clear" onClick={clearCart} title="Clear new items">✕</button>}
                         </div>
