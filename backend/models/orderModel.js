@@ -744,6 +744,27 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
                         orders.reduce((s, o) => s + Number(o.grand_total || 0), 0)
                     );
 
+                    // Money ALREADY taken on this table's orders before this settle —
+                    // an advance, or a bill already paid once on another screen (e.g.
+                    // the Bill-Only / Counter screen). settleTable used to record a
+                    // fresh payment for the WHOLE bill regardless, so an order that was
+                    // already (partly) paid ended up OVER-collected — the recorded
+                    // payments exceeded the bill and the dashboard's Collection ran
+                    // ahead of Sales. We now settle only the OUTSTANDING balance, so
+                    // nothing is ever charged twice.
+                    const settleOrderIds = orders.map((o) => o.id);
+                    db.query(
+                        `SELECT order_id, IFNULL(SUM(amount),0) AS paid FROM payments
+                         WHERE order_id IN (?) AND payment_status='Success' AND deleted_at IS NULL
+                         GROUP BY order_id`,
+                        [settleOrderIds],
+                        (paidErr, paidRows) => {
+                            if (paidErr) return callback(paidErr);
+
+                            const paidByOrder = {};
+                            (paidRows || []).forEach((r) => { paidByOrder[r.order_id] = money(Number(r.paid)); });
+                            const alreadyPaid = money(orders.reduce((s, o) => s + (paidByOrder[o.id] || 0), 0));
+
                     // finalTotal is what the cashier saw on screen. It should now
                     // equal billTotal, since charges are part of grand_total.
                     //
@@ -761,25 +782,36 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
                             `the recorded total (${billTotal.toFixed(2)}). Reopen the bill and try again.`
                         ));
                     }
-                    const payTotal = billTotal;
 
-                    // Build the list of payment lines, validating split amounts.
-                    const lines = payments.map((p) => ({
-                        method: p.method || "Cash",
-                        amount: p.amount == null ? null : money(Number(p.amount))
-                    }));
-                    const hasExplicitAmounts = lines.some((l) => l.amount != null);
-                    const splitSum = money(lines.reduce((s, l) => s + (l.amount || 0), 0));
+                    // Collect only what is still owed; the earlier payment stays.
+                    const payTotal = money(billTotal - alreadyPaid);
 
-                    if (hasExplicitAmounts && money(splitSum) !== payTotal) {
-                        return callback(new Error(
-                            `Split payment amounts (${splitSum.toFixed(2)}) do not match the bill total (${payTotal.toFixed(2)}).`
-                        ));
-                    }
-
-                    // A single line with no amount → pay the full total with it.
-                    if (lines.length === 1 && lines[0].amount == null) {
-                        lines[0].amount = payTotal;
+                    // Build the payment lines. When something was already paid, the
+                    // screen still sends the FULL total, so those amounts can't be
+                    // trusted — record ONE line for the balance using the method the
+                    // cashier picked (or nothing at all if the advance already covers
+                    // the bill). With nothing paid yet, keep the original behaviour.
+                    let lines;
+                    if (alreadyPaid > 0.001) {
+                        lines = payTotal > 0.001
+                            ? [{ method: (payments[0] && payments[0].method) || "Cash", amount: payTotal }]
+                            : [];
+                    } else {
+                        lines = payments.map((p) => ({
+                            method: p.method || "Cash",
+                            amount: p.amount == null ? null : money(Number(p.amount))
+                        }));
+                        const hasExplicitAmounts = lines.some((l) => l.amount != null);
+                        const splitSum = money(lines.reduce((s, l) => s + (l.amount || 0), 0));
+                        if (hasExplicitAmounts && money(splitSum) !== payTotal) {
+                            return callback(new Error(
+                                `Split payment amounts (${splitSum.toFixed(2)}) do not match the bill total (${payTotal.toFixed(2)}).`
+                            ));
+                        }
+                        // A single line with no amount → pay the full total with it.
+                        if (lines.length === 1 && lines[0].amount == null) {
+                            lines[0].amount = payTotal;
+                        }
                     }
 
                     db.query(
@@ -793,8 +825,10 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
 
                             // Distribute the payment lines across the table's orders.
                             // Each order has a grand_total; a line can span multiple
-                            // orders (and an order can be paid by multiple lines).
-                            orders.forEach((o) => { o.remaining = money(o.grand_total); });
+                            // orders (and an order can be paid by multiple lines). Seed
+                            // each order's remaining NET of what it was already paid, so
+                            // the balance lines cover exactly what is still owed.
+                            orders.forEach((o) => { o.remaining = money(Number(o.grand_total) - (paidByOrder[o.id] || 0)); });
 
                             const recordOrders = () => {
 
@@ -894,6 +928,8 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
                             };
 
                             recordLines(0, 0, recordOrders);
+                        }
+                    );
                         }
                     );
                     });
