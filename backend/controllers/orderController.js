@@ -570,7 +570,17 @@ exports.updateOrder = (req, res) => {
 
                     if (err) return error(res, err.message, 500);
 
-                    return success(res, "Order updated successfully.");
+                    // If this order was already (fully or partly) paid, bring the
+                    // recorded payment and the order's paid-status back into line
+                    // with the new total. For an unpaid running order this is a
+                    // no-op. Best-effort: a hiccup here must not fail the edit.
+                    orderModel.reconcilePaymentAfterEdit(orderId, restaurantId, (reErr, recon) => {
+                        if (reErr) {
+                            console.error("Payment reconcile after edit failed:", reErr.message);
+                            return success(res, "Order updated successfully.");
+                        }
+                        return success(res, "Order updated successfully.", recon || null);
+                    });
 
                 });
 

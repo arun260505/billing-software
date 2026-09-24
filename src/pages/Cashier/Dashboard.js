@@ -645,9 +645,19 @@ function Dashboard() {
         try {
             let assignedOrderNumber = null;
             if (editingOrder) {
-                await updateOrder(editingOrder.id, orderData);
+                const upd = await updateOrder(editingOrder.id, orderData);
                 assignedOrderNumber = editingOrder.order_number;
-                alert(selectedTable?.isParcel ? "Parcel Order Updated" : "Order Updated Successfully");
+                // If the order was already paid, the backend re-syncs the recorded
+                // payment to the new total and tells us the difference to settle.
+                const recon = upd.data?.data;
+                const diff = Number(recon?.difference || 0);
+                if (recon?.reconciled && Math.abs(diff) >= 0.01) {
+                    alert(diff > 0
+                        ? `Order updated. Collect ₹${diff.toFixed(2)} more from the customer.`
+                        : `Order updated. Refund ₹${Math.abs(diff).toFixed(2)} to the customer.`);
+                } else {
+                    alert(selectedTable?.isParcel ? "Parcel Order Updated" : "Order Updated Successfully");
+                }
                 if (!selectedTable?.isParcel) {
                     setEditingOrder(null);
                 }

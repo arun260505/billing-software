@@ -1349,6 +1349,90 @@ const addItemToOrder = (orderId, restaurantId, menuItemId, quantity, callback) =
 
 };
 
+// After an order's items are edited (updateOrder), bring any payment already on
+// it back into line with the new total. Without this, editing a bill AFTER it was
+// paid left the till inconsistent two ways, which then split the dashboard's
+// "Sales" (paid orders) from "Collection" (money received):
+//   • a bill edited DOWN kept the old, larger payment amount (over-collection),
+//   • an order stayed Pending even though its payment now covered the new total.
+// An order with no recorded payment (the normal case: a running table order being
+// edited before it is settled) is left untouched — this only acts once money has
+// been taken. Mirrors what rebillOrder does for the correct-&-reprint flow.
+// Returns { reconciled, difference, payment_status } for the caller.
+const reconcilePaymentAfterEdit = (orderId, restaurantId, callback) => {
+
+    const dbp = db.promise();
+
+    (async () => {
+        const [[order]] = await dbp.query(
+            `SELECT id, grand_total, payment_status, table_id
+             FROM orders WHERE id=? AND restaurant_id=? AND deleted_at IS NULL`,
+            [orderId, restaurantId]
+        );
+        if (!order) return { reconciled: false, difference: 0, payment_status: null };
+
+        const grand = money(Number(order.grand_total));
+
+        const [pays] = await dbp.query(
+            `SELECT id, amount, payment_method FROM payments
+             WHERE order_id=? AND restaurant_id=? AND payment_status='Success' AND deleted_at IS NULL
+             ORDER BY id`,
+            [orderId, restaurantId]
+        );
+        // No money taken yet → an ordinary running-order edit. Nothing to do.
+        if (!pays.length) return { reconciled: false, difference: 0, payment_status: order.payment_status };
+
+        const paidBefore = money(pays.reduce((s, p) => s + Number(p.amount), 0));
+        const difference = money(grand - paidBefore);
+
+        // A bill that was already fully settled on a SINGLE payment: move that
+        // payment to the corrected total so the recorded money matches the bill
+        // (exactly what "correct & reprint" does). A split/partial bill keeps its
+        // individual payment rows; only its status is recomputed below.
+        if (order.payment_status === "Paid" && pays.length === 1 && money(Number(pays[0].amount)) !== grand) {
+            await dbp.query(
+                "UPDATE payments SET amount=? WHERE id=? AND restaurant_id=?",
+                [grand, pays[0].id, restaurantId]
+            );
+        }
+
+        const [[sumRow]] = await dbp.query(
+            `SELECT IFNULL(SUM(amount),0) AS paid FROM payments
+             WHERE order_id=? AND restaurant_id=? AND payment_status='Success' AND deleted_at IS NULL`,
+            [orderId, restaurantId]
+        );
+        const paid = money(Number(sumRow.paid));
+
+        let status = "Pending";
+        if (paid > 0 && paid >= grand) status = "Paid";
+        else if (paid > 0) status = "Partial";
+
+        if (status === "Paid") {
+            await dbp.query(
+                "UPDATE orders SET payment_status='Paid', order_status='Completed' WHERE id=? AND restaurant_id=?",
+                [orderId, restaurantId]
+            );
+            // A fully paid table order frees its table.
+            if (order.table_id) {
+                await dbp.query(
+                    "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
+                    [order.table_id, restaurantId]
+                );
+            }
+        } else {
+            await dbp.query(
+                "UPDATE orders SET payment_status=? WHERE id=? AND restaurant_id=?",
+                [status, orderId, restaurantId]
+            );
+        }
+
+        return { reconciled: true, difference, payment_status: status };
+    })()
+        .then((r) => callback(null, r))
+        .catch((e) => callback(e));
+
+};
+
 // Re-settle an edited bill: recompute its totals from the items that are now on
 // it, then bring the recorded payment into line so the till matches the paper.
 // Returns { before, after } so the caller can write a meaningful audit entry.
@@ -1467,5 +1551,6 @@ module.exports = {
     getTodaysBills,
     getBillById,
     addItemToOrder,
+    reconcilePaymentAfterEdit,
     rebillOrder
 };
