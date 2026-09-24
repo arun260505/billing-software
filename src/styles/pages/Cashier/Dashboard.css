@@ -646,6 +646,21 @@
 .cashier-app .tbill-wa.tbill-wa-both:hover { background: #15803d; }
 .cashier-app .tbill-wa:disabled { opacity: .55; cursor: default; }
 
+/* Save (no print) beside Reprint — a balanced pair: neutral Save on the left,
+   the blue Reprint filling the rest. */
+.cashier-app .tbill-deliver-wa .tbill-generate {
+    flex: 1; width: auto; margin-top: 0; position: static; box-shadow: none;
+}
+.cashier-app .tbill-saveonly {
+    flex: 0 0 auto; min-width: 132px;
+    padding: 15px 18px; border-radius: 12px;
+    border: 1.5px solid #cbd5e1; background: #fff; color: #334155;
+    font-size: 15px; font-weight: 800; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.cashier-app .tbill-saveonly:hover { background: #f1f5f9; }
+.cashier-app .tbill-saveonly:disabled { opacity: .55; cursor: default; }
+
 /* ══ BILLS (today's settled bills — correct & reprint) ══ */
 .cashier-app .bills-summary { margin-left: auto; font-size: 13px; color: #475569; white-space: nowrap; }
 .cashier-app .bills-summary b { color: #0f172a; font-weight: 800; }

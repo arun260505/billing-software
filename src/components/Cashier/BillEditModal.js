@@ -211,9 +211,9 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                                     {/* Save the correction WITHOUT printing — for a
                                         fix that doesn't need a fresh paper copy. */}
                                     {onSaveOnly && (
-                                        <button className="tbill-wa" disabled={busy || groups.length === 0}
+                                        <button className="tbill-saveonly" disabled={busy || groups.length === 0}
                                             onClick={() => onSaveOnly(method, totals)}>
-                                            {busy ? "Working…" : `💾 Save${changed ? " changes" : ""}`}
+                                            {busy ? "Working…" : "💾 Save"}
                                         </button>
                                     )}
                                     <button className="tbill-generate" disabled={busy || groups.length === 0}
