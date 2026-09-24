@@ -213,6 +213,8 @@
 .cashier-app .mc-step { width: 28px; height: 28px; border: none; border-radius: 8px; background: #fff; color: #2563eb; font-size: 18px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 .cashier-app .mc-step-add { background: #2563eb; color: #fff; }
 .cashier-app .mc-qty { min-width: 20px; text-align: center; font-size: 15px; font-weight: 800; color: #0f172a; }
+/* Tap-to-add card: read-only "×N" badge showing how many are in the cart (no +/−). */
+.cashier-app .mc-qty-badge { min-width: 34px; height: 34px; padding: 0 10px; border-radius: 10px; background: #2563eb; color: #fff; font-size: 15px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
 .cashier-app .menu-unavailable-tag { position: absolute; top: 10px; right: 10px; font-size: 10px; font-weight: 700; color: #b91c1c; background: #fee2e2; padding: 3px 8px; border-radius: 999px; }
 .cashier-app .out-of-stock-card { opacity: .55; }
 .cashier-app .out-of-stock-card .menu-price { color: #94a3b8; }

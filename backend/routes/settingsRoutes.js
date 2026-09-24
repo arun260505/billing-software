@@ -16,6 +16,9 @@ router.put("/discounts", roleMiddleware(["admin"]), settingsController.saveDisco
 // Salon bills: printer or not, and the WhatsApp message (read via GET /restaurant).
 router.put("/whatsapp", roleMiddleware(["admin"]), settingsController.saveWhatsApp);
 
+// POS: tap-to-add menu cards (hide + / stepper on the card)
+router.put("/menu", roleMiddleware(["admin"]), settingsController.saveMenu);
+
 // ── 2. Payment Settings ────────────────────────────────────────
 router.get("/payments", settingsController.getPayments);
 router.put("/payments", roleMiddleware(["admin"]), settingsController.savePayments);

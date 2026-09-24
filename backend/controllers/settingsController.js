@@ -126,6 +126,19 @@ exports.saveWhatsApp = (req, res) => {
     });
 };
 
+// POS behaviour: tap a menu card to add (hide + / stepper on the card).
+exports.saveMenu = (req, res) => {
+    const rid = req.user.restaurant_id;
+    if (!rid) return error(res, "Restaurant context required.", 400);
+    settingsModel.saveMenuSettings(rid, { menu_tap_to_add: req.body.menu_tap_to_add ? 1 : 0 }, (err) => {
+        if (err) return error(res, err.message, 500);
+        settingsModel.getRestaurantSettings(rid, (fetchErr, data) => {
+            if (fetchErr) return error(res, fetchErr.message, 500);
+            return success(res, "Menu settings saved.", data);
+        });
+    });
+};
+
 // ── 2. Payment Settings ────────────────────────────────────────
 
 exports.getPayments = (req, res) => {

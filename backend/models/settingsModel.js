@@ -28,7 +28,9 @@ const DEFAULT_RESTAURANT = {
     whatsapp_template: null,
     // 019: salon-wide default for which WhatsApp bills open in ('web' | 'app').
     // A till can override this on its own POS.
-    whatsapp_via: "web"
+    whatsapp_via: "web",
+    // POS: tap a menu card to add (no + / stepper on the card; reduce in the cart).
+    menu_tap_to_add: 0
 };
 
 const DEFAULT_PAYMENT = {
@@ -170,6 +172,17 @@ const saveWhatsAppSettings = (restaurantId, data, callback) => {
         data.whatsapp_template,
         data.whatsapp_via === "app" ? "app" : "web"
     ], callback);
+};
+
+// POS behaviour: tap-to-add menu cards. Own upsert so it never collides with the
+// main restaurant form (which rewrites every column).
+const saveMenuSettings = (restaurantId, data, callback) => {
+    const sql = `
+        INSERT INTO settings (restaurant_id, menu_tap_to_add)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE menu_tap_to_add = VALUES(menu_tap_to_add)
+    `;
+    db.query(sql, [restaurantId, data.menu_tap_to_add ? 1 : 0], callback);
 };
 
 // The rule a new bill is checked against (utils/discountRules.js).
@@ -390,6 +403,7 @@ module.exports = {
     saveDiscountSettings,
     getDiscountPolicy,
     saveWhatsAppSettings,
+    saveMenuSettings,
     getPaymentSettings,
     savePaymentSettings,
     getSecuritySettings,

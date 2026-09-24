@@ -121,6 +121,10 @@ function Dashboard() {
     // send the same bill on WhatsApp. This till's own Web/App override is set on
     // the Printer screen and stored per-PC (read live via getWhatsAppOverride).
     const [waSettings, setWaSettings] = useState({ whatsapp_template: "", shop_mobile: "", whatsapp_via: "web" });
+    // Tap-to-add menu cards (Admin → Settings, per restaurant): no +/− on the card,
+    // tap to add, change quantity in the cart. Lives in `settings`, read via
+    // getRestaurant below. Off unless the owner turned it on (e.g. Tasty Travel).
+    const [menuTapToAdd, setMenuTapToAdd] = useState(false);
     // Everything billed on top of the goods — GST, service charge, packing —
     // lives in Admin → Charges. A restaurant with none configured bills neither
     // tax nor service, which is the point of them being rows and not settings.
@@ -156,6 +160,7 @@ function Dashboard() {
                 shop_mobile: s.shop_mobile || "",
                 whatsapp_via: s.whatsapp_via === "app" ? "app" : "web"
             });
+            setMenuTapToAdd(Number(s.menu_tap_to_add) === 1);
         } catch (e) {
             // Not fatal — WhatsApp send falls back to the built-in template.
             console.error("Failed to load WhatsApp settings in cashier:", e);
@@ -1414,6 +1419,7 @@ function Dashboard() {
                                     quantity={cartQtyFor(item.id)}
                                     addToCart={addToCart}
                                     removeOneFromCart={removeOneFromCart}
+                                    tapToAddOnly={menuTapToAdd}
                                 />
                             ))
                         )}

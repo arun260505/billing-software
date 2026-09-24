@@ -11,6 +11,9 @@ const settingsService = {
     // Salon: printer or no printer, and the WhatsApp bill message (owner).
     saveWhatsApp: (data) => api.put("/settings/whatsapp", data),
 
+    // POS: tap-to-add menu cards (hide + / stepper). Read back through getRestaurant.
+    saveMenu: (data) => api.put("/settings/menu", data),
+
     // Payments
     getPayments: () => api.get("/settings/payments"),
     savePayments: (data) => api.put("/settings/payments", data),

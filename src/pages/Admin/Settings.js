@@ -755,6 +755,81 @@ function resourceHint(mode) {
 // Tab: Printers & Kitchen (EXISTING — DO NOT CHANGE)
 // ═══════════════════════════════════════════════════════════════
 
+// Tap-to-add menu cards: no +/− on the card — the cashier taps a card to add and
+// changes the quantity in the cart. Saved on its own (settings.menu_tap_to_add) so
+// it never rewrites the rest of the restaurant form. Off unless the owner turns it on.
+function SectionMenuTapToAdd() {
+    const [saved, setSaved] = useState(false);
+    const [value, setValue] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [notice, setNotice] = useState("");
+
+    useEffect(() => {
+        let live = true;
+        settingsService.getRestaurant()
+            .then((res) => {
+                if (!live) return;
+                const on = Number(res.data?.data?.menu_tap_to_add) === 1;
+                setSaved(on);
+                setValue(on);
+            })
+            .catch(() => { /* leave the default (off) if it can't load */ })
+            .finally(() => { if (live) setLoading(false); });
+        return () => { live = false; };
+    }, []);
+
+    const handleSave = async () => {
+        setSaving(true);
+        setNotice("");
+        try {
+            const res = await settingsService.saveMenu({ menu_tap_to_add: value ? 1 : 0 });
+            const on = Number(res.data?.data?.menu_tap_to_add) === 1;
+            setSaved(on);
+            setValue(on);
+            setNotice("Saved. The cashier screen picks it up within a few seconds.");
+        } catch (err) {
+            alert(err.response?.data?.message || "Could not save the menu setting.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return null;
+
+    return (
+        <section className="set-section">
+            <div className="set-section-head">
+                <h3>Menu cards</h3>
+                <p>How the cashier adds items to a bill from the menu grid.</p>
+            </div>
+            {notice && <div className="set-alert set-alert-ok">{notice}</div>}
+            <label className="set-toggle-row">
+                <span className="set-toggle-text">
+                    <strong>Tap-to-add (no +/− on the card)</strong>
+                    <span className="set-toggle-sub">
+                        On: tapping a menu card adds one; quantities are changed in the cart on the
+                        right. The + and − buttons are removed from the cards. Off: each card shows a
+                        − qty + stepper.
+                    </span>
+                </span>
+                <input
+                    type="checkbox"
+                    className="set-toggle-input"
+                    checked={value}
+                    disabled={saving}
+                    onChange={(e) => { setValue(e.target.checked); setNotice(""); }}
+                />
+            </label>
+            <div className="set-section-footer">
+                <button className="set-save-btn" onClick={handleSave} disabled={saving || value === saved}>
+                    {saving ? "Saving..." : value !== saved ? "Save Changes" : "Saved"}
+                </button>
+            </div>
+        </section>
+    );
+}
+
 function TabPrintersKitchen() {
     const [savedMode, setSavedMode] = useState(DEFAULT_PRINTER_MODE);
     const [mode, setMode] = useState(DEFAULT_PRINTER_MODE);
@@ -905,6 +980,8 @@ function TabPrintersKitchen() {
                     {saving ? "Saving..." : dirty ? "Save Changes" : "Saved"}
                 </button>
             </div>
+
+            <SectionMenuTapToAdd />
         </>
     );
 }

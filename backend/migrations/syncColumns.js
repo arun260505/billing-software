@@ -134,6 +134,9 @@ async function runSyncSchema() {
     if (await tableExists("settings")) {
         await ensureColumn("settings", "discount_auto_type", "VARCHAR(10) NOT NULL DEFAULT 'none'");
         await ensureColumn("settings", "discount_auto_value", "DECIMAL(10,2) NOT NULL DEFAULT 0");
+        // POS: tap a menu card to add (hide the + / stepper on the card; reduce in
+        // the cart). Off by default; syncs down like the other settings columns.
+        await ensureColumn("settings", "menu_tap_to_add", "TINYINT NOT NULL DEFAULT 0");
     }
 
     // Feature columns from later migrations (002 served, 003 service_charge).

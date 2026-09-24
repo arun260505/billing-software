@@ -4,7 +4,10 @@
 // click from bubbling so a tap on a button doesn't count twice.
 // onToggleAvailability is optional — only the cashier passes it, which shows the
 // "Mark Available / Unavailable" toggle on each card.
-function MenuCard({ item, addToCart, removeOneFromCart, quantity = 0, onToggleAvailability }) {
+// tapToAddOnly (a per-restaurant setting): no +/− stepper on the card — tap the
+// card to add, and change quantity in the cart on the right. A read-only ×N badge
+// shows how many are already in the cart.
+function MenuCard({ item, addToCart, removeOneFromCart, quantity = 0, onToggleAvailability, tapToAddOnly = false }) {
 
     const isUnavailable = Number(item.available_quantity) === 0;
 
@@ -37,6 +40,10 @@ function MenuCard({ item, addToCart, removeOneFromCart, quantity = 0, onToggleAv
 
                     {isUnavailable ? (
                         <span className="menu-unavailable-tag">Unavailable</span>
+                    ) : tapToAddOnly ? (
+                        // Tap-to-add: no +/− on the card. Tap the card to add; change
+                        // quantity in the cart. Show a read-only ×N badge when it's in.
+                        quantity > 0 ? <span className="mc-qty-badge">×{quantity}</span> : null
                     ) : quantity > 0 ? (
                         <div className="mc-stepper">
                             <button className="mc-step" onClick={(e) => { e.stopPropagation(); removeOneFromCart && removeOneFromCart(item); }}>−</button>
