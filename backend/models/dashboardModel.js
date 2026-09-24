@@ -57,8 +57,17 @@ const getSummary = (restaurantId, today, callback) => {
              AND deleted_at IS NULL
              AND payment_status='Paid') AS month_sales,
 
-            (SELECT COUNT(*) FROM dining_tables
-             WHERE restaurant_id = ? AND status='Occupied') AS occupied_tables,
+            -- Occupied tables are DERIVED from active orders, not dining_tables.status.
+            -- A table's status is only synced cloud->till (down), so the till's live
+            -- "Occupied" never reaches the cloud and the cloud dashboard always read
+            -- 0/N. An active order (placed, not yet settled or cancelled) IS synced
+            -- up, so counting the distinct tables with one is live on both the till
+            -- and the cloud — and it's the true meaning of "occupied".
+            (SELECT COUNT(DISTINCT o.table_id) FROM orders o
+             WHERE o.restaurant_id = ? AND o.table_id IS NOT NULL
+               AND o.deleted_at IS NULL
+               AND o.order_status NOT IN ('Cancelled','Completed')
+               AND o.payment_status <> 'Paid') AS occupied_tables,
 
             (SELECT COUNT(*) FROM dining_tables
              WHERE restaurant_id = ?) AS total_tables,

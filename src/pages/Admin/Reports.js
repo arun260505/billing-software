@@ -32,7 +32,8 @@ import {
     FaTimesCircle,
     FaInfoCircle,
     FaInbox,
-    FaSyncAlt
+    FaSyncAlt,
+    FaSearch
 } from "react-icons/fa";
 
 import AdminLayout from "../../layouts/AdminLayout";
@@ -514,7 +515,17 @@ function TopItemsCard({ items, span = 7 }) {
     // "Items Sold" is a full list, so show every item by default; the toggle can
     // still collapse it to the top few on a very long list.
     const [showAll, setShowAll] = useState(true);
-    const visible = showAll ? items : items.slice(0, 5);
+    // Search filters the whole list by item OR category name. While searching we
+    // show every match (the top-5 collapse doesn't apply) and keep each item's
+    // original rank so the numbering still means "how it ranked overall".
+    const [query, setQuery] = useState("");
+    const q = query.trim().toLowerCase();
+    const matches = q
+        ? items.filter((it) =>
+            String(it.item_name || "").toLowerCase().includes(q) ||
+            String(it.category_name || "").toLowerCase().includes(q))
+        : items;
+    const visible = q ? matches : (showAll ? items : items.slice(0, 5));
 
     const rankClass = (rank) =>
         rank === 1 ? "gold" : rank === 2 ? "silver" : rank === 3 ? "bronze" : "";
@@ -530,6 +541,22 @@ function TopItemsCard({ items, span = 7 }) {
                             : "Every item sold in this period, with quantity"}
                     </p>
                 </div>
+                {items.length > 0 && (
+                    <div className="rp-search">
+                        <FaSearch className="rp-search-icon" aria-hidden="true" />
+                        <input
+                            type="text"
+                            className="rp-search-input"
+                            placeholder={salon ? "Search service or category…" : "Search item or category…"}
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            aria-label="Search items sold"
+                        />
+                        {query && (
+                            <button type="button" className="rp-search-clear" onClick={() => setQuery("")} aria-label="Clear search">✕</button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {items.length === 0 ? (
@@ -553,6 +580,11 @@ function TopItemsCard({ items, span = 7 }) {
                                 </tr>
                             </thead>
                             <tbody>
+                                {visible.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="rp-no-match">No {salon ? "services" : "items"} match “{query}”.</td>
+                                    </tr>
+                                )}
                                 {visible.map((it) => (
                                     <tr key={`${it.rank}-${it.item_name}`}>
                                         <td>
@@ -587,16 +619,24 @@ function TopItemsCard({ items, span = 7 }) {
                         </table>
                     </div>
 
-                    {items.length > 5 && (
-                        <button
-                            type="button"
-                            className="rp-view-all"
-                            onClick={() => setShowAll(!showAll)}
-                        >
-                            {showAll
-                                ? "Show top 5 only"
-                                : `Show all ${items.length} items sold`}
-                        </button>
+                    {q ? (
+                        matches.length > 0 && (
+                            <p className="rp-search-count">
+                                {matches.length} {salon ? "service" : "item"}{matches.length === 1 ? "" : "s"} match “{query}”.
+                            </p>
+                        )
+                    ) : (
+                        items.length > 5 && (
+                            <button
+                                type="button"
+                                className="rp-view-all"
+                                onClick={() => setShowAll(!showAll)}
+                            >
+                                {showAll
+                                    ? "Show top 5 only"
+                                    : `Show all ${items.length} items sold`}
+                            </button>
+                        )
                     )}
                 </>
             )}
