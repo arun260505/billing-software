@@ -1133,6 +1133,28 @@ function Dashboard() {
     const handleBillWhatsApp = (method, totals, opts = {}) =>
         deliverCorrectedBill(method, totals, { print: !!opts.print, whatsapp: true });
 
+    // Bills → correct & reprint → "Reprint KOT": re-send only the picked items to
+    // the KITCHEN printer (not the customer bill) — for when the kitchen ticket
+    // didn't print fully (e.g. paper ran out). Prints in the normal KOT format.
+    const handleReprintKotForBill = async (selectedItems) => {
+        if (!editingBill || !selectedItems || selectedItems.length === 0) return;
+        await printKotNow({
+            order: {
+                order_number: editingBill.order_number,
+                order_type: editingBill.table_name ? "Dine-In" : "Takeaway",
+                tableName: editingBill.table_name ? `Table ${editingBill.table_name}` : "Counter",
+                table_number: editingBill.table_name || undefined,
+                items: selectedItems,
+                cashier_name: cashierName,
+                date: currentDate,
+                time: currentTime,
+                isReprint: true
+            },
+            restaurant: restaurantInfo || {},
+            format: kitchenFormat || {}
+        });
+    };
+
     // Bills list → WhatsApp: resend a saved bill without correcting it. Loads the
     // bill's items first (the list row has none), then opens WhatsApp.
     const sendSavedBillOnWhatsApp = async (bill) => {
@@ -1565,6 +1587,7 @@ function Dashboard() {
                     onAddItem={handleBillAdd}
                     onReprint={handleBillReprint}
                     onSaveOnly={handleBillSaveOnly}
+                    onReprintKot={handleReprintKotForBill}
                     onWhatsApp={isSalon() ? handleBillWhatsApp : undefined}
                     onClose={closeBillEdit}
                 />

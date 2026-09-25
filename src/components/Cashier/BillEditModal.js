@@ -2,6 +2,7 @@ import { useState } from "react";
 import { allAutoChargesFor, billTotals, resolveDiscount } from "../../utils/rates";
 import useEscapeClose from "../../hooks/useEscapeClose";
 import { isSalon } from "../../utils/businessType";
+import ReprintKotModal from "../ReprintKotModal";
 
 // A settled bill, opened for correction: adjust a quantity that was rung up
 // twice, drop an item that was never served, add one that was missed — then
@@ -12,7 +13,7 @@ import { isSalon } from "../../utils/businessType";
 // the backend then refused to agree with. They now come from the restaurant's
 // own charge rows (Admin → Charges), like everywhere else.
 function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [],
-                         onSetQty, onRemoveGroup, onAddItem, onReprint, onSaveOnly, onWhatsApp, onClose }) {
+                         onSetQty, onRemoveGroup, onAddItem, onReprint, onSaveOnly, onReprintKot, onWhatsApp, onClose }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
@@ -20,6 +21,9 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
     const [method, setMethod] = useState(bill.payment_method || "Cash");
     const [adding, setAdding] = useState(false);
     const [search, setSearch] = useState("");
+    // Reprint-KOT item picker (for when a kitchen ticket didn't print fully).
+    const [showReprintKot, setShowReprintKot] = useState(false);
+    const [rkBusy, setRkBusy] = useState(false);
 
     // Merge the order_item rows into one display line per item + price.
     const groups = [];
@@ -207,20 +211,30 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                         // handler, fall back to the plain reprint button.
                         if (!onWhatsApp) {
                             return (
-                                <div className="tbill-deliver-wa">
-                                    {/* Save the correction WITHOUT printing — for a
-                                        fix that doesn't need a fresh paper copy. */}
-                                    {onSaveOnly && (
-                                        <button className="tbill-saveonly" disabled={busy || groups.length === 0}
-                                            onClick={() => onSaveOnly(method, totals)}>
-                                            {busy ? "Working…" : "💾 Save"}
+                                <>
+                                    <div className="tbill-deliver-wa">
+                                        {/* Save the correction WITHOUT printing — for a
+                                            fix that doesn't need a fresh paper copy. */}
+                                        {onSaveOnly && (
+                                            <button className="tbill-saveonly" disabled={busy || groups.length === 0}
+                                                onClick={() => onSaveOnly(method, totals)}>
+                                                {busy ? "Working…" : "💾 Save"}
+                                            </button>
+                                        )}
+                                        <button className="tbill-generate" disabled={busy || groups.length === 0}
+                                            onClick={() => onReprint(method, totals)}>
+                                            {reprintLabel}
+                                        </button>
+                                    </div>
+                                    {/* Re-send only the missed items to the KITCHEN (not
+                                        the customer bill) — e.g. the KOT ran out of paper. */}
+                                    {onReprintKot && groups.length > 0 && (
+                                        <button className="tbill-reprint-kot" disabled={busy}
+                                            onClick={() => setShowReprintKot(true)}>
+                                            🖨 Reprint KOT (kitchen)
                                         </button>
                                     )}
-                                    <button className="tbill-generate" disabled={busy || groups.length === 0}
-                                        onClick={() => onReprint(method, totals)}>
-                                        {reprintLabel}
-                                    </button>
-                                </div>
+                                </>
                             );
                         }
                         return (
@@ -239,6 +253,24 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                 </div>
 
             </div>
+
+            {showReprintKot && (
+                <ReprintKotModal
+                    title="Reprint kitchen ticket"
+                    items={items}
+                    busy={rkBusy}
+                    onPrint={async (selectedItems) => {
+                        setRkBusy(true);
+                        try {
+                            await onReprintKot(selectedItems);
+                            setShowReprintKot(false);
+                        } finally {
+                            setRkBusy(false);
+                        }
+                    }}
+                    onClose={() => setShowReprintKot(false)}
+                />
+            )}
         </div>
     );
 }

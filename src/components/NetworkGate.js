@@ -33,12 +33,15 @@ function NetworkGate({ children }) {
         //    Try it a few times before giving up — a momentary WiFi blip must
         //    NOT trigger a full subnet scan when the till is actually still
         //    there and reachable (that flash of "searching" was the complaint).
-        for (let attempt = 0; attempt < 3; attempt += 1) {
-            if (await isServerReachable()) {
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+            // retry:1 → each attempt itself rides out one dropped packet, so a
+            // weak signal gets several real chances on the KNOWN till before we
+            // ever fall back to a full subnet scan.
+            if (await isServerReachable(1)) {
                 setStatus("online");
                 return;
             }
-            if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
+            if (attempt < 3) await new Promise((r) => setTimeout(r, 1000));
         }
 
         // 2) Not known / moved (DHCP) / different network: auto-scan this WiFi.
@@ -121,7 +124,8 @@ function NetworkGate({ children }) {
         let cancelled = false;
 
         const id = setInterval(async () => {
-            const ok = await isServerReachable();
+            // retry:1 so a single weak-signal blip on one beat isn't a "miss".
+            const ok = await isServerReachable(1);
             if (cancelled) return;
             if (ok) { misses = 0; return; }
             misses += 1;
@@ -131,9 +135,10 @@ function NetworkGate({ children }) {
         }, 5000);
 
         const onUnreachable = async () => {
-            // Confirm with one probe so a single odd request doesn't wall the
-            // app; if the till really isn't answering, block now.
-            const ok = await isServerReachable();
+            // Confirm with a few probes so a single odd request (or a weak-signal
+            // blip) doesn't wall the app; only block if the till really isn't
+            // answering across retries.
+            const ok = await isServerReachable(2);
             if (!cancelled && !ok) setStatus("offline");
         };
         window.addEventListener("inwallz:server-unreachable", onUnreachable);

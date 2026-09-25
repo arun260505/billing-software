@@ -662,6 +662,14 @@
 }
 .cashier-app .tbill-saveonly:hover { background: #f1f5f9; }
 .cashier-app .tbill-saveonly:disabled { opacity: .55; cursor: default; }
+/* Reprint KOT (kitchen) — full-width secondary action under Save / Reprint. */
+.cashier-app .tbill-reprint-kot {
+    width: 100%; margin-top: 10px; padding: 13px 18px; border-radius: 12px;
+    border: 1.5px solid #2563eb; background: #fff; color: #2563eb;
+    font-size: 15px; font-weight: 800; cursor: pointer;
+}
+.cashier-app .tbill-reprint-kot:hover { background: #eff6ff; }
+.cashier-app .tbill-reprint-kot:disabled { opacity: .55; cursor: default; }
 
 /* ══ BILLS (today's settled bills — correct & reprint) ══ */
 .cashier-app .bills-summary { margin-left: auto; font-size: 13px; color: #475569; white-space: nowrap; }

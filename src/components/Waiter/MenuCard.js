@@ -41,9 +41,9 @@ function MenuCard({ item, addToCart, removeOneFromCart, quantity = 0, onToggleAv
                     {isUnavailable ? (
                         <span className="menu-unavailable-tag">Unavailable</span>
                     ) : tapToAddOnly ? (
-                        // Tap-to-add: no +/− on the card. Tap the card to add; change
-                        // quantity in the cart. Show a read-only ×N badge when it's in.
-                        quantity > 0 ? <span className="mc-qty-badge">×{quantity}</span> : null
+                        // Tap-to-add: nothing on the card at all — no +/−, no qty badge.
+                        // Tap the card to add; the quantity lives only in the cart.
+                        null
                     ) : quantity > 0 ? (
                         <div className="mc-stepper">
                             <button className="mc-step" onClick={(e) => { e.stopPropagation(); removeOneFromCart && removeOneFromCart(item); }}>−</button>

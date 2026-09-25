@@ -9,6 +9,7 @@ import CategoryTabs from "../../components/Waiter/CategoryTabs";
 import MenuCard from "../../components/Waiter/MenuCard";
 import CartSheet from "../../components/Waiter/CartSheet";
 import BillModal from "../../components/Waiter/BillModal";
+import ReprintKotModal from "../../components/ReprintKotModal";
 import chargeService from "../../services/chargeService";
 import kitchenFormatService from "../../services/kitchenFormatService";
 import billingFormatService from "../../services/billingFormatService";
@@ -39,6 +40,8 @@ function Dashboard() {
     const [editingOrder, setEditingOrder] = useState(null);
     const [showRunningOrders, setShowRunningOrders] = useState(false);
     const [showBill, setShowBill] = useState(false);   // bill preview/edit modal
+    const [showReprint, setShowReprint] = useState(false);   // reprint-KOT item picker
+    const [reprintBusy, setReprintBusy] = useState(false);
     const [billBusy, setBillBusy] = useState(false);
     const [showCart, setShowCart] = useState(false);   // new-order review sheet
     // The selected table's already-sent items, shown read-only for reference.
@@ -527,6 +530,41 @@ function Dashboard() {
         }
     };
 
+    // Reprint a kitchen ticket for only the items chosen in the picker — for when
+    // the KOT didn't print fully (e.g. the paper ran out mid-print). Prints just
+    // those items, in the normal KOT format, to the kitchen printer on the till.
+    const handleReprintKot = async (selectedItems) => {
+        if (!selectedTable || !selectedItems || selectedItems.length === 0) return;
+        setReprintBusy(true);
+        try {
+            // The table's live order number (for the "Token No" on the ticket).
+            const ro = runningOrders.find(
+                (o) => String(o.table_name) === String(selectedTable.table_number)
+            );
+            await printKotNow({
+                order: {
+                    order_number: ro?.order_number,
+                    order_type: selectedTable?.isParcel ? "Takeaway" : "Dine-In",
+                    isParcel: Boolean(selectedTable?.isParcel),
+                    tableName: selectedTable?.isParcel ? "PARCEL" : `Table ${selectedTable.table_number}`,
+                    table_number: selectedTable?.table_number,
+                    items: selectedItems,
+                    waiter_name: waiterName,
+                    date: currentDate,
+                    time: currentTime,
+                    isReprint: true
+                },
+                restaurant: restaurantInfo || {},
+                format: kitchenFormat || {}
+            });
+            setShowReprint(false);
+        } catch (e) {
+            alert("Could not reprint the kitchen ticket.");
+        } finally {
+            setReprintBusy(false);
+        }
+    };
+
     // Waiter prints + settles the bill directly (Admin enabled it). Mirrors the
     // cashier's generateTableBill: settle FIRST (the server re-derives the total
     // and can refuse), then print — so a print failure can't lose the sale.
@@ -900,6 +938,9 @@ function Dashboard() {
                     {previousItems.length > 0 && (
                         <button className="ws-bill-chip" onClick={() => { loadAllItems(); setShowBill(true); }}>🧾 Bill</button>
                     )}
+                    {previousItems.length > 0 && (
+                        <button className="ws-reprint-chip" onClick={() => setShowReprint(true)}>🖨 Reprint KOT</button>
+                    )}
                 </div>
 
                 {/* Already sent to kitchen — static (doesn't grow when adding new
@@ -1064,6 +1105,16 @@ function Dashboard() {
                     onConfirm={requestBill}
                     onSettle={settleAndPrint}
                     onClose={() => setShowBill(false)}
+                />
+            )}
+
+            {showReprint && selectedTable && (
+                <ReprintKotModal
+                    title="Reprint kitchen ticket"
+                    items={previousItems}
+                    busy={reprintBusy}
+                    onPrint={handleReprintKot}
+                    onClose={() => setShowReprint(false)}
                 />
             )}
         </div>

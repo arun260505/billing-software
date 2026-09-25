@@ -1,0 +1,57 @@
+/* Reprint-KOT item picker — shared by the cashier and the waiter app. */
+.rk-overlay {
+    position: fixed; inset: 0; z-index: 4000;
+    background: rgba(15, 23, 42, .55);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+}
+.rk-modal {
+    width: 100%; max-width: 440px; max-height: 88vh;
+    background: #fff; border-radius: 16px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .3);
+    overflow: hidden;
+}
+.rk-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px 10px;
+}
+.rk-head h3 { margin: 0; font-size: 18px; font-weight: 800; color: #0f172a; }
+.rk-x {
+    width: 32px; height: 32px; border: none; border-radius: 8px;
+    background: #f1f5f9; color: #475569; font-size: 15px; cursor: pointer;
+}
+.rk-sub { margin: 0 18px 10px; font-size: 13px; color: #64748b; }
+.rk-empty { padding: 24px; text-align: center; color: #94a3b8; }
+.rk-all {
+    align-self: flex-start; margin: 0 18px 8px;
+    border: 1px solid #cbd5e1; background: #f8fafc; color: #2563eb;
+    font-size: 13px; font-weight: 700; border-radius: 8px;
+    padding: 6px 12px; cursor: pointer;
+}
+.rk-list { overflow-y: auto; padding: 0 18px; }
+.rk-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 12px; margin-bottom: 8px;
+    border: 1.5px solid #e2e8f0; border-radius: 12px; cursor: pointer;
+    user-select: none;
+}
+.rk-row.on { border-color: #2563eb; background: #eff6ff; }
+.rk-row input { width: 20px; height: 20px; accent-color: #2563eb; flex: 0 0 auto; }
+.rk-name { flex: 1; font-size: 15px; font-weight: 600; color: #0f172a; }
+.rk-qty { font-size: 15px; font-weight: 800; color: #2563eb; }
+.rk-foot {
+    display: flex; gap: 10px; padding: 12px 18px 16px;
+    border-top: 1px solid #f1f5f9; margin-top: 6px;
+}
+.rk-cancel {
+    flex: 1; height: 46px; border: 1px solid #cbd5e1;
+    background: #fff; color: #475569; font-size: 15px; font-weight: 700;
+    border-radius: 12px; cursor: pointer;
+}
+.rk-print {
+    flex: 2; height: 46px; border: none;
+    background: #2563eb; color: #fff; font-size: 15px; font-weight: 800;
+    border-radius: 12px; cursor: pointer;
+}
+.rk-print:disabled, .rk-cancel:disabled, .rk-all:disabled { opacity: .5; cursor: not-allowed; }
