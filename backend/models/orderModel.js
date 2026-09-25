@@ -477,14 +477,43 @@ const deleteOrderItems = (orderId, restaurantId, callback) => {
 
 };
 
-// Soft-cancel an order (tenant-scoped)
+// Soft-cancel an order (tenant-scoped). Also FREES its table when that was the
+// table's last active order — otherwise a cancelled bill left the table stuck in
+// Occupied/Billing with a "Bill T<n>" that has nothing to print, and only a
+// direct database fix could clear it.
 const cancelOrder = (orderId, restaurantId, callback) => {
 
-    db.query(
-        "UPDATE orders SET order_status = 'Cancelled' WHERE id = ? AND restaurant_id = ?",
-        [orderId, restaurantId],
-        callback
-    );
+    const dbp = db.promise();
+    (async () => {
+        const [[ord]] = await dbp.query(
+            "SELECT table_id FROM orders WHERE id=? AND restaurant_id=?",
+            [orderId, restaurantId]
+        );
+
+        await dbp.query(
+            "UPDATE orders SET order_status='Cancelled' WHERE id=? AND restaurant_id=?",
+            [orderId, restaurantId]
+        );
+
+        // If this order was on a table and the table now has no other active order,
+        // free it so the stuck "Bill T<n>" clears.
+        if (ord && ord.table_id) {
+            const [[left]] = await dbp.query(
+                `SELECT COUNT(*) AS n FROM orders
+                 WHERE table_id=? AND restaurant_id=? AND deleted_at IS NULL
+                   AND order_status IN ('Pending','Preparing','Ready','Served')`,
+                [ord.table_id, restaurantId]
+            );
+            if (Number(left.n) === 0) {
+                await dbp.query(
+                    "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
+                    [ord.table_id, restaurantId]
+                );
+            }
+        }
+    })()
+        .then(() => callback(null))
+        .catch((e) => callback(e));
 
 };
 
@@ -727,11 +756,17 @@ const settleTable = (tableId, restaurantId, payments, employeeId, finalTotal, ch
                 (err, orders) => {
                     if (err) return callback(err);
 
-                    // No open order left = the table was already billed (a second
-                    // settle, or a stale bill screen). Say so plainly instead of the
-                    // confusing "screen total does not match recorded 0.00" mismatch.
+                    // No open order left = the table was already billed, or its order
+                    // was cancelled out from under a stale "Bill T<n>". FREE the table
+                    // here too so a stuck billing chip clears from the settle screen
+                    // (belt-and-suspenders alongside cancelOrder freeing it), instead
+                    // of stranding the cashier with a bill that has nothing to print.
                     if (!orders || orders.length === 0) {
-                        return callback(new Error("This table has already been billed. Refresh and it will show as free."));
+                        return db.query(
+                            "UPDATE dining_tables SET status='Available', current_bill=0 WHERE id=? AND restaurant_id=?",
+                            [tableId, restaurantId],
+                            () => callback(new Error("This table had no open items — it's now cleared and free. Refresh."))
+                        );
                     }
 
                     // Fix the per-bill charges onto the order before anything is
