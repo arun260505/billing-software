@@ -14,13 +14,26 @@
 # discovered on the WiFi (services/discovery.js) or entered manually.
 #
 # Run from the repo root:  powershell -File packaging\build-waiter-apk.ps1
+#   -TillIp 192.168.0.102   (optional) bake this shop's FIXED cashier IP so the
+#                           phone connects straight to it even on a weak signal,
+#                           instead of relying only on the WiFi scan. Comma-list
+#                           for more than one. Leave off for scan-only (default).
+
+param(
+    [string]$TillIp = ""
+)
 
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot          # ...\billing-software
 $override = Join-Path $repo ".env.production.local"
 
 Write-Host "1/5  Writing temporary env override (blank REACT_APP_API_URL)..." -ForegroundColor Cyan
-Set-Content -Path $override -Value @("REACT_APP_API_URL=", "REACT_APP_TARGET=") -Encoding Ascii
+$envLines = @("REACT_APP_API_URL=", "REACT_APP_TARGET=")
+if ($TillIp -ne "") {
+    Write-Host "     baking fixed till IP(s): $TillIp" -ForegroundColor DarkGray
+    $envLines += "REACT_APP_TILL_IP=$TillIp"
+}
+Set-Content -Path $override -Value $envLines -Encoding Ascii
 
 try {
     Set-Location $repo

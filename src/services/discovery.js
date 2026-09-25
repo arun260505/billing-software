@@ -17,10 +17,24 @@ import { setStoredServer, getStoredServer } from "./serverConfig";
 const TILL_PORTS = [5050, 5000];
 const TILL_SIGNATURE = "inwallz-billing";
 
+// Tills we try DIRECTLY (before any scan), in addition to the last-known one.
+// A shop with a FIXED cashier IP connects in ~1s even on a weak signal, without
+// depending on the /24 scan finding it. This is PER-SHOP: set at APK build time
+// via REACT_APP_TILL_IP (e.g. "192.168.0.102", or a comma-list). Shops that leave
+// it unset just auto-scan as before. A wrong/stale value only fails its probe and
+// falls through to the scan, so it never hurts.
+const KNOWN_TILLS = String(process.env.REACT_APP_TILL_IP || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((ip) => /^\d{1,3}(\.\d{1,3}){3}$/.test(ip));
+
 // Per-host probe budget. Absent hosts on a LAN never answer, so they burn the
-// full timeout — keep it short and lean on concurrency for total speed.
-const PROBE_TIMEOUT_MS = 700;
-const CONCURRENCY = 60;
+// full timeout. Raised from 700ms because on a WEAK signal the real till's reply
+// was arriving late under scan congestion and getting missed (endless "searching").
+const PROBE_TIMEOUT_MS = 1400;
+// Lower concurrency eases that congestion on a weak AP so the till isn't drowned
+// out by the 250-odd dead-host probes firing at once.
+const CONCURRENCY = 40;
 
 const probe = axios.create({ timeout: PROBE_TIMEOUT_MS, validateStatus: () => true });
 
@@ -121,6 +135,18 @@ export async function discoverTill() {
             if (port) return `${ip}:${port}`;
             prefixes.push(ip.split(".").slice(0, 3).join("."));
         }
+    }
+
+    // 1b) Fixed cashier IP(s) — try them directly (a couple of tries each, so a
+    //     weak-signal blip doesn't skip the till that's really there). This is what
+    //     makes a static-IP shop connect in ~1s without any scan.
+    for (const ip of KNOWN_TILLS) {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            const port = await tillPortAt(ip);
+            if (port) return `${ip}:${port}`;
+        }
+        const prefix = ip.split(".").slice(0, 3).join(".");
+        if (!prefixes.includes(prefix)) prefixes.push(prefix);
     }
 
     // 2) The phone's own subnet (WebRTC), then the common fallback prefixes.
