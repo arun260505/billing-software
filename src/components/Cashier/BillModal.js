@@ -133,6 +133,10 @@ function BillModal({ order, restaurant, format, charges = [], onClose, onSuccess
                         payment_method: sp.payment_method,
                         amount: sp.amount,
                         remarks: order.tableName,
+                        // Split line: individually under the total, but the lines
+                        // together cover the full bill — so the backend's "no
+                        // partial for restaurants" rule lets them through.
+                        split: true,
                     });
                 }
             } else {
