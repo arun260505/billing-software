@@ -33,6 +33,20 @@ const getSummary = (restaurantId, today, callback) => {
     // fallback (the subquery is only NULL when there are genuinely no day rows).
     const openWin = `COALESCE((SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1), ${D})`;
 
+    // "Pending Sync" (unpushed local records) is meaningful ONLY on a till: the
+    // cloud is the DESTINATION and never stamps synced_at on data it receives, so
+    // there it would count every order/payment ever received as "pending" — a scary
+    // red number that only grows. Report the real count on the local till; 0 on the
+    // cloud. (SYNC_ROLE=local on tills; unset on the cloud.)
+    const pendingSyncExpr = process.env.SYNC_ROLE === "local"
+        ? `(
+                (SELECT COUNT(*) FROM orders WHERE restaurant_id = ? AND (synced_at IS NULL OR updated_at > synced_at)) +
+                (SELECT COUNT(*) FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ?) AND (synced_at IS NULL OR updated_at > synced_at)) +
+                (SELECT COUNT(*) FROM payments WHERE restaurant_id = ? AND (synced_at IS NULL OR updated_at > synced_at)) +
+                (SELECT COUNT(*) FROM customers WHERE restaurant_id = ? AND (synced_at IS NULL OR updated_at > synced_at))
+            )`
+        : `0`;
+
     const sql = (`
         SELECT
             (SELECT COUNT(*) FROM orders
@@ -131,12 +145,7 @@ const getSummary = (restaurantId, today, callback) => {
              WHERE restaurant_id = ? AND deleted_at IS NULL
                AND status = 'Active' AND quantity <= min_quantity) AS low_stock_items,
 
-            (
-                (SELECT COUNT(*) FROM orders WHERE restaurant_id = ? AND (synced_at IS NULL OR updated_at > synced_at)) +
-                (SELECT COUNT(*) FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ?) AND (synced_at IS NULL OR updated_at > synced_at)) +
-                (SELECT COUNT(*) FROM payments WHERE restaurant_id = ? AND (synced_at IS NULL OR updated_at > synced_at)) +
-                (SELECT COUNT(*) FROM customers WHERE restaurant_id = ? AND (synced_at IS NULL OR updated_at > synced_at))
-            ) AS pending_sync,
+            ${pendingSyncExpr} AS pending_sync,
 
             (SELECT restaurant_name FROM restaurants WHERE id=?) AS restaurant_name,
 
