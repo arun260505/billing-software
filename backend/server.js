@@ -877,4 +877,8 @@ app.listen(PORT, () => {
     // Only the local node (SYNC_ROLE=local) runs the sync worker; the cloud
     // just exposes the /api/sync endpoints.
     require("./sync/syncWorker").start();
+    // Self-heal "paid but stuck Pending" orders on EVERY node (cloud + till), so a
+    // payment whose order-completion write didn't land can't leave the dashboard's
+    // Sales and Collection out of step.
+    require("./sync/reconcilePaid").start();
 });
