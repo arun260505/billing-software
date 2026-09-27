@@ -195,7 +195,7 @@
     display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;
 }
 .cashier-app .veg-dot i { width: 8px; height: 8px; border-radius: 50%; display: block; }
-.cashier-app .veg-dot-veg    { border-color: #2563eb; } .cashier-app .veg-dot-veg i    { background: #2563eb; }
+.cashier-app .veg-dot-veg    { border-color: #16a34a; } .cashier-app .veg-dot-veg i    { background: #16a34a; }
 .cashier-app .veg-dot-nonveg { border-color: #dc2626; } .cashier-app .veg-dot-nonveg i { background: #dc2626; }
 .cashier-app .veg-dot-egg    { border-color: #d97706; } .cashier-app .veg-dot-egg i    { background: #d97706; }
 .cashier-app .menu-card .menu-details { display: flex; flex-direction: column; flex: 1; padding: 0; }

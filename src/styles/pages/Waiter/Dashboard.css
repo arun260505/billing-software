@@ -656,7 +656,7 @@
     margin-bottom: 10px; flex: 0 0 auto;
 }
 .waiter-app .veg-dot i { width: 8px; height: 8px; border-radius: 50%; display: block; }
-.waiter-app .veg-dot-veg    { border-color: #2563eb; } .waiter-app .veg-dot-veg i    { background: #2563eb; }
+.waiter-app .veg-dot-veg    { border-color: #16a34a; } .waiter-app .veg-dot-veg i    { background: #16a34a; }
 .waiter-app .veg-dot-nonveg { border-color: #dc2626; } .waiter-app .veg-dot-nonveg i { background: #dc2626; }
 .waiter-app .veg-dot-egg    { border-color: #d97706; } .waiter-app .veg-dot-egg i    { background: #d97706; }
 
