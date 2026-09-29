@@ -295,13 +295,25 @@ exports.markItemServed = (req, res) => {
 
 // PUT /api/orders/item/:itemId/qty — set an item's quantity while editing the
 // bill (no kitchen ticket created). Body: { quantity }.
+// After an item edit changed an order's total, bring any recorded payment back
+// into line (reduce an over-collection, flip Paid/Partial). No-ops on an order
+// with no payment — the normal running-order edit. Shared by the three per-item
+// endpoints so editing a PAID bill item-by-item can't leave a Sales/Collection gap.
+const respondAfterItemEdit = (res, restaurantId, result, message) => {
+    if (!result || !result.orderId) return success(res, message, result || null);
+    orderModel.reconcilePaymentAfterEdit(result.orderId, restaurantId, (reErr, recon) => {
+        if (reErr) console.error("Payment reconcile after item edit failed:", reErr.message);
+        return success(res, message, { ...result, recon: recon || null });
+    });
+};
+
 exports.setItemQuantity = (req, res) => {
 
     orderModel.setItemQuantity(req.params.itemId, req.user.restaurant_id, req.body.quantity, (err, result) => {
 
         if (err) return error(res, err.message, 500);
 
-        return success(res, "Quantity updated.", result);
+        return respondAfterItemEdit(res, req.user.restaurant_id, result, "Quantity updated.");
 
     });
 
@@ -319,7 +331,7 @@ exports.addBillItem = (req, res) => {
         req.user.id,
         (err, result) => {
             if (err) return error(res, err.message, 500);
-            return success(res, "Item added to the bill.", result);
+            return respondAfterItemEdit(res, req.user.restaurant_id, result, "Item added to the bill.");
         }
     );
 
@@ -332,7 +344,7 @@ exports.removeItem = (req, res) => {
 
         if (err) return error(res, err.message, 500);
 
-        return success(res, "Item cancelled.", result);
+        return respondAfterItemEdit(res, req.user.restaurant_id, result, "Item cancelled.");
 
     });
 
