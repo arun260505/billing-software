@@ -241,10 +241,13 @@ const getInvoiceItems = (orderId, restaurantId, callback) => {
             oi.quantity,
             oi.price,
             oi.total,
-            mi.item_name
+            mi.item_name,
+            oi.stylist_id,
+            su.full_name AS stylist_name
         FROM order_items oi
         INNER JOIN menu_items mi ON oi.menu_item_id = mi.id
         INNER JOIN orders o ON oi.order_id = o.id
+        LEFT JOIN users su ON su.id = oi.stylist_id
         WHERE oi.order_id = ? AND o.restaurant_id = ?
     `;
 
@@ -427,10 +430,13 @@ const getOrderDetails = (orderId, restaurantId, callback) => {
             mi.item_name,
             oi.quantity,
             oi.price,
-            oi.total
+            oi.total,
+            oi.stylist_id,
+            su.full_name AS stylist_name
         FROM order_items oi
         INNER JOIN menu_items mi ON oi.menu_item_id = mi.id
         INNER JOIN orders o ON oi.order_id = o.id
+        LEFT JOIN users su ON su.id = oi.stylist_id
         WHERE oi.order_id = ? AND o.restaurant_id = ?
     `;
 

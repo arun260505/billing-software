@@ -111,16 +111,19 @@ export function whatsappNumber(mobile, countryCode = "91") {
     return null;
 }
 
-/** One line per service + price, however many order_item rows it was stored as. */
+/** One line per service + price (+ stylist), however many order_item rows it was
+ * stored as. Keeping the stylist in the key means a service done by two stylists
+ * stays as two lines, so a multi-stylist bill shows who did what. */
 export function groupItems(rows = []) {
     const out = [];
     const byKey = {};
     (Array.isArray(rows) ? rows : []).forEach((r) => {
         const name = r.item_name || r.name || "Service";
         const price = Number(r.price) || 0;
-        const key = `${name}|${price}`;
+        const stylist_name = (r.stylist_name || "").trim();
+        const key = `${name}|${price}|${stylist_name}`;
         if (!byKey[key]) {
-            byKey[key] = { item_name: name, price, quantity: 0 };
+            byKey[key] = { item_name: name, price, quantity: 0, stylist_name };
             out.push(byKey[key]);
         }
         byKey[key].quantity += Number(r.quantity) || 0;
@@ -195,14 +198,28 @@ export function buildBillMessage(bill = {}, shop = {}, template = "") {
     (bill.lines || []).forEach((l) => amounts.push(`${l.name}: ${rupees(l.amount)}`));
     amounts.push(`*Total: ${rupees(bill.total)}*`);
 
+    // Who did the work. One stylist for the whole bill → keep the single
+    // "Stylist:" line exactly as before. TWO OR MORE stylists → drop that line
+    // (leave {stylist} empty so the template drops it) and instead name the stylist
+    // on each service line, so a multi-stylist bill shows who did what.
+    const stylistSet = [...new Set(
+        (bill.items || []).map((i) => (i.stylist_name || "").trim()).filter(Boolean)
+    )];
+    const multiStylist = stylistSet.length > 1;
+
     const values = {
         salon_name: String(shop.restaurant_name || "").trim(),
         customer_name: String(bill.customer_name || "").trim(),
         bill_no: bill.order_number || "",
         date: [bill.date, bill.time].filter(Boolean).join(", "),
-        stylist: bill.stylist_name || "",
+        stylist: multiStylist ? "" : (bill.stylist_name || stylistSet[0] || ""),
         services: (bill.items || [])
-            .map((i) => `${i.item_name} x${Number(i.quantity)} - ${rupees(Number(i.price) * Number(i.quantity))}`)
+            .map((i) => {
+                const line = `${i.item_name} x${Number(i.quantity)} - ${rupees(Number(i.price) * Number(i.quantity))}`;
+                return multiStylist && (i.stylist_name || "").trim()
+                    ? `${line}  · ${i.stylist_name}`
+                    : line;
+            })
             .join("\n"),
         amounts: amounts.join("\n"),
         total: rupees(bill.total),

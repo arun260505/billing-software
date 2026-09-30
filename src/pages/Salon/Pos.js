@@ -573,14 +573,20 @@ function SalonPos() {
         try {
             const cust = await ensureCustomer();
 
-            const items = cart.map((it) => ({
-                menu_item_id: it.id,
-                item_name: it.item_name,
-                quantity: Number(it.quantity),
-                price: Number(it.price),
+            const items = cart.map((it) => {
                 // The line's own stylist if chosen, else the bill's stylist.
-                stylist_id: it.stylistId ? Number(it.stylistId) : stylist.id
-            }));
+                const sid = it.stylistId ? Number(it.stylistId) : stylist.id;
+                return {
+                    menu_item_id: it.id,
+                    item_name: it.item_name,
+                    quantity: Number(it.quantity),
+                    price: Number(it.price),
+                    stylist_id: sid,
+                    // Carried so the WhatsApp / printed bill can name the stylist per
+                    // service on a multi-stylist bill (ignored by order creation).
+                    stylist_name: stylistNameFor(sid)
+                };
+            });
 
             // Don't create the order yet — snapshot everything it needs and let
             // BillModal create it only when payment is confirmed (ensureOrder

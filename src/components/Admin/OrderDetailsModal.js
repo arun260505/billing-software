@@ -163,7 +163,9 @@ function OrderDetailsModal({ order, payments = [], editable = false, onClose, on
                     {salon && (
                         <div className="orders-meta-item">
                             <label>Stylist</label>
-                            <span>{order.stylist_name || "—"}</span>
+                            <span>{[...new Set((items || []).map((i) => (i.stylist_name || "").trim()).filter(Boolean))].length > 1
+                                ? "Multiple (see services)"
+                                : (order.stylist_name || "—")}</span>
                         </div>
                     )}
                     <div className="orders-meta-item">
@@ -223,6 +225,9 @@ function OrderDetailsModal({ order, payments = [], editable = false, onClose, on
                                     <tr key={item.id}>
                                         <td>
                                             <span className="orders-item-name">{item.item_name}</span>
+                                            {salon && item.stylist_name && (
+                                                <span className="orders-item-note">· {item.stylist_name}</span>
+                                            )}
                                             {item.notes && (
                                                 <span className="orders-item-note">+ {item.notes}</span>
                                             )}

@@ -207,8 +207,11 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     // cashier_label: a salon's front desk prints as "Receptionist".
     if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaBits.push(`${order.cashier_label || "Cashier"}: ${order.cashier_name || order.cashier}`);
     if (cfg.show_order_number && orderNumber) metaBits.push(`Bill No.: ${orderNumber}`);
-    // A salon bill always names the stylist who did the work.
-    if (order.stylist_name) metaBits.push(`Stylist: ${order.stylist_name}`);
+    // Salon bill: with ONE stylist for the whole bill, name them here as before.
+    // With two or more, drop this line and name the stylist under each service below.
+    const billStylists = [...new Set((items || []).map((i) => (i.stylist_name || "").trim()).filter(Boolean))];
+    const multiStylist = billStylists.length > 1;
+    if (order.stylist_name && !multiStylist) metaBits.push(`Stylist: ${order.stylist_name}`);
 
     const leftW = Math.ceil(W * 0.52);
     for (let i = 0; i < metaBits.length; i += 2) {
@@ -245,6 +248,11 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
         );
         // Continuation lines of a long name sit under the item column.
         nameLines.slice(1).forEach((l) => out.push(repeat(" ", C.no) + l));
+
+        // On a multi-stylist bill, name who did this service under its line.
+        if (multiStylist && (it.stylist_name || "").trim()) {
+            out.push(repeat(" ", C.no) + `- ${it.stylist_name}`);
+        }
 
         if (it.notes) wrap(`* ${it.notes}`, C.item - 1).forEach((l) => out.push(repeat(" ", C.no) + l));
     });
