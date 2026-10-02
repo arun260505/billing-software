@@ -1,11 +1,11 @@
 <#
-  reset-till-db.ps1  —  Start this till over CLEAN.
+  reset-till-db.ps1  -  Start this till over CLEAN.
 
   What it does, in plain words:
     1. Stops the InWallz services.
     2. Deletes ONLY this PC's local database (the copy of the shop's data on this
        machine). Nothing on the cloud is touched.
-    3. After it runs, you install InWallzSetup.exe again with your key — the till
+    3. After it runs, you install InWallzSetup.exe again with your key - the till
        rebuilds a fresh database and pulls everything (menu, staff, settings)
        down from the cloud again, correctly.
 
@@ -55,7 +55,7 @@ if (Test-Path $data) {
         exit
     }
 } else {
-    Say "No local database folder found — already clean."
+    Say "No local database folder found - already clean."
 }
 
 Say ""
