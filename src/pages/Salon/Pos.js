@@ -12,7 +12,8 @@ import {
     addItemToOrder,
     rebillOrder,
     setItemQuantity,
-    cancelItem
+    cancelItem,
+    setItemStylist
 } from "../../services/orderService";
 import { searchCustomers, resolveCustomer } from "../../services/customerService";
 import { getStylists } from "../../services/stylistService";
@@ -763,6 +764,14 @@ function SalonPos() {
     const handleBillAdd = (menuItem) =>
         withBillBusy(() => addItemToOrder(editingBill.id, menuItem.id, 1), "Could not add the service.");
 
+    // Change the stylist on an already-billed service (applies to every row of that
+    // service line). The earnings board + WhatsApp/printed bill re-credit from this.
+    const handleBillSetStylist = (rows, stylistId) =>
+        withBillBusy(async () => {
+            const sid = stylistId ? Number(stylistId) : null;
+            for (const r of rows) await setItemStylist(r.id, sid);
+        }, "Could not change the stylist.");
+
     // Send an already-saved bill on WhatsApp — reuses the order (same number),
     // never creates a new one. Prompts for the number if the bill has none.
     const sendReeditedBillOnWhatsApp = (header) => {
@@ -1179,6 +1188,8 @@ function SalonPos() {
                     onAddItem={handleBillAdd}
                     onReprint={handleBillReprint}
                     onWhatsApp={handleBillWhatsApp}
+                    stylistOptions={stylistOptions}
+                    onSetStylist={handleBillSetStylist}
                     onClose={closeBillEdit}
                 />
             )}

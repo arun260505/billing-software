@@ -13,7 +13,8 @@ import ReprintKotModal from "../ReprintKotModal";
 // the backend then refused to agree with. They now come from the restaurant's
 // own charge rows (Admin → Charges), like everywhere else.
 function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [],
-                         onSetQty, onRemoveGroup, onAddItem, onReprint, onSaveOnly, onReprintKot, onWhatsApp, onClose }) {
+                         onSetQty, onRemoveGroup, onAddItem, onReprint, onSaveOnly, onReprintKot, onWhatsApp, onClose,
+                         stylistOptions = [], onSetStylist }) {
 
     // Esc closes this modal (src/hooks/useEscapeClose.js).
     useEscapeClose(onClose);
@@ -25,13 +26,15 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
     const [showReprintKot, setShowReprintKot] = useState(false);
     const [rkBusy, setRkBusy] = useState(false);
 
-    // Merge the order_item rows into one display line per item + price.
+    // Merge the order_item rows into one display line per item + price (+ stylist,
+    // so a salon service done by two stylists stays as two editable lines). For a
+    // restaurant every stylist_id is null, so grouping is unchanged.
     const groups = [];
     const byKey = {};
     items.forEach((it) => {
-        const key = `${it.item_name}|${it.price}`;
+        const key = `${it.item_name}|${it.price}|${it.stylist_id || ""}`;
         if (!byKey[key]) {
-            byKey[key] = { key, item_name: it.item_name, price: Number(it.price), qty: 0, rows: [] };
+            byKey[key] = { key, item_name: it.item_name, price: Number(it.price), qty: 0, rows: [], stylist_id: it.stylist_id || null };
             groups.push(byKey[key]);
         }
         byKey[key].qty += Number(it.quantity);
@@ -107,6 +110,20 @@ function BillEditModal({ bill, items, menuItems, busy, chargedTotal, charges = [
                                 <div className="tbill-row-info">
                                     <span className="tbill-name">{g.item_name}</span>
                                     <span className="tbill-unit">₹{g.price.toFixed(2)} each</span>
+                                    {salon && onSetStylist && stylistOptions.length > 0 && (
+                                        <select
+                                            className="tbill-stylist"
+                                            value={g.stylist_id || ""}
+                                            disabled={busy}
+                                            onChange={(e) => onSetStylist(g.rows, e.target.value)}
+                                            title="Stylist for this service"
+                                        >
+                                            <option value="">— stylist —</option>
+                                            {stylistOptions.map((s) => (
+                                                <option key={s.id} value={s.id}>{s.full_name}</option>
+                                            ))}
+                                        </select>
+                                    )}
                                 </div>
                                 <div className="tbill-row-right">
                                     <div className="tbill-stepper">

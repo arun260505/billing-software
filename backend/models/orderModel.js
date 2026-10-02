@@ -1134,6 +1134,41 @@ const recomputeOrderTotals = (orderId, restaurantId, callback) => {
     );
 };
 
+// Change which stylist is credited with ONE service line (salon). Works after the
+// bill is settled too — the earnings board reads order_items.stylist_id. A NULL
+// clears it (falls back to the bill's stylist). Validated to a stylist of this salon.
+const setItemStylist = (itemId, restaurantId, stylistId, callback) => {
+    const apply = () => {
+        db.query(
+            `UPDATE order_items oi
+             INNER JOIN orders o ON oi.order_id = o.id
+             SET oi.stylist_id = ?
+             WHERE oi.id = ? AND o.restaurant_id = ?`,
+            [stylistId || null, itemId, restaurantId],
+            (err) => {
+                if (err) return callback(err);
+                db.query(
+                    `SELECT oi.order_id FROM order_items oi
+                     INNER JOIN orders o ON oi.order_id = o.id
+                     WHERE oi.id = ? AND o.restaurant_id = ? LIMIT 1`,
+                    [itemId, restaurantId],
+                    (e, rows) => callback(null, { orderId: rows && rows[0] ? rows[0].order_id : null })
+                );
+            }
+        );
+    };
+    if (!stylistId) return apply();
+    db.query(
+        "SELECT id FROM users WHERE id = ? AND restaurant_id = ? AND role = 'stylist' AND deleted_at IS NULL LIMIT 1",
+        [stylistId, restaurantId],
+        (err, rows) => {
+            if (err) return callback(err);
+            if (!rows.length) return callback(new Error("That stylist isn't valid for this salon."));
+            apply();
+        }
+    );
+};
+
 // Add an item to a table's bill (item was served but not recorded). Inserted as
 // already-served so it never hits the kitchen. Appends to the table's most
 // recent active order, or creates a served order if none is open. Tenant-scoped.
@@ -1622,6 +1657,7 @@ module.exports = {
     markItemServed,
     removeOrderItem,
     setItemQuantity,
+    setItemStylist,
     addBillItem,
     recomputeOrderTotals,
     recordPayment,

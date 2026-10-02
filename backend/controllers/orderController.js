@@ -319,6 +319,17 @@ exports.setItemQuantity = (req, res) => {
 
 };
 
+// PUT /api/orders/item/:itemId/stylist — change the stylist credited with a
+// service, including after the bill is settled (salon correct-&-reprint). The
+// earnings board reads order_items.stylist_id, so this re-credits the service.
+exports.setItemStylist = (req, res) => {
+    const stylistId = req.body.stylist_id ? Number(req.body.stylist_id) : null;
+    orderModel.setItemStylist(req.params.itemId, req.user.restaurant_id, stylistId, (err, result) => {
+        if (err) return error(res, err.message, 500);
+        return success(res, "Stylist updated.", result);
+    });
+};
+
 // POST /api/orders/table/:tableId/item — add an item to the bill (served but not
 // recorded). Body: { menu_item_id, quantity }.
 exports.addBillItem = (req, res) => {

@@ -24,6 +24,7 @@ router.get("/table/:tableId/items", staff, restaurantOnly, orderController.getTa
 router.put("/table/:tableId/serve", staff, restaurantOnly, orderController.markTableServed);
 router.put("/item/:itemId/serve", staff, restaurantOnly, orderController.markItemServed);
 router.put("/item/:itemId/qty", staff, orderController.setItemQuantity);   // edit bill quantity
+router.put("/item/:itemId/stylist", staff, orderController.setItemStylist);   // salon: change a service's stylist
 router.delete("/item/:itemId", staff, requireApproval("cancel_order"), orderController.removeItem);   // cancel one bill item
 // Waiter is allowed here only when Admin has turned on "waiter can print bill";
 // settleTable enforces that per-restaurant setting before recording anything.

@@ -75,6 +75,10 @@ export const cancelItem = (itemId) =>
 export const setItemQuantity = (itemId, quantity) =>
   api.put(`/orders/item/${itemId}/qty`, { quantity });
 
+// Salon: change the stylist credited with one service line (also after billing).
+export const setItemStylist = (itemId, stylistId) =>
+  api.put(`/orders/item/${itemId}/stylist`, { stylist_id: stylistId });
+
 export const addBillItem = (tableId, menuItemId, quantity = 1) =>
   api.post(`/orders/table/${tableId}/item`, { menu_item_id: menuItemId, quantity });
 
