@@ -1158,8 +1158,11 @@ const setItemStylist = (itemId, restaurantId, stylistId, callback) => {
         );
     };
     if (!stylistId) return apply();
+    // Any active user of this salon is a valid provider — not only role='stylist'.
+    // When the receptionist does a service themselves, booking already stores
+    // their own id here, so the edit dropdown must accept that same pick.
     db.query(
-        "SELECT id FROM users WHERE id = ? AND restaurant_id = ? AND role = 'stylist' AND deleted_at IS NULL LIMIT 1",
+        "SELECT id FROM users WHERE id = ? AND restaurant_id = ? AND deleted_at IS NULL LIMIT 1",
         [stylistId, restaurantId],
         (err, rows) => {
             if (err) return callback(err);
