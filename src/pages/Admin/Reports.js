@@ -87,12 +87,14 @@ function getPresetRange(key) {
             return { from: toISO(y), to: toISO(y) };
         }
         case "this_week": {
-            const mon = addDays(t, -((t.getDay() + 6) % 7));
-            return { from: toISO(mon), to: toISO(t) };
+            // Week runs Sunday..Saturday, same as the dashboard (YEARWEEK mode 0).
+            // getDay(): Sun=0 .. Sat=6, so -getDay() lands on this week's Sunday.
+            const sun = addDays(t, -t.getDay());
+            return { from: toISO(sun), to: toISO(t) };
         }
         case "last_week": {
-            const mon = addDays(t, -((t.getDay() + 6) % 7) - 7);
-            return { from: toISO(mon), to: toISO(addDays(mon, 6)) };
+            const sun = addDays(t, -t.getDay() - 7);
+            return { from: toISO(sun), to: toISO(addDays(sun, 6)) };
         }
         case "this_month":
             return {
