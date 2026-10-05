@@ -38,6 +38,16 @@ export const DEFAULT_BILL_FORMAT = {
     terms_text: ""
 };
 
+// Tasty Travel asked for the bill number to print LARGE so a customer can read it
+// at a glance across the counter. Gated to that one restaurant, matched by its
+// stable uuid (same on the cloud and on the till, since it down-syncs) with the
+// trading name as a fallback. Every other shop prints the number at normal size.
+export const BIG_BILL_NO_UUID = "9a6f14f3-b40b-11f1-9b54-0a5e3187ab69";
+export function wantsBigBillNo(restaurant = {}) {
+    return restaurant.uuid === BIG_BILL_NO_UUID ||
+        String(restaurant.restaurant_name || "").trim().toLowerCase() === "tasty travel";
+}
+
 /**
  * Generate full HTML for bill preview and printing.
  */
@@ -160,7 +170,13 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) metaRows.push(`<strong>Waiter:</strong> ${escapeHtml(order.waiter_name || order.waiter)}`);
     // cashier_label: a salon's front desk prints as "Receptionist".
     if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaRows.push(`<strong>${escapeHtml(order.cashier_label || "Cashier")}:</strong> ${escapeHtml(order.cashier_name || order.cashier)}`);
-    if (cfg.show_order_number && orderNumber) metaRows.push(`<strong>Bill No.:</strong> ${escapeHtml(orderNumber)}`);
+    if (cfg.show_order_number && orderNumber) {
+        // Tasty Travel: the number alone prints large (the label stays small).
+        const num = wantsBigBillNo(restaurant)
+            ? `<strong style="font-size: ${isA4 ? "28px" : is58mm ? "22px" : "28px"}; line-height: 1;">${escapeHtml(orderNumber)}</strong>`
+            : escapeHtml(orderNumber);
+        metaRows.push(`<strong>Bill No.:</strong> ${num}`);
+    }
     // A salon bill always names the stylist who did the work.
     if (order.stylist_name) metaRows.push(`<strong>Stylist:</strong> ${escapeHtml(order.stylist_name)}`);
 

@@ -12,7 +12,7 @@
  */
 
 import { sanitizeCharges } from "./charges";
-import { DEFAULT_BILL_FORMAT } from "./billPrinter";
+import { DEFAULT_BILL_FORMAT, wantsBigBillNo } from "./billPrinter";
 import { DEFAULT_KITCHEN_FORMAT, isParcelOrder } from "./kitchenPrinter";
 
 // Windows spools this through a GDI font that may not carry the ₹ glyph (U+20B9),
@@ -47,6 +47,11 @@ const bold = (line) => `${ESC}E\x01${ESC}G\x01${line}${ESC}G\x00${ESC}E\x00`;
 // GS ! 0x01 — double HEIGHT only. Double width would halve the columns per line
 // and wrap the header, so the big lines here grow downwards, not sideways.
 const tall = (line) => `${GS}!\x01${line}${GS}!\x00`;
+
+// GS ! 0x22 — TRIPLE width AND height, for a value that must carry right across a
+// counter (the big Bill No. on its own line). Applied to a short run alone on its
+// line, so the magnified glyphs never collide with a padded money column.
+const huge = (line) => `${GS}!\x22${line}${GS}!\x00`;
 
 /** Both, for the one or two lines that have to carry across a counter. */
 const heading = (line) => bold(tall(line));
@@ -199,6 +204,11 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
         out.push(repeat("-", W));
     }
 
+    // Tasty Travel prints the bill number BIG on its own line. Pulling it out of
+    // the paired grid keeps the magnified glyphs clear of the string-padded
+    // columns (see the emphasis note above). Every other shop keeps it inline.
+    const bigBillNo = cfg.show_order_number && orderNumber && wantsBigBillNo(restaurant);
+
     const metaBits = [];
     if (cfg.show_date) metaBits.push(`Date: ${dateStr}`);
     if (cfg.show_table_name) metaBits.push(isParcel ? "Take Away" : `Dine In: ${seatValue}`);
@@ -206,7 +216,7 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) metaBits.push(`Waiter: ${order.waiter_name || order.waiter}`);
     // cashier_label: a salon's front desk prints as "Receptionist".
     if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaBits.push(`${order.cashier_label || "Cashier"}: ${order.cashier_name || order.cashier}`);
-    if (cfg.show_order_number && orderNumber) metaBits.push(`Bill No.: ${orderNumber}`);
+    if (cfg.show_order_number && orderNumber && !bigBillNo) metaBits.push(`Bill No.: ${orderNumber}`);
     // Salon bill: with ONE stylist for the whole bill, name them here as before.
     // With two or more, drop this line and name the stylist under each service below.
     const billStylists = [...new Set((items || []).map((i) => (i.stylist_name || "").trim()).filter(Boolean))];
@@ -216,6 +226,12 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     const leftW = Math.ceil(W * 0.52);
     for (let i = 0; i < metaBits.length; i += 2) {
         out.push((cell(metaBits[i], leftW) + (metaBits[i + 1] || "")).trimEnd());
+    }
+
+    // The big bill number on its own line: small label, then the number alone at
+    // triple size + bold so the customer spots it at a glance.
+    if (bigBillNo) {
+        out.push(`Bill No.: ${bold(huge(orderNumber))}`);
     }
 
     out.push(repeat("-", W));
