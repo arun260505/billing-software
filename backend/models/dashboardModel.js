@@ -352,10 +352,15 @@ const getStylistBoard = (restaurantId, today, callback) => {
     const openWin = `COALESCE((SELECT opened_at FROM day_closures WHERE restaurant_id = ? AND deleted_at IS NULL ORDER BY (status = 'open') DESC, opened_at DESC LIMIT 1), ${D})`;
     // Credit each service LINE to the stylist chosen on it (order_items.stylist_id),
     // falling back to the bill's stylist (orders.stylist_id) for lines/old bills
-    // with none. So a bill worked by two stylists splits between them. "sales" is
-    // the service revenue (sum of line totals) each stylist generated; "services"
-    // is the quantity of items they did; bills/customers count the distinct bills
-    // they had a line on.
+    // with none. So a bill worked by two stylists splits between them.
+    //
+    // "sales" is each stylist's share of what the bill ACTUALLY collected, not the
+    // menu price of their services: a line is scaled by the bill's collected ratio
+    // (grand_total / subtotal) so a discount (or charge/tax) is spread across its
+    // services. Without this, a 20%-off bill credited the stylists the full
+    // pre-discount price, so the board's sales added up to MORE than the money that
+    // came in and never matched the dashboard/report total. "services" is the
+    // quantity they did; bills/customers count the distinct bills they had a line on.
     const sql = `
         SELECT
             u.id,
@@ -370,7 +375,8 @@ const getStylistBoard = (restaurantId, today, callback) => {
         LEFT JOIN (
             SELECT COALESCE(oi.stylist_id, o.stylist_id) AS eff_stylist,
                    o.id AS order_id, o.customer_id, o.order_status, o.created_at,
-                   oi.total AS line_total, oi.quantity AS qty
+                   oi.total * (CASE WHEN o.subtotal > 0 THEN o.grand_total / o.subtotal ELSE 1 END) AS line_total,
+                   oi.quantity AS qty
             FROM orders o
             INNER JOIN order_items oi ON oi.order_id = o.id
             WHERE o.restaurant_id = ?
