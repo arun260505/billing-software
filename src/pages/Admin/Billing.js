@@ -6,7 +6,7 @@ import "../../styles/pages/Admin/Billing.css";
 import { isSalon, salonBillFormat } from "../../utils/businessType";
 
 const SAMPLE_ORDER = {
-    order_number: "ORD-1024",
+    order_number: "1024",
     tableName: "Table 5",
     table_number: "5",
     customer_name: "Rahul Sharma",
@@ -32,7 +32,7 @@ const SAMPLE_ORDER = {
 
 // The preview a salon owner sees: services, a customer, the receptionist.
 const SALON_SAMPLE_ORDER = {
-    order_number: "ORD-1024",
+    order_number: "1024",
     tableName: "Walk-in",
     customer_name: "Priya Sharma",
     cashier_name: "Anita",
