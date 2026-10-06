@@ -65,9 +65,12 @@ if ((Test-Path $envFile) -and (Test-Path (Join-Path $dataDir "mysql"))) {
     if ($mPass.Success -and $mPass.Groups[1].Value.Trim() -ne "") {
         $isUpdate = $true
         $dbPass = $mPass.Groups[1].Value.Trim()
-        # Keep the ports the existing install already uses.
-        $mPort = [regex]::Match($existingEnv, "(?m)^PORT=(\d+)")
-        if ($mPort.Success) { $Port = [int]$mPort.Groups[1].Value }
+        # The HTTP port is ALWAYS 5050 (the native till app, InWallzTill.exe, and
+        # its desktop shortcut are hard-set to localhost:5050). Reading it back from
+        # a stale/dev .env (e.g. PORT=5000) once left the backend on 5000 while the
+        # app window and icon pointed at 5050 - "can't reach this page". So $Port is
+        # left at its 5050 default and forced into .env below. Only the DB port is
+        # kept from the existing install (it can legitimately be 3306 or 3307).
         $mDbPort = [regex]::Match($existingEnv, "(?m)^DB_PORT=(\d+)")
         if ($mDbPort.Success) { $DbPort = [int]$mDbPort.Groups[1].Value }
         $mKey = [regex]::Match($existingEnv, "(?m)^ACTIVATION_KEY=(.*)$")
@@ -231,6 +234,19 @@ try {
     }
     $envSc | Out-File $envFile -Encoding ascii
 } catch { Say "Could not set SERVE_CLIENT: $($_.Exception.Message)" }
+
+# 4e) Force the HTTP port to 5050 on every install. The native till window and the
+# desktop shortcut both open http://localhost:5050/, so the backend MUST listen
+# there. An update that kept a dev/stale PORT=5000 left the app unable to reach it.
+try {
+    $envPort = Get-Content $envFile -Raw
+    if ($envPort -match "(?m)^PORT=") {
+        $envPort = $envPort -replace "(?m)^PORT=.*", "PORT=5050"
+    } else {
+        $envPort = "PORT=5050`r`n" + $envPort
+    }
+    $envPort | Out-File $envFile -Encoding ascii
+} catch { Say "Could not set PORT: $($_.Exception.Message)" }
 
 # 5) Register the backend service (depends on MySQL).
 Say "Registering InWallzServer service"
