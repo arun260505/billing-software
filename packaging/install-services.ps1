@@ -217,6 +217,21 @@ try {
     $envKeep | Out-File $envFile -Encoding ascii
 } catch { Say "Could not set token life: $($_.Exception.Message)" }
 
+# 4d) A packaged till ALWAYS serves the React UI from this backend (the app's
+# window loads http://localhost:<port>/). SERVE_CLIENT=false is a DEV-only flag
+# (frontend on :3000); if an old or hand-edited .env carries it, the till shows
+# the bare "Backend Running" JSON instead of the app. Force it off on every
+# install so an update can never leave a till API-only.
+try {
+    $envSc = Get-Content $envFile -Raw
+    if ($envSc -match "(?m)^SERVE_CLIENT=") {
+        $envSc = $envSc -replace "(?m)^SERVE_CLIENT=.*", "SERVE_CLIENT=true"
+    } else {
+        $envSc = $envSc.TrimEnd() + "`r`nSERVE_CLIENT=true`r`n"
+    }
+    $envSc | Out-File $envFile -Encoding ascii
+} catch { Say "Could not set SERVE_CLIENT: $($_.Exception.Message)" }
+
 # 5) Register the backend service (depends on MySQL).
 Say "Registering InWallzServer service"
 $backendShort = $fso.GetFolder($backend).ShortPath
