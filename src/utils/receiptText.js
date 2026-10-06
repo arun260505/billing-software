@@ -228,10 +228,15 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
         out.push((cell(metaBits[i], leftW) + (metaBits[i + 1] || "")).trimEnd());
     }
 
-    // The big bill number on its own line: small label, then the number alone at
-    // triple size + bold so the customer spots it at a glance.
+    // The big bill number on its own line: a small "Bill No.:" label on the left,
+    // then the number alone at triple size + bold, pushed to the right-centre of
+    // the roll (about 45% across) so it sits where Tasty Travel wants it — clearly
+    // to the right, but not jammed into the far corner.
     if (bigBillNo) {
-        out.push(`Bill No.: ${bold(huge(orderNumber))}`);
+        const bnLabel = "Bill No.:";
+        const startCol = Math.round(W * 0.45);
+        const bnGap = Math.max(1, startCol - bnLabel.length);
+        out.push(bnLabel + repeat(" ", bnGap) + bold(huge(orderNumber)));
     }
 
     out.push(repeat("-", W));
