@@ -230,6 +230,20 @@ try {
     $envKeep | Out-File $envFile -Encoding ascii
 } catch { Say "Could not set token life: $($_.Exception.Message)" }
 
+# 4c-2) Force the DB login to passwordless root on every install. The MySQL
+# init-file (reset-root.sql, applied on every mysqld start above) GUARANTEES
+# 'root'@'localhost' has a blank password, so DB_USER=root + blank DB_PASSWORD can
+# never hit "Access denied". Generated per-user passwords (the old inwallz user)
+# drifted out of sync with .env across reinstalls and left tills unable to read
+# their own data ("no menu") until fixed by hand. root/blank removes that class of
+# failure entirely - acceptable on a firewalled, on-premise till.
+try {
+    $envDb = Get-Content $envFile -Raw
+    if ($envDb -match "(?m)^DB_USER=")     { $envDb = $envDb -replace "(?m)^DB_USER=.*", "DB_USER=root" }         else { $envDb = $envDb.TrimEnd() + "`r`nDB_USER=root" }
+    if ($envDb -match "(?m)^DB_PASSWORD=") { $envDb = $envDb -replace "(?m)^DB_PASSWORD=.*", "DB_PASSWORD=" }     else { $envDb = $envDb.TrimEnd() + "`r`nDB_PASSWORD=" }
+    $envDb | Out-File $envFile -Encoding ascii
+} catch { Say "Could not set DB_USER/DB_PASSWORD: $($_.Exception.Message)" }
+
 # 4d) A packaged till ALWAYS serves the React UI from this backend (the app's
 # window loads http://localhost:<port>/). SERVE_CLIENT=false is a DEV-only flag
 # (frontend on :3000); if an old or hand-edited .env carries it, the till shows
