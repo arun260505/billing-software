@@ -211,8 +211,17 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
 
     const metaBits = [];
     if (cfg.show_date) metaBits.push(`Date: ${dateStr}`);
-    if (cfg.show_table_name) metaBits.push(isParcel ? "Take Away" : `Dine In: ${seatValue}`);
-    if (cfg.show_time) metaBits.push(`Time: ${timeStr}`);
+    // Tasty Travel layout: Date|Time on the first line, then Type|Bill No on the
+    // SAME next line (Type on the left, the big Bill No on the right). So push Time
+    // right after Date here, and the "Type:" line after it; the big Bill No then
+    // rides on the right of that Type line (below). Other shops keep the old order
+    // (Date|Type, Time|...), with the plain "Take Away" / "Dine In: <seat>".
+    if (bigBillNo && cfg.show_time) metaBits.push(`Time: ${timeStr}`);
+    if (cfg.show_table_name) {
+        if (bigBillNo) metaBits.push(isParcel ? "Type: Take Away" : `Type: Dine-In ${seatValue}`);
+        else metaBits.push(isParcel ? "Take Away" : `Dine In: ${seatValue}`);
+    }
+    if (!bigBillNo && cfg.show_time) metaBits.push(`Time: ${timeStr}`);
     if (cfg.show_waiter_name && (order.waiter_name || order.waiter)) metaBits.push(`Waiter: ${order.waiter_name || order.waiter}`);
     // cashier_label: a salon's front desk prints as "Receptionist".
     if (cfg.show_cashier_name && (order.cashier_name || order.cashier)) metaBits.push(`${order.cashier_label || "Cashier"}: ${order.cashier_name || order.cashier}`);
@@ -223,21 +232,30 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
     const multiStylist = billStylists.length > 1;
     if (order.stylist_name && !multiStylist) metaBits.push(`Stylist: ${order.stylist_name}`);
 
-    const leftW = Math.ceil(W * 0.52);
+    // Tasty Travel nudges the right-hand column (Time, and the big Bill No under it)
+    // a little further right than the usual 52%.
+    const leftW = Math.ceil(W * (bigBillNo ? 0.58 : 0.52));
+    const metaRows = [];
     for (let i = 0; i < metaBits.length; i += 2) {
-        out.push((cell(metaBits[i], leftW) + (metaBits[i + 1] || "")).trimEnd());
+        metaRows.push((cell(metaBits[i], leftW) + (metaBits[i + 1] || "")).trimEnd());
     }
 
-    // The big bill number on its own line: a small "Bill No.:" label on the left,
-    // then the number alone at triple size + bold, pushed to the right-centre of
-    // the roll (about 45% across) so it sits where Tasty Travel wants it — clearly
-    // to the right, but not jammed into the far corner.
+    // Tasty Travel's big bill number rides on the RIGHT of the LAST date/time line
+    // (right-aligned, triple size + bold) instead of a line of its own - so it sits
+    // up beside the date/time with no gap above it. "Bill No" + the number travel
+    // together; the label has no trailing dot. huge() is GS ! triple size, so each
+    // digit prints ~3 columns wide; account for that when placing the group.
     if (bigBillNo) {
-        const bnLabel = "Bill No.:";
-        const startCol = Math.round(W * 0.45);
-        const bnGap = Math.max(1, startCol - bnLabel.length);
-        out.push(bnLabel + repeat(" ", bnGap) + bold(huge(orderNumber)));
+        const bnLabel = "Bill No: ";
+        const idx = metaRows.length ? metaRows.length - 1 : 0;
+        const left = metaRows[idx] || "";
+        // Start the "Bill No:" group at the right-hand column - the SAME x as the
+        // "Type:" value on the line above - so the two labels line up; the big
+        // number then runs off to the right from there.
+        const startCol = Math.max(left.length + 1, leftW);
+        metaRows[idx] = left + repeat(" ", startCol - left.length) + bnLabel + bold(huge(orderNumber));
     }
+    metaRows.forEach((r) => out.push(r));
 
     out.push(repeat("-", W));
 
