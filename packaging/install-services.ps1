@@ -60,22 +60,29 @@ $existingKey = ""
 $dbPass = $null
 $jwt = $null
 if ((Test-Path $envFile) -and (Test-Path (Join-Path $dataDir "mysql"))) {
+    # A kept MySQL data folder + an existing .env means this PC already ran as a
+    # till, so treat it as an UPDATE: keep its database, .env and activation.
+    #
+    # This used to ALSO require a non-empty DB_PASSWORD. A till configured with a
+    # blank password (e.g. passwordless root) was then wrongly treated as a FRESH
+    # install, which regenerated secrets and forced a re-activation + re-sync -
+    # the "reinstall reset loop". The DATABASE is never wiped either way (the
+    # schema import is skipped whenever tables already exist - checked as root
+    # below), but that churn is avoided now by keying update off the data folder,
+    # not the password.
     $existingEnv = Get-Content $envFile -Raw
+    $isUpdate = $true
     $mPass = [regex]::Match($existingEnv, "(?m)^DB_PASSWORD=(.*)$")
-    if ($mPass.Success -and $mPass.Groups[1].Value.Trim() -ne "") {
-        $isUpdate = $true
-        $dbPass = $mPass.Groups[1].Value.Trim()
-        # The HTTP port is ALWAYS 5050 (the native till app, InWallzTill.exe, and
-        # its desktop shortcut are hard-set to localhost:5050). Reading it back from
-        # a stale/dev .env (e.g. PORT=5000) once left the backend on 5000 while the
-        # app window and icon pointed at 5050 - "can't reach this page". So $Port is
-        # left at its 5050 default and forced into .env below. Only the DB port is
-        # kept from the existing install (it can legitimately be 3306 or 3307).
-        $mDbPort = [regex]::Match($existingEnv, "(?m)^DB_PORT=(\d+)")
-        if ($mDbPort.Success) { $DbPort = [int]$mDbPort.Groups[1].Value }
-        $mKey = [regex]::Match($existingEnv, "(?m)^ACTIVATION_KEY=(.*)$")
-        if ($mKey.Success) { $existingKey = $mKey.Groups[1].Value.Trim() }
-    }
+    if ($mPass.Success) { $dbPass = $mPass.Groups[1].Value.Trim() }
+    # The HTTP port is ALWAYS 5050 (InWallzTill.exe and its desktop shortcut are
+    # hard-set to localhost:5050). Reading it back from a stale/dev .env (e.g.
+    # PORT=5000) once left the backend on 5000 while the app window and icon pointed
+    # at 5050 - "can't reach this page". So $Port stays at its 5050 default and is
+    # forced into .env below. Only the DB port is kept (it can be 3306 or 3307).
+    $mDbPort = [regex]::Match($existingEnv, "(?m)^DB_PORT=(\d+)")
+    if ($mDbPort.Success) { $DbPort = [int]$mDbPort.Groups[1].Value }
+    $mKey = [regex]::Match($existingEnv, "(?m)^ACTIVATION_KEY=(.*)$")
+    if ($mKey.Success) { $existingKey = $mKey.Groups[1].Value.Trim() }
 }
 
 # A DIFFERENT activation key on an existing install means "repurpose this till"
@@ -160,10 +167,13 @@ $sql = "CREATE DATABASE IF NOT EXISTS inwallz_billing CHARACTER SET utf8mb4 COLL
 # Import the schema ONLY on a fresh, empty database. On a reinstall the tables
 # already exist (with pulled/local data), and the dump's DROP TABLE would wipe
 # them - so skip it.
-$tableCount = & $mysql -u inwallz "--password=$dbPass" -h 127.0.0.1 "--port=$DbPort" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='inwallz_billing'" 2>$null
+# Checked/imported as passwordless root (guaranteed by the init-file reset above),
+# NOT as the app user - so a till whose .env uses a different user/blank password
+# can never misread the table count and let the dump's DROP TABLE wipe real data.
+$tableCount = & $mysql -u root -h 127.0.0.1 "--port=$DbPort" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='inwallz_billing'" 2>$null
 $tableCount = [int]($tableCount | Select-Object -First 1)
 if ((Test-Path $schema) -and ($tableCount -eq 0)) {
-    Get-Content $schema -Raw | & $mysql -u inwallz "--password=$dbPass" -h 127.0.0.1 "--port=$DbPort" inwallz_billing
+    Get-Content $schema -Raw | & $mysql -u root -h 127.0.0.1 "--port=$DbPort" inwallz_billing
     Say "Schema imported (fresh DB)"
 } else {
     Say "Existing database kept ($tableCount tables) - schema import skipped"
