@@ -217,6 +217,15 @@ if (-not $isUpdate) {
     Say "Keeping existing .env and activation (update)"
 }
 
+# 4b-2) Clear the sync cursor on EVERY install so the till re-pulls ALL cloud
+# settings fresh - restaurant name, bill_formats, tap-to-add and the other
+# settings. A stale cursor left from a prior install otherwise keeps serving
+# defaults (generic "RESTAURANT" name, cashier line, "+" buttons) even though the
+# owner set them on cloud. Re-pull overwrites only down-synced tables; keepLocal
+# columns (printers, order sequence) are preserved and up-sync re-push is
+# idempotent, so this is safe. Run as root (always passwordless via the init-file).
+& $mysql -u root -h 127.0.0.1 "--port=$DbPort" inwallz_billing -e "DELETE FROM sync_state;" 2>$null | Out-Null
+
 # 4c) Keep the till logged in (trusted on-premise device) — no 8h re-login. Set
 # a long token life in the .env on every install, including updates from an old
 # 8h build.
