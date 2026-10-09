@@ -35,7 +35,7 @@ function BillsHistory({ onOpenBill, onWhatsApp, salon = false }) {
 
     const whereOf = (b) => salon
         ? (b.customer_name || "Walk-in")
-        : (b.table_name ? `Table ${b.table_name}` : "Counter");
+        : (b.table_name ? `Table ${b.table_name}` : (b.no_kitchen ? "Bill Only" : "Counter"));
 
     const term = search.trim().toLowerCase();
     const filtered = bills.filter((b) =>

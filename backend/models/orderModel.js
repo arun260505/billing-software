@@ -161,9 +161,10 @@ const createOrder = (order, callback) => {
             service_charge,
             grand_total,
             payment_status,
-            notes
+            notes,
+            no_kitchen
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     db.query(sql, [
@@ -182,7 +183,8 @@ const createOrder = (order, callback) => {
         order.service_charge || 0,
         order.grand_total,
         order.payment_status,
-        order.notes
+        order.notes,
+        order.no_kitchen ? 1 : 0
     ], callback);
 };
 
@@ -1305,6 +1307,7 @@ const getTodaysBills = (restaurantId, callback) => {
             o.id,
             o.order_number,
             o.order_type,
+            o.no_kitchen,
             -- Cancelled bills are listed alongside settled ones. A cancelled
             -- number is never reused, so without showing it the sequence looks
             -- like it has lost a bill.

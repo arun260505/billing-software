@@ -810,6 +810,9 @@ function Dashboard() {
         // Snapshot the parcel/counter order so it's created at payment, not before.
         counterPayloadRef.current = deferCreate ? {
             table_id: selectedTable?.id || null,
+            // "Bill Only" counter sale — saved on the order so the Bills list and
+            // reports can show "Bill Only" instead of "Counter".
+            no_kitchen: billOnly ? 1 : 0,
             items: mergeCartItems(cart)
         } : null;
 
@@ -852,6 +855,7 @@ function Dashboard() {
             waiter_id: 1,
             table_id: p.table_id || null,
             order_type: "Takeaway",
+            no_kitchen: p.no_kitchen || 0,
             items: p.items,
         });
         if (p.table_id) {

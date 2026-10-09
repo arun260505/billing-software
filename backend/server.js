@@ -452,6 +452,24 @@ db.query(`
     );
 });
 
+// orders.no_kitchen — marks a "Bill Only" counter sale (billed, NOT sent to the
+// kitchen). Lets the Bills list / reports show "Bill Only" instead of "Counter".
+db.query(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'no_kitchen'`,
+    (err, rows) => {
+        if (err) { console.error("orders.no_kitchen check error:", err.message); return; }
+        if (rows && rows.length) { console.log("Orders no_kitchen column ready."); return; }
+        db.query(
+            `ALTER TABLE orders ADD COLUMN no_kitchen TINYINT(1) NOT NULL DEFAULT 0 AFTER order_type`,
+            (alterErr) => {
+                if (alterErr) console.error("orders.no_kitchen migration error:", alterErr.message);
+                else console.log("Orders no_kitchen column added.");
+            }
+        );
+    }
+);
+
 db.query(`
     SELECT COLUMN_NAME
     FROM INFORMATION_SCHEMA.COLUMNS
