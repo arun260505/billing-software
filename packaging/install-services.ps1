@@ -250,8 +250,24 @@ try {
     $envDb = Get-Content $envFile -Raw
     if ($envDb -match "(?m)^DB_USER=")     { $envDb = $envDb -replace "(?m)^DB_USER=.*", "DB_USER=root" }         else { $envDb = $envDb.TrimEnd() + "`r`nDB_USER=root" }
     if ($envDb -match "(?m)^DB_PASSWORD=") { $envDb = $envDb -replace "(?m)^DB_PASSWORD=.*", "DB_PASSWORD=" }     else { $envDb = $envDb.TrimEnd() + "`r`nDB_PASSWORD=" }
+    # DB_HOST must be 127.0.0.1, NOT 'localhost'. A dev .env with DB_HOST=localhost
+    # makes Node resolve to IPv6 ::1, which doesn't match the root@localhost MySQL
+    # account -> "Access denied for root (using password: NO)" even though root is
+    # blank. 127.0.0.1 matches, so force it.
+    if ($envDb -match "(?m)^DB_HOST=")     { $envDb = $envDb -replace "(?m)^DB_HOST=.*", "DB_HOST=127.0.0.1" }    else { $envDb = $envDb.TrimEnd() + "`r`nDB_HOST=127.0.0.1" }
     $envDb | Out-File $envFile -Encoding ascii
-} catch { Say "Could not set DB_USER/DB_PASSWORD: $($_.Exception.Message)" }
+} catch { Say "Could not set DB_USER/DB_PASSWORD/DB_HOST: $($_.Exception.Message)" }
+
+# 4c-3) Ensure the local-first sync settings exist on every install. A stale/dev
+# .env can be missing SYNC_ROLE / CLOUD_SYNC_URL entirely, which silently leaves
+# the sync worker off (till never pushes bills or pulls the menu - "no menu").
+try {
+    $envSy = Get-Content $envFile -Raw
+    if ($envSy -notmatch "(?m)^SYNC_ROLE=")        { $envSy = $envSy.TrimEnd() + "`r`nSYNC_ROLE=local" }
+    if ($envSy -notmatch "(?m)^CLOUD_SYNC_URL=")   { $envSy = $envSy.TrimEnd() + "`r`nCLOUD_SYNC_URL=$CloudUrl" }
+    if ($envSy -notmatch "(?m)^SYNC_INTERVAL_MS=") { $envSy = $envSy.TrimEnd() + "`r`nSYNC_INTERVAL_MS=15000" }
+    $envSy | Out-File $envFile -Encoding ascii
+} catch { Say "Could not set sync settings: $($_.Exception.Message)" }
 
 # 4d) A packaged till ALWAYS serves the React UI from this backend (the app's
 # window loads http://localhost:<port>/). SERVE_CLIENT=false is a DEV-only flag
