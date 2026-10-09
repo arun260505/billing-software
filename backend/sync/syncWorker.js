@@ -152,27 +152,45 @@ async function start() {
         return;
     }
 
-    // First run: activate this machine, which yields the restaurant identity and
-    // the machine sync key. Then the first cycle's pull (empty cursors) brings
-    // the whole catalog down.
-    try {
-        const act = await localActivation.ensureActivated();
-        if (act && act.sync_key) {
-            activeSyncKey = act.sync_key;
-            restaurantUuid = act.restaurant_uuid;
+    // Activate this machine (yields the restaurant identity + machine sync key),
+    // then the first cycle's pull (empty cursors) brings the whole catalog down.
+    //
+    // Activation can fail at boot if MySQL isn't accepting connections yet (the DB
+    // service is still doing InnoDB recovery). Previously the worker logged
+    // "idle: not activated" and RETURNED - giving up until the next reboot, which
+    // stranded every bill rung after that on the till with no sync. Now it keeps
+    // retrying activation every interval, so the worker self-heals the moment the
+    // DB (and cloud) are reachable - no restart needed.
+    const begin = () => {
+        console.log(`🔁 Sync worker started (every ${cfg.intervalMs / 1000}s -> ${cfg.cloudUrl})`);
+        cycle();
+        setInterval(cycle, cfg.intervalMs);
+    };
+
+    const tryActivate = async () => {
+        if (activeSyncKey) return true;              // dev SYNC_KEY, or already activated
+        try {
+            const act = await localActivation.ensureActivated();
+            if (act && act.sync_key) {
+                activeSyncKey = act.sync_key;
+                restaurantUuid = act.restaurant_uuid;
+                return true;
+            }
+        } catch (e) {
+            lastError = "activation: " + e.message;
         }
-    } catch (e) {
-        console.error("Activation error (will retry on next boot):", e.message);
-    }
+        return false;
+    };
 
-    if (!activeSyncKey) {
-        console.warn("Sync worker idle: not activated and no dev SYNC_KEY set.");
-        return;
-    }
+    if (await tryActivate()) { begin(); return; }
 
-    console.log(`🔁 Sync worker started (every ${cfg.intervalMs / 1000}s -> ${cfg.cloudUrl})`);
-    cycle();
-    setInterval(cycle, cfg.intervalMs);
+    console.warn(`Sync worker: not activated yet (MySQL/cloud not ready?) - retrying every ${cfg.intervalMs / 1000}s...`);
+    const retry = setInterval(async () => {
+        if (await tryActivate()) {
+            clearInterval(retry);
+            begin();
+        }
+    }, cfg.intervalMs);
 }
 
 module.exports = {
