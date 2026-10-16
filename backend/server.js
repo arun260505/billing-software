@@ -470,6 +470,26 @@ db.query(
     }
 );
 
+// orders.item_edited — set only when a SETTLED bill's ITEMS were changed (qty /
+// add / remove, which moves the recomputed total off the charged amount). A
+// payment-method change or a plain reprint does NOT set it. Drives the "edited"
+// tag, and syncs on the order row so the cloud shows it too.
+db.query(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'item_edited'`,
+    (err, rows) => {
+        if (err) { console.error("orders.item_edited check error:", err.message); return; }
+        if (rows && rows.length) { console.log("Orders item_edited column ready."); return; }
+        db.query(
+            `ALTER TABLE orders ADD COLUMN item_edited TINYINT(1) NOT NULL DEFAULT 0 AFTER no_kitchen`,
+            (alterErr) => {
+                if (alterErr) console.error("orders.item_edited migration error:", alterErr.message);
+                else console.log("Orders item_edited column added.");
+            }
+        );
+    }
+);
+
 db.query(`
     SELECT COLUMN_NAME
     FROM INFORMATION_SCHEMA.COLUMNS

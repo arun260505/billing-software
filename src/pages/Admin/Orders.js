@@ -471,6 +471,12 @@ function Orders() {
                                                 <span className="orders-id" title={`#${order.id}`}>
                                                     {order.order_number || `#${order.id}`}
                                                 </span>
+                                                {Number(order.item_edited) > 0 && (
+                                                    <span
+                                                        title="Items on this bill were changed after it was settled"
+                                                        style={{ marginLeft: 6, fontSize: 11, fontWeight: 600, color: "#b45309", background: "#fef3c7", padding: "1px 6px", borderRadius: 4, verticalAlign: "middle" }}
+                                                    >edited</span>
+                                                )}
                                             </td>
                                             <td title={new Date(order.created_at).toLocaleString()}>
                                                 {timeOf(order.created_at)}

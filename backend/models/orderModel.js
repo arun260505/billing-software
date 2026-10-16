@@ -1308,6 +1308,7 @@ const getTodaysBills = (restaurantId, callback) => {
             o.order_number,
             o.order_type,
             o.no_kitchen,
+            o.item_edited,
             -- Cancelled bills are listed alongside settled ones. A cancelled
             -- number is never reused, so without showing it the sequence looks
             -- like it has lost a bill.
@@ -1583,13 +1584,21 @@ const rebillOrder = (orderId, restaurantId, paymentMethod, callback) => {
 
                 const method = paymentMethod || (paidRow ? paidRow.payment_method : "Cash");
 
+                const diff = money(totals.grand_total - previousTotal);
                 const done = () => callback(null, {
                     orderId,
                     previousTotal,
                     newTotal: totals.grand_total,
-                    difference: money(totals.grand_total - previousTotal),
+                    difference: diff,
                     ...totals
                 });
+
+                // An ITEM change (qty / add / remove) moves the recomputed total
+                // off what was charged; a payment-method change or a plain reprint
+                // leaves it equal. Mark the bill "edited" ONLY when the total
+                // changed, and keep it sticky. It rides on the order row, so it
+                // syncs to the cloud — the "edited" tag shows there too.
+                const markEdited = diff !== 0;
 
                 // No payment on record (e.g. a bill settled before this feature
                 // existed) — create one rather than lose the sale.
@@ -1597,7 +1606,15 @@ const rebillOrder = (orderId, restaurantId, paymentMethod, callback) => {
                     return recordPayment(
                         orderId, restaurantId, method, totals.grand_total,
                         "Recorded on bill correction",
-                        (err) => err ? callback(err) : done()
+                        (err) => {
+                            if (err) return callback(err);
+                            if (!markEdited) return done();
+                            db.query(
+                                "UPDATE orders SET item_edited=1, updated_at=NOW() WHERE id=? AND restaurant_id=?",
+                                [orderId, restaurantId],
+                                (e) => e ? callback(e) : done()
+                            );
+                        }
                     );
                 }
 
@@ -1608,8 +1625,11 @@ const rebillOrder = (orderId, restaurantId, paymentMethod, callback) => {
                     (err) => {
                         if (err) return callback(err);
 
+                        const ordSql = markEdited
+                            ? "UPDATE orders SET payment_status='Paid', item_edited=1, updated_at=NOW() WHERE id=? AND restaurant_id=?"
+                            : "UPDATE orders SET payment_status='Paid' WHERE id=? AND restaurant_id=?";
                         db.query(
-                            "UPDATE orders SET payment_status='Paid' WHERE id=? AND restaurant_id=?",
+                            ordSql,
                             [orderId, restaurantId],
                             (err) => err ? callback(err) : done()
                         );

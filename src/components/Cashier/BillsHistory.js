@@ -98,7 +98,11 @@ function BillsHistory({ onOpenBill, onWhatsApp, salon = false }) {
                         </thead>
                         <tbody>
                             {filtered.map((b) => {
-                                const corrected = Number(b.correction_count) > 0;
+                                // "edited" shows ONLY when the bill's ITEMS were
+                                // changed (qty/add/remove), not for a payment-mode
+                                // change or a plain reprint. Driven by the synced
+                                // orders.item_edited flag.
+                                const corrected = Number(b.item_edited) > 0;
                                 const cancelled = isCancelled(b);
                                 return (
                                     <tr key={b.id} className={cancelled ? "bills-row-cancelled" : ""}>
