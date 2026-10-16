@@ -1458,7 +1458,24 @@ const addItemToOrder = (orderId, restaurantId, menuItemId, quantity, callback) =
                         [orderId, menuItemId, qty, price, money(price * qty)],
                         (err) => {
                             if (err) return callback(err);
-                            recomputeOrderTotals(orderId, restaurantId, callback);
+                            recomputeOrderTotals(orderId, restaurantId, (rtErr, totals) => {
+                                if (rtErr) return callback(rtErr);
+                                // Adding an item to a bill that already took money is
+                                // a correction → mark it "edited" (sticky, synced). A
+                                // live running-order add has no payment, so this is a
+                                // no-op there. Best-effort: never fail the add.
+                                db.query(
+                                    `UPDATE orders SET item_edited = 1, updated_at = NOW()
+                                     WHERE id = ? AND restaurant_id = ? AND item_edited = 0
+                                       AND EXISTS (SELECT 1 FROM payments p
+                                                   WHERE p.order_id = orders.id
+                                                     AND p.restaurant_id = orders.restaurant_id
+                                                     AND p.payment_status = 'Success'
+                                                     AND p.deleted_at IS NULL)`,
+                                    [orderId, restaurantId],
+                                    () => callback(null, totals)
+                                );
+                            });
                         }
                     );
                 }
@@ -1500,6 +1517,15 @@ const reconcilePaymentAfterEdit = (orderId, restaurantId, callback) => {
         );
         // No money taken yet → an ordinary running-order edit. Nothing to do.
         if (!pays.length) return { reconciled: false, difference: 0, payment_status: order.payment_status };
+
+        // An item was changed on a bill that already took money → a real
+        // correction. Mark it "edited" (sticky, and synced on the order row so the
+        // tag shows on the till AND the cloud). This runs ONLY from the item-edit
+        // endpoints; a payment-method change or a plain reprint never reaches here.
+        await dbp.query(
+            "UPDATE orders SET item_edited = 1, updated_at = NOW() WHERE id = ? AND restaurant_id = ? AND item_edited = 0",
+            [orderId, restaurantId]
+        );
 
         const paidBefore = money(pays.reduce((s, p) => s + Number(p.amount), 0));
         const difference = money(grand - paidBefore);
@@ -1584,21 +1610,13 @@ const rebillOrder = (orderId, restaurantId, paymentMethod, callback) => {
 
                 const method = paymentMethod || (paidRow ? paidRow.payment_method : "Cash");
 
-                const diff = money(totals.grand_total - previousTotal);
                 const done = () => callback(null, {
                     orderId,
                     previousTotal,
                     newTotal: totals.grand_total,
-                    difference: diff,
+                    difference: money(totals.grand_total - previousTotal),
                     ...totals
                 });
-
-                // An ITEM change (qty / add / remove) moves the recomputed total
-                // off what was charged; a payment-method change or a plain reprint
-                // leaves it equal. Mark the bill "edited" ONLY when the total
-                // changed, and keep it sticky. It rides on the order row, so it
-                // syncs to the cloud — the "edited" tag shows there too.
-                const markEdited = diff !== 0;
 
                 // No payment on record (e.g. a bill settled before this feature
                 // existed) — create one rather than lose the sale.
@@ -1606,15 +1624,7 @@ const rebillOrder = (orderId, restaurantId, paymentMethod, callback) => {
                     return recordPayment(
                         orderId, restaurantId, method, totals.grand_total,
                         "Recorded on bill correction",
-                        (err) => {
-                            if (err) return callback(err);
-                            if (!markEdited) return done();
-                            db.query(
-                                "UPDATE orders SET item_edited=1, updated_at=NOW() WHERE id=? AND restaurant_id=?",
-                                [orderId, restaurantId],
-                                (e) => e ? callback(e) : done()
-                            );
-                        }
+                        (err) => err ? callback(err) : done()
                     );
                 }
 
@@ -1625,11 +1635,8 @@ const rebillOrder = (orderId, restaurantId, paymentMethod, callback) => {
                     (err) => {
                         if (err) return callback(err);
 
-                        const ordSql = markEdited
-                            ? "UPDATE orders SET payment_status='Paid', item_edited=1, updated_at=NOW() WHERE id=? AND restaurant_id=?"
-                            : "UPDATE orders SET payment_status='Paid' WHERE id=? AND restaurant_id=?";
                         db.query(
-                            ordSql,
+                            "UPDATE orders SET payment_status='Paid' WHERE id=? AND restaurant_id=?",
                             [orderId, restaurantId],
                             (err) => err ? callback(err) : done()
                         );
