@@ -375,6 +375,16 @@
     left:23px;
 }
 
+/* Segmented choice (e.g. how a discount is applied) */
+.set-seg{ display:flex; gap:8px; }
+.set-seg-btn{
+    flex:1; padding:9px 12px; border:1.5px solid #e2e8f0; border-radius:10px;
+    background:#fff; color:#475569; font-size:13px; font-weight:700;
+    cursor:pointer; transition:all .12s;
+}
+.set-seg-btn:hover{ border-color:#cbd5e1; }
+.set-seg-btn.active{ border-color:#2563eb; background:#eff6ff; color:#1d4ed8; }
+
 /* ── Staff & Permissions ───────────────────────────────────── */
 
 .set-staff-layout{

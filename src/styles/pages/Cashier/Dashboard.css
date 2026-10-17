@@ -235,6 +235,30 @@
 }
 .cashier-app .sl-line-stylist select:focus { border-color: #2563eb; outline: none; }
 
+/* "Selected services" discount mode: a round tick per line. Ticked = the
+   discount covers it; unticked = this service stays at full price. */
+.cashier-app .sl-line-disc {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 16px 10px; margin-top: -2px; cursor: pointer;
+    font-size: 12px; font-weight: 700; color: #16a34a;
+}
+.cashier-app .sl-line-disc.off { color: #94a3b8; }
+.cashier-app .sl-line-disc-tick {
+    appearance: none; -webkit-appearance: none;
+    flex: 0 0 auto; width: 18px; height: 18px; margin: 0;
+    border: 2px solid #cbd5e1; border-radius: 50%;
+    background: #fff; cursor: pointer; position: relative; transition: all .12s;
+}
+.cashier-app .sl-line-disc-tick:checked {
+    border-color: #16a34a; background: #16a34a;
+}
+.cashier-app .sl-line-disc-tick:checked::after {
+    content: ""; position: absolute; left: 5px; top: 2px;
+    width: 4px; height: 8px; border: solid #fff;
+    border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.cashier-app .sl-line-disc-tick:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
 /* ── Docked bill panel ───────────────────────────────────────────────── */
 .cashier-app .pos-bill {
     flex: 0 0 380px; width: 380px; background: #fff;

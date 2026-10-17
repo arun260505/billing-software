@@ -998,6 +998,7 @@ const toDiscountForm = (row = {}) => ({
     discount_enabled: Boolean(Number(row.discount_enabled)),
     discount_max_percent: String(Number(row.discount_max_percent) || 0),
     discount_max_amount: String(Number(row.discount_max_amount) || 0),
+    discount_per_item: Boolean(Number(row.discount_per_item)),
     // Automatic (standing) discount applied to every bill.
     discount_auto_type: ["percent", "amount"].includes(row.discount_auto_type) ? row.discount_auto_type : "none",
     discount_auto_value: String(Number(row.discount_auto_value) || 0)
@@ -1053,6 +1054,7 @@ function TabDiscounts() {
                 discount_enabled: data.discount_enabled,
                 discount_max_percent: pct,
                 discount_max_amount: amt,
+                discount_per_item: data.discount_per_item,
                 discount_auto_type: autoType,
                 discount_auto_value: autoType === "none" ? 0 : autoVal
             });
@@ -1135,6 +1137,33 @@ function TabDiscounts() {
                             />
                             <span style={hint}>e.g. 200 lets the desk take up to ₹200 off. 0 = no flat-amount discounts.</span>
                         </div>
+                    </div>
+
+                    <div className="set-field" style={{ marginTop: 14 }}>
+                        <label>How the discount is applied</label>
+                        <div className="set-seg" role="group" aria-label="How the discount is applied" style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                            <button
+                                type="button"
+                                className={`set-seg-btn${!data.discount_per_item ? " active" : ""}`}
+                                aria-pressed={!data.discount_per_item}
+                                onClick={() => update("discount_per_item", false)}
+                            >
+                                Whole bill
+                            </button>
+                            <button
+                                type="button"
+                                className={`set-seg-btn${data.discount_per_item ? " active" : ""}`}
+                                aria-pressed={data.discount_per_item}
+                                onClick={() => update("discount_per_item", true)}
+                            >
+                                Selected services
+                            </button>
+                        </div>
+                        <span style={hint}>
+                            {data.discount_per_item
+                                ? "The desk gets a tick beside each service — unticking one keeps it at full price while the rest of the bill is discounted."
+                                : "The discount comes off the whole bill."}
+                        </span>
                     </div>
                 </div>
             )}

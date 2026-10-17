@@ -73,7 +73,8 @@ exports.saveDiscounts = (req, res) => {
         discount_max_percent: Math.round(pct * 100) / 100,
         discount_max_amount: Math.round(amt * 100) / 100,
         discount_auto_type: autoType,
-        discount_auto_value: Math.round(autoVal * 100) / 100
+        discount_auto_value: Math.round(autoVal * 100) / 100,
+        discount_per_item: req.body.discount_per_item === true || Number(req.body.discount_per_item) === 1
     }, (err) => {
         if (err) return error(res, err.message, 500);
         settingsModel.getRestaurantSettings(rid, (fetchErr, data) => {

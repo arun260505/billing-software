@@ -490,6 +490,47 @@ db.query(
     }
 );
 
+// order_items.no_discount — a salon line the desk chose to KEEP at full price
+// while discounting the rest of the bill ("Selected services" discount mode).
+// The bill's discount is worked out on the included lines only; this one stays
+// whole. 0 = discountable (default, and how every restaurant bill behaves).
+// Syncs on the order_items row so the cloud agrees.
+db.query(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'order_items' AND COLUMN_NAME = 'no_discount'`,
+    (err, rows) => {
+        if (err) { console.error("order_items.no_discount check error:", err.message); return; }
+        if (rows && rows.length) { console.log("Order_items no_discount column ready."); return; }
+        db.query(
+            `ALTER TABLE order_items ADD COLUMN no_discount TINYINT(1) NOT NULL DEFAULT 0`,
+            (alterErr) => {
+                if (alterErr) console.error("order_items.no_discount migration error:", alterErr.message);
+                else console.log("Order_items no_discount column added.");
+            }
+        );
+    }
+);
+
+// settings.discount_per_item — the owner's choice of how a front-desk discount
+// is applied: 0 = whole bill (default), 1 = the desk picks which services the
+// discount covers (a round tick per service, excluded ones stay full price).
+// On the synced `settings` table so the till gets it.
+db.query(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'settings' AND COLUMN_NAME = 'discount_per_item'`,
+    (err, rows) => {
+        if (err) { console.error("settings.discount_per_item check error:", err.message); return; }
+        if (rows && rows.length) { console.log("Settings discount_per_item column ready."); return; }
+        db.query(
+            `ALTER TABLE settings ADD COLUMN discount_per_item TINYINT(1) NOT NULL DEFAULT 0`,
+            (alterErr) => {
+                if (alterErr) console.error("settings.discount_per_item migration error:", alterErr.message);
+                else console.log("Settings discount_per_item column added.");
+            }
+        );
+    }
+);
+
 db.query(`
     SELECT COLUMN_NAME
     FROM INFORMATION_SCHEMA.COLUMNS

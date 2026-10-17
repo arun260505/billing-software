@@ -22,14 +22,25 @@ const totalsForOrder = (orderId, restaurantId, subtotal, callback) => {
             const row = (orderRows && orderRows[0]) || {};
             const orderType = row.order_type || "Dine-In";
 
-            // An edit keeps the bill's discount: a percentage is re-taken off the
-            // new subtotal; a flat amount stays, but never above the subtotal.
-            const discount = resolveDiscount(subtotal, {
+          // The discount is worked out on the DISCOUNTABLE goods — every line
+          // except those the desk kept at full price (order_items.no_discount).
+          // With no excluded line this equals the subtotal, so an ordinary bill
+          // is unaffected.
+          db.query(
+            "SELECT COALESCE(SUM(total), 0) AS d FROM order_items WHERE order_id = ? AND no_discount = 0",
+            [orderId],
+            (dErr, dRows) => {
+              if (dErr) return callback(dErr);
+              const discountable = (dRows && dRows[0]) ? Number(dRows[0].d) : subtotal;
+
+              // An edit keeps the bill's discount: a percentage is re-taken off the
+              // discountable goods; a flat amount stays, but never above them.
+              const discount = resolveDiscount(discountable, {
                 percent: row.discount_percent,
                 amount: row.discount
-            });
+              });
 
-            getAutoCharges(restaurantId, orderType, (err, autoCharges) => {
+              getAutoCharges(restaurantId, orderType, (err, autoCharges) => {
                 // getAutoCharges never errors — it bills the goods rather than
                 // failing a sale — but keep the guard honest.
                 if (err) return callback(err);
@@ -48,7 +59,9 @@ const totalsForOrder = (orderId, restaurantId, subtotal, callback) => {
                         ));
                     }
                 );
-            });
+              });
+            }
+          );
         }
     );
 };
@@ -130,7 +143,10 @@ const priceCartItems = (items, restaurantId, callback) => {
                     total: money(price * qty),
                     notes: it.notes || null,
                     // Per-service stylist (salon); carried into order_items.
-                    stylist_id: it.stylist_id || null
+                    stylist_id: it.stylist_id || null,
+                    // Salon per-service discount exclusion; carried into order_items
+                    // and used to pick the bill's discountable goods.
+                    no_discount: it.no_discount ? 1 : 0
                 });
             }
 
@@ -303,12 +319,15 @@ const createOrderItems = (items, orderId, callback) => {
         item.total,
         item.notes || null,
         // Per-service stylist (salon). NULL keeps the bill's stylist for that line.
-        item.stylist_id || null
+        item.stylist_id || null,
+        // Salon "Selected services" discount mode: 1 keeps this line at full
+        // price while the rest of the bill is discounted. 0 (default) = normal.
+        item.no_discount ? 1 : 0
     ]);
 
     const sql = `
         INSERT INTO order_items
-        (order_id, menu_item_id, quantity, price, total, notes, stylist_id)
+        (order_id, menu_item_id, quantity, price, total, notes, stylist_id, no_discount)
         VALUES ?
     `;
 

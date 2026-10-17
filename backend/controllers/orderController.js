@@ -128,7 +128,13 @@ function placeOrder(req, res, restaurantId, items) {
         // priced) bill, then taken off the goods before tax. The screen checks the
         // same rule, but it is not the authority.
         const goods = pricedItems.reduce((s, it) => s + Number(it.price) * Number(it.quantity), 0);
-        const asked = checkDiscount({ policy, role: req.user.role, input: req.body, subtotal: goods });
+        // "Selected services" discount mode: the discount covers only the lines
+        // the desk left included (no_discount = 0); excluded ones stay full price.
+        // With nothing excluded this is the whole bill, so an ordinary order is
+        // unchanged. The discount is resolved against — and capped at — this base.
+        const discountableGoods = pricedItems.reduce(
+            (s, it) => s + (it.no_discount ? 0 : Number(it.price) * Number(it.quantity)), 0);
+        const asked = checkDiscount({ policy, role: req.user.role, input: req.body, subtotal: discountableGoods });
         if (asked.problem) return error(res, asked.problem, 400);
 
         const { subtotal, tax, service_charge, grand_total } = computeTotals(pricedItems, autoCharges, asked.discount);

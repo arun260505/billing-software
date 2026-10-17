@@ -22,6 +22,7 @@ const DEFAULT_RESTAURANT = {
     discount_enabled: 0,
     discount_max_percent: 0,
     discount_max_amount: 0,
+    discount_per_item: 0,
     // 018: salon bills — printer or not, and the owner's WhatsApp message
     // (NULL = the default message in src/utils/whatsappBill.js).
     bill_delivery: "printer_optional",
@@ -135,14 +136,15 @@ const saveDiscountSettings = (restaurantId, data, callback) => {
     const sql = `
         INSERT INTO settings
             (restaurant_id, discount_enabled, discount_max_percent, discount_max_amount,
-             discount_auto_type, discount_auto_value)
-        VALUES (?, ?, ?, ?, ?, ?)
+             discount_auto_type, discount_auto_value, discount_per_item)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             discount_enabled     = VALUES(discount_enabled),
             discount_max_percent = VALUES(discount_max_percent),
             discount_max_amount  = VALUES(discount_max_amount),
             discount_auto_type   = VALUES(discount_auto_type),
-            discount_auto_value  = VALUES(discount_auto_value)
+            discount_auto_value  = VALUES(discount_auto_value),
+            discount_per_item    = VALUES(discount_per_item)
     `;
     db.query(sql, [
         restaurantId,
@@ -150,7 +152,8 @@ const saveDiscountSettings = (restaurantId, data, callback) => {
         Number(data.discount_max_percent) || 0,
         Number(data.discount_max_amount) || 0,
         autoType,
-        autoValue
+        autoValue,
+        data.discount_per_item ? 1 : 0
     ], callback);
 };
 

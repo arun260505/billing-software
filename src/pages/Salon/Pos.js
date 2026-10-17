@@ -135,7 +135,7 @@ function SalonPos() {
     const [stylistId, setStylistId] = useState("");
 
     // ── Discount (only if the owner allows it, within their limits) ─
-    const [discountPolicy, setDiscountPolicy] = useState({ enabled: false, max_percent: 0, max_amount: 0, auto_type: "none", auto_value: 0 });
+    const [discountPolicy, setDiscountPolicy] = useState({ enabled: false, max_percent: 0, max_amount: 0, auto_type: "none", auto_value: 0, per_item: false });
     const [discountType, setDiscountType] = useState("percent");   // "percent" | "amount"
     const [discountValue, setDiscountValue] = useState("");
 
@@ -216,7 +216,9 @@ function SalonPos() {
                 max_percent: Number(s.discount_max_percent) || 0,
                 max_amount: Number(s.discount_max_amount) || 0,
                 auto_type: ["percent", "amount"].includes(s.discount_auto_type) ? s.discount_auto_type : "none",
-                auto_value: Number(s.discount_auto_value) || 0
+                auto_value: Number(s.discount_auto_value) || 0,
+                // When on, the desk picks which services the discount covers.
+                per_item: Boolean(Number(s.discount_per_item))
             });
             setDesk({
                 bill_delivery: normalizeBillDelivery(s.bill_delivery),
@@ -387,6 +389,11 @@ function SalonPos() {
     // "same as the bill", so the top picker still applies to every line by default.
     const setLineStylist = (lineId, value) =>
         setCart((prev) => prev.map((c) => (c.lineId === lineId ? { ...c, stylistId: value } : c)));
+
+    // "Selected services" discount mode: tick a line to include it in the discount,
+    // untick to keep it at full price.
+    const toggleLineDiscount = (lineId) =>
+        setCart((prev) => prev.map((c) => (c.lineId === lineId ? { ...c, noDiscount: !c.noDiscount } : c)));
     const stylistNameFor = (id) => {
         const s = stylistOptions.find((x) => String(x.id) === String(id));
         return s ? s.full_name : "";
@@ -395,6 +402,15 @@ function SalonPos() {
 
     // Same calculation the backend runs (utils/rates mirrors backend/utils/billing.js).
     const subtotal = cart.reduce((s, it) => s + Number(it.price) * Number(it.quantity), 0);
+
+    // "Selected services" discount mode (owner setting): the desk gets a tick per
+    // service and the discount covers only the ticked ones — unticked lines stay
+    // at full price. Off, or with nothing unticked, the discount is on the whole
+    // bill, so this equals the subtotal.
+    const perItemDiscount = discountPolicy.enabled && discountPolicy.per_item;
+    const discountableSubtotal = perItemDiscount
+        ? cart.reduce((s, it) => s + (it.noDiscount ? 0 : Number(it.price) * Number(it.quantity)), 0)
+        : subtotal;
 
     // The discount typed in, checked against the owner's rule — the backend
     // checks it again when the bill is created. It comes off the services before
@@ -418,8 +434,10 @@ function SalonPos() {
             discountProblem = `The owner allows up to ${discountPolicy.max_percent}% off.`;
         } else if (activeDiscountType === "amount" && discountNumber > discountPolicy.max_amount) {
             discountProblem = `The owner allows up to ₹${discountPolicy.max_amount} off.`;
-        } else if (activeDiscountType === "amount" && discountNumber > subtotal) {
-            discountProblem = "The discount can't be more than the bill.";
+        } else if (activeDiscountType === "amount" && discountNumber > discountableSubtotal) {
+            discountProblem = perItemDiscount
+                ? "The discount can't be more than the selected services."
+                : "The discount can't be more than the bill.";
         }
     }
 
@@ -431,7 +449,7 @@ function SalonPos() {
     const effValue = manualValid ? discountNumber : (hasAuto ? discountPolicy.auto_value : 0);
 
     const discount = effValue > 0
-        ? resolveDiscount(subtotal, effType === "percent" ? { percent: effValue } : { amount: effValue })
+        ? resolveDiscount(discountableSubtotal, effType === "percent" ? { percent: effValue } : { amount: effValue })
         : 0;
     const discountLabel = effType === "percent" ? `Discount (${effValue}%)` : "Discount";
 
@@ -583,6 +601,9 @@ function SalonPos() {
                     quantity: Number(it.quantity),
                     price: Number(it.price),
                     stylist_id: sid,
+                    // "Selected services" discount mode: 1 keeps this line at full
+                    // price. Only meaningful when the owner turned the mode on.
+                    no_discount: perItemDiscount && it.noDiscount ? 1 : 0,
                     // Carried so the WhatsApp / printed bill can name the stylist per
                     // service on a multi-stylist bill (ignored by order creation).
                     stylist_name: stylistNameFor(sid)
@@ -1074,6 +1095,18 @@ function SalonPos() {
                                             decreaseQuantity={(lineId) => changeQuantity(lineId, -1)}
                                             removeItem={removeLine}
                                         />
+                                        {perItemDiscount && effValue > 0 && (
+                                            <label className={`sl-line-disc${item.noDiscount ? " off" : ""}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="sl-line-disc-tick"
+                                                    checked={!item.noDiscount}
+                                                    onChange={() => toggleLineDiscount(item.lineId)}
+                                                    aria-label={`Apply the discount to ${item.item_name}`}
+                                                />
+                                                <span>{item.noDiscount ? "Full price (no discount)" : "Discount applies"}</span>
+                                            </label>
+                                        )}
                                         {stylistOptions.length > 0 && (
                                             <div className="sl-line-stylist">
                                                 <span className="sl-line-stylist-label">Stylist</span>
