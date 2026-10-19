@@ -73,7 +73,7 @@ const VIEWS = [
     { key: "services", label: "✂ Services" },
     { key: "bills", label: "📋 Bills" },
     { key: "inventory", label: "📦 Inventory" },
-    { key: "printer", label: "🖨 Printer" }
+    { key: "printer", label: "🖨 Printer & Settings" }
 ];
 
 const dateParts = (d = new Date()) => ({

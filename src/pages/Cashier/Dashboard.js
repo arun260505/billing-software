@@ -1340,7 +1340,7 @@ function Dashboard() {
                         className={`pos-nav-item${activeView === "printer" ? " active" : ""}`}
                         onClick={() => { setActiveView("printer"); setSidebarOpen(false); }}
                     >
-                        🖨 Printer
+                        🖨 Printer & Settings
                     </button>
                 </nav>
             </aside>
