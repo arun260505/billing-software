@@ -19,6 +19,7 @@ import { registerNetwork } from "../../services/systemService";
 import billingFormatService from "../../services/billingFormatService";
 import settingsService from "../../services/settingsService";
 import chargeService from "../../services/chargeService";
+import { isBillOnlyDefault } from "../../utils/counterMode";
 import {
     buildBillMessage,
     billFromSaved,
@@ -52,7 +53,9 @@ function Dashboard() {
     // "Bill only" counter mode: rings up a walk-in sale WITHOUT sending anything
     // to the kitchen (for ready items — water, packed goods). It's a counter
     // order (no table) that skips every kitchen ticket.
-    const [billOnly, setBillOnly] = useState(false);
+    // A fresh counter sale starts in the till's default mode (Printer page →
+    // "Default counter mode"); the cashier can still switch per bill.
+    const [billOnly, setBillOnly] = useState(isBillOnlyDefault());
     const [categories, setCategories] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
     const [allItems, setAllItems] = useState([]);    // whole menu (search across categories)
@@ -569,7 +572,7 @@ function Dashboard() {
         setHeldOrders((h) => [...h, { id: Date.now(), cart: cart.map((c) => ({ ...c })), billOnly }]);
         setCart([]);
         setSelectedTable(null);
-        setBillOnly(false);
+        setBillOnly(isBillOnlyDefault());   // next fresh order opens in the default mode
         setEditingOrder(null);
     };
 
@@ -912,7 +915,7 @@ function Dashboard() {
         counterPayloadRef.current = null;
         setCart([]);
         setSelectedTable(null);
-        setBillOnly(false);
+        setBillOnly(isBillOnlyDefault());   // back to this till's default mode
         setEditingOrder(null);
         alert("Bill Generated Successfully");
         updateDateTime();

@@ -10,6 +10,7 @@ import {
     PRINTER_MODE_OPTIONS
 } from "../../utils/printerMode";
 import { getWhatsAppOverride, setWhatsAppOverride } from "../../utils/whatsappBill";
+import { getCounterDefault, setCounterDefault, COUNTER_MODES } from "../../utils/counterMode";
 import "../../styles/Cashier/PrinterSetup.css";
 
 /**
@@ -57,6 +58,10 @@ function PrinterSetup({ salon = false }) {
     // so it lives in the browser, not the synced settings. "" = follow default.
     const [waDefault, setWaDefault] = useState("web");
     const [waOverride, setWaOverride] = useState(getWhatsAppOverride);
+
+    // This till's default counter mode (Counter / Bill Only). A property of this
+    // PC, so it lives in the browser like the WhatsApp override. Restaurant only.
+    const [counterDefault, setCounterDefaultState] = useState(getCounterDefault);
 
     const slots = salon ? SALON_SLOTS : requiredPrinters(mode);
 
@@ -119,6 +124,16 @@ function PrinterSetup({ salon = false }) {
         setWhatsAppOverride(v);
         setFlash(v ? `WhatsApp will open in ${v === "app" ? "the WhatsApp app" : "WhatsApp Web"} on this till.`
                    : "WhatsApp now follows the owner's default on this till.");
+        setTimeout(() => setFlash(""), 3000);
+    };
+
+    const changeCounterDefault = (value) => {
+        const v = value === COUNTER_MODES.BILL_ONLY ? COUNTER_MODES.BILL_ONLY : COUNTER_MODES.COUNTER;
+        setCounterDefaultState(v);
+        setCounterDefault(v);
+        setFlash(v === COUNTER_MODES.BILL_ONLY
+            ? "Counter sales now start in Bill Only (no kitchen ticket) on this till."
+            : "Counter sales now start in Counter (sends to the kitchen) on this till.");
         setTimeout(() => setFlash(""), 3000);
     };
 
@@ -385,6 +400,45 @@ function PrinterSetup({ salon = false }) {
                     </div>
                 </div>
             </div>
+
+            {/* Default counter mode: what a fresh counter sale starts as on THIS
+                till. The cashier can still switch per bill; after each bill the
+                counter returns to this default. Restaurant only (a salon has no
+                Counter / Bill Only). */}
+            {!salon && (
+                <div className="prn-card">
+                    <h2 className="prn-title">🧾 Default counter mode</h2>
+                    <p className="prn-sub">
+                        How a new counter sale starts on this till. The cashier can still
+                        switch to the other mode for a single bill — after billing, the
+                        counter returns to this default.
+                    </p>
+
+                    <div className="prn-slot">
+                        <div className="prn-slot-head">
+                            <div className="prn-slot-title">
+                                <strong>New counter sale starts as</strong>
+                                <span className="prn-slot-role">This till only</span>
+                            </div>
+                        </div>
+                        <div className="prn-entry">
+                            <select
+                                className="prn-select"
+                                value={counterDefault}
+                                onChange={(e) => changeCounterDefault(e.target.value)}
+                            >
+                                <option value={COUNTER_MODES.COUNTER}>Counter (sends to the kitchen)</option>
+                                <option value={COUNTER_MODES.BILL_ONLY}>Bill Only (no kitchen ticket)</option>
+                            </select>
+                        </div>
+                        <div className="prn-hint">
+                            {counterDefault === COUNTER_MODES.BILL_ONLY
+                                ? "Counter sales start in Bill Only — billed without a kitchen ticket. Pick Counter on a bill to send it to the kitchen."
+                                : "Counter sales go to the kitchen. Pick Bill Only on a bill to skip the kitchen ticket."}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
