@@ -365,6 +365,10 @@ function PrinterSetup({ salon = false }) {
 
             </div>
 
+            {/* WhatsApp bills and — for a restaurant — the default counter mode
+                sit stacked in one column, so the counter card fills the space
+                below WhatsApp instead of opening a third column. */}
+            <div className="prn-col">
             {/* WhatsApp: where bills open on THIS till. The owner sets the default
                 (Admin → Settings → Bills & WhatsApp); a single till can override
                 it here — a property of this PC, so it stays on this machine. */}
@@ -439,6 +443,7 @@ function PrinterSetup({ salon = false }) {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 }

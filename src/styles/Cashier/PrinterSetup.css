@@ -7,6 +7,16 @@
     overflow-y: auto;
 }
 
+/* WhatsApp + Default-counter-mode cards stacked as one column, so the second
+   card fills the space below WhatsApp rather than starting a new column. */
+.prn-col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    max-width: 620px;
+}
+
 .prn-card {
     width: 100%;
     max-width: 620px;
