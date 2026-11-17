@@ -39,13 +39,17 @@ export const DEFAULT_BILL_FORMAT = {
 };
 
 // Tasty Travel asked for the bill number to print LARGE so a customer can read it
-// at a glance across the counter. Gated to that one restaurant, matched by its
+// at a glance across the counter. Gated to specific shops, matched by their
 // stable uuid (same on the cloud and on the till, since it down-syncs) with the
 // trading name as a fallback. Every other shop prints the number at normal size.
-export const BIG_BILL_NO_UUID = "9a6f14f3-b40b-11f1-9b54-0a5e3187ab69";
+export const BIG_BILL_NO_UUIDS = [
+    "9a6f14f3-b40b-11f1-9b54-0a5e3187ab69", // Tasty Travel
+    "c67179a6-a448-11f1-9b54-0a5e3187ab69", // InWallz
+];
+export const BIG_BILL_NO_NAMES = ["tasty travel", "inwallz"];
 export function wantsBigBillNo(restaurant = {}) {
-    return restaurant.uuid === BIG_BILL_NO_UUID ||
-        String(restaurant.restaurant_name || "").trim().toLowerCase() === "tasty travel";
+    return BIG_BILL_NO_UUIDS.includes(restaurant.uuid) ||
+        BIG_BILL_NO_NAMES.includes(String(restaurant.restaurant_name || "").trim().toLowerCase());
 }
 
 /**
