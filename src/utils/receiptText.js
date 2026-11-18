@@ -48,10 +48,11 @@ const bold = (line) => `${ESC}E\x01${ESC}G\x01${line}${ESC}G\x00${ESC}E\x00`;
 // and wrap the header, so the big lines here grow downwards, not sideways.
 const tall = (line) => `${GS}!\x01${line}${GS}!\x00`;
 
-// GS ! 0x22 — TRIPLE width AND height, for a value that must carry right across a
-// counter (the big Bill No. on its own line). Applied to a short run alone on its
-// line, so the magnified glyphs never collide with a padded money column.
-const huge = (line) => `${GS}!\x22${line}${GS}!\x00`;
+// GS ! 0x11 — DOUBLE width AND height, for the Bill No. on its own line: stands
+// out across the counter, a touch larger than the (tall) grand total, without the
+// oversized triple magnification that used to wrap. Applied to a short run alone
+// on its line, so the magnified glyphs never collide with a padded money column.
+const big2 = (line) => `${GS}!\x11${line}${GS}!\x00`;
 
 /** Both, for the one or two lines that have to carry across a counter. */
 const heading = (line) => bold(tall(line));
@@ -253,7 +254,7 @@ export function buildBillText({ order = {}, restaurant = {}, format = {} }) {
         // "Type:" value on the line above - so the two labels line up; the big
         // number then runs off to the right from there.
         const startCol = Math.max(left.length + 1, leftW);
-        metaRows[idx] = left + repeat(" ", startCol - left.length) + bnLabel + bold(huge(orderNumber));
+        metaRows[idx] = left + repeat(" ", startCol - left.length) + bnLabel + bold(big2(orderNumber));
     }
     metaRows.forEach((r) => out.push(r));
 

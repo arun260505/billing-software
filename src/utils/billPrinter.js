@@ -177,7 +177,7 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
     if (cfg.show_order_number && orderNumber) {
         // Tasty Travel: the number alone prints large (the label stays small).
         const num = wantsBigBillNo(restaurant)
-            ? `<strong style="font-size: ${isA4 ? "28px" : is58mm ? "22px" : "28px"}; line-height: 1;">${escapeHtml(orderNumber)}</strong>`
+            ? `<strong style="font-size: ${isA4 ? "22px" : is58mm ? "16px" : "20px"}; line-height: 1;">${escapeHtml(orderNumber)}</strong>`
             : escapeHtml(orderNumber);
         metaRows.push(`<strong>Bill No.:</strong> ${num}`);
     }
@@ -311,7 +311,7 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
             summaryHtml += `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9;"><span>${escapeHtml(r.label)}</span><span>${r.val}</span></div>`;
         });
         if (cfg.show_grand_total) {
-            summaryHtml += `<div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 16px; font-weight: bold; border-top: 2px solid #0f172a; margin-top: 4px;"><span>Grand Total</span><span>&#8377;${grandTotal.toFixed(2)}</span></div>`;
+            summaryHtml += `<div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 18px; font-weight: bold; border-top: 2px solid #0f172a; margin-top: 4px;"><span>Grand Total</span><span>&#8377;${grandTotal.toFixed(2)}</span></div>`;
         }
         summaryHtml += `</div></div>`;
     } else {
@@ -327,7 +327,7 @@ export function generateBillHtml({ order = {}, restaurant = {}, format = {} }) {
 
         if (cfg.show_grand_total) {
             summaryHtml += `
-                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58mm ? "12px" : "14px"}; margin-top: 4px; padding: 4px 0; border-top: 1px solid #000; border-bottom: 1px solid #000;">
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${is58mm ? "14px" : "17px"}; margin-top: 4px; padding: 4px 0; border-top: 1px solid #000; border-bottom: 1px solid #000;">
                     <span>Grand Total</span><span>&#8377;${grandTotal.toFixed(2)}</span>
                 </div>
             `;
