@@ -76,8 +76,9 @@ const validateOrderNumberFormat = (data) => {
     const errors = [];
     if (data.prefix !== undefined) {
         const prefix = String(data.prefix || "");
-        if (!/^[A-Za-z0-9_-]{1,12}$/.test(prefix)) {
-            errors.push("prefix must be 1-12 letters, numbers, dashes or underscores.");
+        // Blank is allowed — a shop (e.g. Tasty Travel) can run plain numbers.
+        if (prefix && !/^[A-Za-z0-9_-]{1,12}$/.test(prefix)) {
+            errors.push("prefix must be 1-12 letters, numbers, dashes or underscores, or blank for plain numbers.");
         }
     }
     if (data.starting_number !== undefined) {

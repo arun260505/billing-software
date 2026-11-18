@@ -311,7 +311,8 @@ const getOrderNumberSettings = (restaurantId, callback) => {
 };
 
 const saveOrderNumberSettings = (restaurantId, data, callback) => {
-    const prefix = String(data.prefix || "ORD").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 20) || "ORD";
+    // Keep a blank prefix blank (plain numbers like Tasty Travel); don't force "ORD".
+    const prefix = String(data.prefix ?? "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 20);
     const starting = Math.max(1, Math.round(Number(data.starting_number)) || 1);
     const digits = Math.max(1, Math.min(10, Math.round(Number(data.digits)) || 4));
     const mode = ORDER_NUMBER_RESET_MODES.includes(data.reset_mode) ? data.reset_mode : "never";

@@ -590,21 +590,26 @@ const RESET_MODES = [
 ];
 
 const toOrderNumberForm = (row = {}) => ({
-    prefix: row.prefix || "ORD",
+    // Show the REAL prefix — blank stays blank (a shop like Tasty Travel runs plain
+    // numbers). "ORD" is only the field placeholder, never a silent default, or a
+    // save on this page would turn plain bills into ORD- bills.
+    prefix: row.prefix || "",
     starting_number: row.starting_number ?? 1,
     digits: row.digits ?? 4,
     reset_mode: row.reset_mode || "never"
 });
 
 const buildPreview = (data) => {
-    const prefix = String(data.prefix || "").trim() || "ORD";
+    const prefix = String(data.prefix || "").trim();
     const start = Math.max(1, Math.round(Number(data.starting_number)) || 1);
     const digits = Math.max(1, Math.min(10, Math.round(Number(data.digits)) || 4));
-    return `${prefix}-${String(start).padStart(digits, "0")}`;
+    const num = String(start).padStart(digits, "0");
+    // No prefix → plain number, no leading dash.
+    return prefix ? `${prefix}-${num}` : num;
 };
 
 const validateOrderNumberForm = (data) => {
-    if (!/^[A-Za-z0-9_-]{1,12}$/.test(String(data.prefix || ""))) return "Prefix must be 1-12 letters, numbers, dashes or underscores.";
+    if (String(data.prefix || "") && !/^[A-Za-z0-9_-]{1,12}$/.test(String(data.prefix))) return "Prefix must be 1-12 letters, numbers, dashes or underscores — or leave it blank for plain numbers.";
     if (!Number.isInteger(Number(data.starting_number)) || Number(data.starting_number) < 1) return "Starting number must be a positive whole number.";
     if (!Number.isInteger(Number(data.digits)) || Number(data.digits) < 1 || Number(data.digits) > 10) return "Number of digits must be between 1 and 10.";
     if (!RESET_MODES.some((m) => m.value === data.reset_mode)) return "Choose a reset mode.";
