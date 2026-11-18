@@ -36,7 +36,7 @@ const getBillFormat = (restaurantId, callback) => {
     // the tills fetch from /api/charges. Leaving the old columns in this
     // response would just be a second, stale answer to "what is the GST rate?".
     const restaurantSql = `
-        SELECT r.id, r.restaurant_name, r.owner_name, r.mobile, r.email,
+        SELECT r.id, r.uuid, r.restaurant_name, r.owner_name, r.mobile, r.email,
                r.gst_number, r.fssai_number, r.address, r.city, r.state,
                r.pincode, r.logo
         FROM restaurants r

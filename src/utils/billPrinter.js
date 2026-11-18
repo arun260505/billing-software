@@ -46,7 +46,7 @@ export const BIG_BILL_NO_UUIDS = [
     "9a6f14f3-b40b-11f1-9b54-0a5e3187ab69", // Tasty Travel
     "c67179a6-a448-11f1-9b54-0a5e3187ab69", // InWallz
 ];
-export const BIG_BILL_NO_NAMES = ["tasty travel", "inwallz"];
+export const BIG_BILL_NO_NAMES = ["tasty travel", "tast e travel", "inwallz"];
 export function wantsBigBillNo(restaurant = {}) {
     return BIG_BILL_NO_UUIDS.includes(restaurant.uuid) ||
         BIG_BILL_NO_NAMES.includes(String(restaurant.restaurant_name || "").trim().toLowerCase());
