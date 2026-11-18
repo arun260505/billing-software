@@ -239,9 +239,25 @@ function Billing() {
         }
     };
 
+    // Keep the SAMPLE's grand total consistent with which charge lines are shown:
+    // turning GST/service/charges off also drops their amount, so a shop with no
+    // charges (e.g. Tasty Travel) shows Grand Total = Sub Total instead of a total
+    // with an unexplained gap. Real bills are unaffected — they carry real values.
+    const sampleOrder = useMemo(() => {
+        const base = salon ? SALON_SAMPLE_ORDER : SAMPLE_ORDER;
+        const f = salon ? salonBillFormat(format) : format;
+        const taxBase = Number(base.subtotal || 0) - Number(base.discount || 0);
+        const tax = f.show_tax ? Number(base.tax || 0) : 0;
+        const service = f.show_service_charge ? Number(base.service_charge || 0) : 0;
+        const charges = f.show_charges ? (base.charges || []) : [];
+        const chargesTotal = charges.reduce((s, c) => s + (c.charge_type === "Percentage"
+            ? Math.round(taxBase * Number(c.amount) / 100) : Number(c.amount || 0)), 0);
+        return { ...base, tax, service_charge: service, charges, grand_total: taxBase + tax + service + chargesTotal };
+    }, [format, salon]);
+
     const handleTestPrint = () => {
         printBill({
-            order: salon ? SALON_SAMPLE_ORDER : SAMPLE_ORDER,
+            order: sampleOrder,
             restaurant: restaurant,
             format: salon ? salonBillFormat(format) : format
         });
@@ -250,11 +266,11 @@ function Billing() {
     // Live HTML generation for preview
     const previewHtml = useMemo(() => {
         return generateBillHtml({
-            order: salon ? SALON_SAMPLE_ORDER : SAMPLE_ORDER,
+            order: sampleOrder,
             restaurant: restaurant,
             format: salon ? salonBillFormat(format) : format
         });
-    }, [format, restaurant, salon]);
+    }, [format, restaurant, salon, sampleOrder]);
 
     return (
         <AdminLayout>
